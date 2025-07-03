@@ -1,0 +1,9 @@
+mappal2word takes in 2 input files, the mapping one and the palette one and makes an output "word" file with the Mega Drive plane format as you described in the file.
+
+i.e. py mappal2word.py <MAPPING INPUT FILENAME> <PALETTE INPUT FILENAME> <OUTPUT FILENAME>
+
+--------------------------------
+
+word2mappal on the other hand takes 1 input word file (the Mega Drive plane format) and 2 output files, the output mapping file and the output palette file
+
+i.e. py word2mappal.py <WORD INPUT FILENAME> <MAPPING OUTPUT FILENAME> <PALETTE OUTPUT FILENAME>
