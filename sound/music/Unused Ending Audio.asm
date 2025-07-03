@@ -1,19 +1,19 @@
-Song15_Start:
+BGM_EndingUnused_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C5
-	cChannel	Song15_FM1
-	cChannel	Song15_FM2
-	cChannel	Song15_FM3
-	cChannel	Song15_FM4
-	cChannel	Song15_FM5
-	cChannel	Song15_DAC
-	cChannel	Song15_PSG1
-	cChannel	Song15_PSG2
-	cChannel	Song15_PSG3
-	cChannel	Song15_Noise
+	cChannel	BGM_EndingUnused_FM1
+	cChannel	BGM_EndingUnused_FM2
+	cChannel	BGM_EndingUnused_FM3
+	cChannel	BGM_EndingUnused_FM4
+	cChannel	BGM_EndingUnused_FM5
+	cChannel	BGM_EndingUnused_DAC
+	cChannel	BGM_EndingUnused_PSG1
+	cChannel	BGM_EndingUnused_PSG2
+	cChannel	BGM_EndingUnused_PSG3
+	cChannel	BGM_EndingUnused_Noise
 
-Song15_FM1:
+BGM_EndingUnused_FM1:
 	cInsFM		patch4D
 	cVolFM		$0F
 	cRelease	$01
@@ -30,7 +30,7 @@ Song15_FM1:
 	cSlideStop
 	cStop
 
-Song15_FM2:
+BGM_EndingUnused_FM2:
 	cInsFM		patch4E
 	cVolFM		$0F
 	cVibrato	$02, $02
@@ -46,7 +46,7 @@ Song15_FM2:
 	cSlideStop
 	cStop
 
-Song15_FM3:
+BGM_EndingUnused_FM3:
 	cNote		cnRst, $03
 	cInsFM		patch4E
 	cVolFM		$0F
@@ -63,7 +63,7 @@ Song15_FM3:
 	cSlideStop
 	cStop
 
-Song15_FM4:
+BGM_EndingUnused_FM4:
 	cNote		cnRst, $07
 	cInsFM		patch4E
 	cVolFM		$0F
@@ -80,7 +80,7 @@ Song15_FM4:
 	cSlideStop
 	cStop
 
-Song15_FM5:
+BGM_EndingUnused_FM5:
 	cNote		cnRst, $0A
 	cInsFM		patch4E
 	cVolFM		$0F
@@ -97,7 +97,7 @@ Song15_FM5:
 	cSlideStop
 	cStop
 
-Song15_DAC:
+BGM_EndingUnused_DAC:
 	cRelease	$01
 	cNote		cnRst, $0F
 	cNote		cnE1, $1E
@@ -105,11 +105,11 @@ Song15_DAC:
 	cNote		cnCs1, $32
 	cStop
 
-Song15_PSG1:
+BGM_EndingUnused_PSG1:
 
-Song15_PSG2:
+BGM_EndingUnused_PSG2:
 
-Song15_PSG3:
+BGM_EndingUnused_PSG3:
 
-Song15_Noise:
+BGM_EndingUnused_Noise:
 	cStop

@@ -2585,7 +2585,7 @@ HandleLevelMusic:
 ; ---------------------------------------------------------------------------
 
 .CheckDanger:
-	cmpi.b	#4,(cur_level_music).l
+	cmpi.b	#BGM_DANGER,(cur_level_music).l
 	beq.w	.CheckDangerOver
 	cmpi.w	#60,(puyo_field_p1+pCount).l
 	bcc.w	.InDanger
@@ -3159,7 +3159,7 @@ loc_4022:
 	move.w	#$8000,d0
 	move.b	$27(a0),d0
 	jsr	(QueuePlaneCmd).l
-	move.b	#SFX_5C,d0
+	move.b	#SFX_RESULT_TIME,d0
 	jsr	(PlaySound_ChkPCM).l
 	bsr.w	ActorBookmark
 	move.w	#$180,$28(a0)
@@ -4211,7 +4211,7 @@ CheckPuyoPop:
 	clr.w	d1
 	cmpi.b	#1,aFrame(a0)
 	bne.w	loc_4ABC
-	move.b	#VOI_87,d0
+	move.b	#VOI_EGGMOBILE,d0
 	tst.b	aPlayerID(a0)
 	beq.w	loc_4AB6
 	move.b	#VOI_P1_COMBO_1,d0
@@ -4233,7 +4233,8 @@ loc_4ACE:
 ; End of function CheckPuyoPop
 
 ; ---------------------------------------------------------------------------
-PuyoPopSounds:	dc.b SFX_PUYO_POP_1
+PuyoPopSounds:
+	dc.b SFX_PUYO_POP_1
 	dc.b SFX_PUYO_POP_2
 	dc.b SFX_PUYO_POP_3
 	dc.b SFX_PUYO_POP_4
@@ -6135,7 +6136,7 @@ loc_5C18:
 ; ---------------------------------------------------------------------------
 
 loc_5C24:
-	move.b	#$63,d0
+	move.b	#SFX_LEVEL_START,d0
 	jsr	(PlaySound_ChkPCM).l
 	movea.l	$2E(a0),a1
 	movea.l	$2E(a1),a2
@@ -6310,7 +6311,7 @@ loc_5E44:
 	move.w	$38(a0),$E(a1)
 	move.b	#$FF,$36(a1)
 	clr.w	(word_FF19A8).l
-	move.b	#$45,d0
+	move.b	#SFX_PUYO_LAND,d0
 	bsr.w	PlaySound_ChkPCM
 	bra.w	ActorDeleteSelf
 ; ---------------------------------------------------------------------------
@@ -8212,7 +8213,7 @@ loc_7162:
 
 loc_71BA:
 	dbf	d3,loc_7162
-	move.b	#$60,d0
+	move.b	#SFX_THUD,d0
 	jsr	(PlaySound_ChkPCM).l
 	bra.w	ActorDeleteSelf
 ; End of function sub_7104
@@ -9113,7 +9114,7 @@ loc_7ACE:
 	movea.l	$2E(a0),a1
 	bsr.w	ActorDeleteOther
 	bsr.w	sub_7C14
-	move.b	#$59,d0
+	move.b	#SFX_LOSE,d0
 	jmp	(PlaySound_ChkPCM).l
 ; ---------------------------------------------------------------------------
 
@@ -9176,7 +9177,7 @@ loc_7BF0:
 	jsr	(ActorBookmark).l
 	subq.w	#1,$26(a0)
 	bpl.s	locret_7C12
-	move.b	#$90,d0
+	move.b	#VOI_ROBOTNIK_LOSE,d0
 	jsr	(PlaySound_ChkPCM).l
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
@@ -9202,7 +9203,7 @@ loc_7C2C:
 	jsr	(ActorBookmark).l
 	subq.w	#1,$26(a0)
 	bpl.s	locret_7C4E
-	move.b	#$6B,d0
+	move.b	#SFX_ROBOTNIK_LAUGH,d0
 	jsr	(PlaySound_ChkPCM).l
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
@@ -9221,7 +9222,7 @@ loc_7C50:
 	clr.w	(player_1_flags).l
 	movea.l	$2E(a0),a1
 	bsr.w	ActorDeleteOther
-	move.b	#$59,d0
+	move.b	#SFX_LOSE,d0
 	jsr	(PlaySound_ChkPCM).l
 	move.b	#OPP_ARMS,(opponent).l
 	clr.w	d0
@@ -9245,7 +9246,7 @@ loc_7CAC:
 	lea	(player_1_flags).l,a2
 	move.b	#$FF,(a1,d0.w)
 	clr.b	(a2,d0.w)
-	move.b	#$59,d0
+	move.b	#SFX_LOSE,d0
 	jmp	(PlaySound_ChkPCM).l
 
 ; =============== S U B	R O U T	I N E =======================================
@@ -9261,7 +9262,7 @@ sub_7CD2:
 	jsr	(QueuePlaneCmd).l
 	nop
 	nop
-	move.b	#$5C,d0
+	move.b	#SFX_RESULT_TIME,d0
 	jmp	(PlaySound_ChkPCM).l
 ; End of function sub_7CD2
 
@@ -9305,7 +9306,7 @@ loc_7D32:
 	move.b	$27(a0),d0
 	andi.b	#3,d0
 	bne.w	loc_7D52
-	move.b	#$5F,d0
+	move.b	#SFX_5F,d0
 	jsr	(PlaySound_ChkPCM).l
 
 loc_7D52:
@@ -9322,7 +9323,7 @@ sub_7D62:
 	move.w	#$9E00,d0
 	swap	d0
 	jsr	(QueuePlaneCmd).l
-	moveq	#$70,d0
+	moveq	#SFX_PASSWORD,d0
 	jmp	(PlaySound_ChkPCM).l
 ; End of function sub_7D62
 
@@ -9345,7 +9346,7 @@ loc_7D78:
 	swap	d0
 	move.w	$12(a0),d0
 	jsr	(QueuePlaneCmd).l
-	move.b	#$5D,d0
+	move.b	#SFX_RESULT_BONUS_2,d0
 	jsr	(PlaySound_ChkPCM).l
 	move.w	$12(a0),d0
 	lsr.w	#7,d0
@@ -9380,7 +9381,7 @@ loc_7E14:
 loc_7E30:
 	move.l	#$80050000,d0
 	jsr	(QueuePlaneCmd).l
-	move.b	#$5E,d0
+	move.b	#SFX_5E,d0
 	jsr	(PlaySound_ChkPCM).l
 	move.w	#$40,d0
 	jsr	(ActorBookmark_SetDelay).l
@@ -9397,7 +9398,7 @@ loc_7E56:
 loc_7E68:
 	move.l	#$80160000,d0
 	jsr	(QueuePlaneCmd).l
-	moveq	#$70,d0
+	moveq	#SFX_PASSWORD,d0
 	jsr	(PlaySound_ChkPCM).l
 	move.w	#$78,d0
 	jsr	(ActorBookmark_SetDelay).l
@@ -9573,7 +9574,7 @@ loc_8084:
 ; ---------------------------------------------------------------------------
 
 loc_80B8:
-	move.b	#$41,d0
+	move.b	#SFX_MENU_SELECT,d0
 	jsr	(PlaySound_ChkPCM).l
 	clr.b	(bytecode_disabled).l
 	clr.b	(bytecode_flag).l
@@ -9654,7 +9655,7 @@ loc_81AE:
 	addq.b	#1,d0
 	not.b	d0
 	and.b	d0,(byte_FF1965).l
-	move.b	#$41,d0
+	move.b	#SFX_MENU_SELECT,d0
 	jsr	(PlaySound_ChkPCM).l
 	bclr	#0,7(a0)
 	bsr.w	ActorBookmark
@@ -10471,9 +10472,9 @@ FadeSound:
 StopSound:
 	movem.l	d0,-(sp)
 
-	move.b	#$6F,d0
+	move.b	#SFX_STOP,d0
 	jsr	PlaySound
-	move.b	#$FE,d0
+	move.b	#BGM_STOP,d0
 	jsr	PlaySound
 
 	movem.l	(sp)+,d0
@@ -10756,7 +10757,7 @@ loc_8A44:
 ; ---------------------------------------------------------------------------
 
 loc_8A54:
-	move.b	#$45,d0
+	move.b	#SFX_PUYO_LAND,d0
 	bsr.w	PlaySound_ChkPCM
 	bsr.w	GetPuyoField
 	move.w	$1A(a0),d0
@@ -10784,7 +10785,7 @@ loc_8A9E:
 	move.b	$29(a0),d0
 	andi.b	#3,d0
 	bne.w	loc_8ABC
-	move.b	#$4B,d0
+	move.b	#SFX_4B,d0
 	bsr.w	PlaySound_ChkPCM
 
 loc_8ABC:
@@ -11089,7 +11090,7 @@ loc_8E24:
 	move.w	#$148,$E(a0)
 	move.l	#unk_8E92,$32(a0)
 	move.w	#$80,$26(a0)
-	move.b	#$49,d0
+	move.b	#SFX_CANCEL,d0
 	bsr.w	PlaySound_ChkPCM
 
 loc_8E40:
@@ -11161,7 +11162,7 @@ loc_8EB8:
 	DISABLE_INTS
 	bsr.w	sub_5782
 	ENABLE_INTS
-	move.b	#$4A,d0
+	move.b	#SFX_4A,d0
 	bra.w	PlaySound_ChkPCM
 ; End of function sub_8EA4
 
@@ -11794,7 +11795,7 @@ loc_962A:
 	move.b	d0,$F(a0)
 	lea	(byte_965C).l,a1
 	bsr.w	sub_9728
-	move.b	#$69,d0
+	move.b	#SFX_DIALOGUE,d0
 	jmp	(PlaySound_ChkPCM).l
 ; ---------------------------------------------------------------------------
 
@@ -12676,7 +12677,7 @@ loc_9CB0:
 	move.b	(level_mode).l,d0
 	andi.b	#3,d0
 	beq.w	loc_9CF8
-	move.b	#SFX_5B,d0
+	move.b	#SFX_RESULT_BONUS,d0
 	bsr.w	PlaySound_ChkPCM
 	cmpi.b	#$62,$2B(a0)
 	bcc.w	loc_9CF4
@@ -13375,7 +13376,7 @@ unk_A19A:	dc.b   9
 
 
 sub_A1C2:
-	move.b	#$97,d0
+	move.b	#VOI_VANISH,d0
 	jsr	(PlaySound_ChkPCM).l
 	lea	(loc_A212).l,a1
 	bsr.w	FindActorSlot
@@ -13394,7 +13395,7 @@ loc_A1DA:
 
 
 sub_A1EA:
-	move.b	#$97,d0
+	move.b	#VOI_VANISH,d0
 	jsr	(PlaySound_ChkPCM).l
 	lea	(loc_A25C).l,a1
 	bsr.w	FindActorSlot
@@ -13477,7 +13478,7 @@ loc_A2BA:
 
 
 sub_A2C8:
-	move.b	#$87,d0
+	move.b	#VOI_EGGMOBILE,d0
 	jsr	(PlaySound_ChkPCM).l
 	lea	(sub_A316).l,a1
 	bsr.w	FindActorSlot
@@ -13550,7 +13551,7 @@ loc_A3A4:
 	move.w	#$27,d0
 	bsr.w	ActorBookmark_SetDelay
 	bsr.w	ActorBookmark
-	move.b	#$96,d0
+	move.b	#VOI_EGGMOBILE_LEAVE,d0
 	jsr	(PlaySound_ChkPCM).l
 	bsr.w	ActorBookmark
 	movea.l	$2E(a0),a1
@@ -13582,7 +13583,7 @@ sub_A404:
 	move.w	$A(a0),d0
 	cmpi.w	#$C0,d0
 	bge.s	loc_A430
-	move.b	#$67,d0
+	move.b	#SFX_67,d0
 	jsr	(PlaySound_ChkPCM).l
 	bra.w	ActorDeleteSelf
 ; ---------------------------------------------------------------------------
@@ -14966,7 +14967,7 @@ ActLevelTrans_FGScroll:
 
 ActLevelTrans_FGStop:
 	move.w	#0,(vscroll_buffer).l
-	move.b	#$45,d0
+	move.b	#SFX_PUYO_LAND,d0
 	jsr	(PlaySound_ChkPCM).l
 	clr.b	(bytecode_disabled).l
 	bra.w	ActorDeleteSelf
@@ -15915,7 +15916,7 @@ loc_BB36:
 	addq.w	#1,$26(a0)
 
 loc_BB44:
-	move.b	#$42,d0
+	move.b	#SFX_MENU_MOVE,d0
 	bsr.w	PlaySound_ChkPCM
 
 loc_BB4C:
@@ -15941,7 +15942,7 @@ loc_BB62:
 	bsr.w	sub_BCC2
 	bcc.w	loc_BB7A
 	jsr	(nullsub_3).l
-	move.b	#$67,d0
+	move.b	#SFX_67,d0
 	jmp	(PlaySound_ChkPCM).l
 ; ---------------------------------------------------------------------------
 
@@ -16361,7 +16362,7 @@ loc_BE8E:
 
 loc_BEA2:
 	jsr	(sub_BAC8).l
-	move.b	#$42,d0
+	move.b	#SFX_MENU_MOVE,d0
 	bsr.w	PlaySound_ChkPCM
 	bra.s	loc_BE44
 ; ---------------------------------------------------------------------------
@@ -16371,7 +16372,7 @@ locret_BEB2:
 ; ---------------------------------------------------------------------------
 
 loc_BEB4:
-	move.b	#$41,d0
+	move.b	#SFX_MENU_SELECT,d0
 	bsr.w	PlaySound_ChkPCM
 	clr.w	$28(a0)
 	jsr	(ActorBookmark).l
@@ -16544,13 +16545,13 @@ loc_C0AC:
 
 loc_C0BE:
 	clr.b	$26(a0)
-	move.b	#$42,d0
+	move.b	#SFX_MENU_MOVE,d0
 	bra.w	PlaySound_ChkPCM
 ; ---------------------------------------------------------------------------
 
 loc_C0CA:
 	addq.w	#1,$E(a0)
-	move.b	#$41,d0
+	move.b	#SFX_MENU_SELECT,d0
 	bsr.w	PlaySound_ChkPCM
 	cmpi.w	#3,$E(a0)
 	bcc.w	loc_C0F8
@@ -16565,7 +16566,7 @@ loc_C0E2:
 
 loc_C0EC:
 	subq.w	#1,$E(a0)
-	move.b	#$42,d0
+	move.b	#SFX_MENU_MOVE,d0
 	bra.w	PlaySound_ChkPCM
 ; ---------------------------------------------------------------------------
 
@@ -16816,7 +16817,7 @@ loc_C332:
 
 loc_C344:
 	clr.b	$26(a0)
-	move.b	#$42,d0
+	move.b	#SFX_MENU_MOVE,d0
 	bra.w	PlaySound_ChkPCM
 ; ---------------------------------------------------------------------------
 
@@ -16824,7 +16825,7 @@ loc_C350:
 	move.b	#$80,9(a0)
 	bsr.w	sub_C3F0
 	addq.w	#1,$E(a0)
-	move.b	#$41,d0
+	move.b	#SFX_MENU_SELECT,d0
 	bsr.w	PlaySound_ChkPCM
 	cmpi.w	#3,$E(a0)
 	bcc.w	loc_C3AA
@@ -16847,7 +16848,7 @@ loc_C37E:
 
 loc_C39A:
 	subq.w	#1,$E(a0)
-	move.b	#$42,d0
+	move.b	#SFX_MENU_MOVE,d0
 	bsr.w	PlaySound_ChkPCM
 	bra.w	loc_C2A2
 ; ---------------------------------------------------------------------------
@@ -17199,7 +17200,7 @@ locret_C6CE:
 ; ---------------------------------------------------------------------------
 
 loc_C6D0:
-	move.b	#$67,d0
+	move.b	#SFX_67,d0
 	jsr	(PlaySound_ChkPCM).l
 	tst.b	(bytecode_disabled).l
 	beq.w	loc_C700
@@ -17585,7 +17586,7 @@ loc_CB4C:
 ; ---------------------------------------------------------------------------
 
 loc_CB52:
-	move.b	#$6A,d0
+	move.b	#SFX_MACHINE_DESTROYED,d0
 	jsr	(PlaySound_ChkPCM).l
 	move.w	#$82,$26(a0)
 	jsr	(ActorBookmark).l
@@ -17595,7 +17596,7 @@ loc_CB52:
 ; ---------------------------------------------------------------------------
 
 loc_CB70:
-	move.b	#$6A,d0
+	move.b	#SFX_MACHINE_DESTROYED,d0
 	jsr	(PlaySound_ChkPCM).l
 	move.w	#$82,$26(a0)
 	jsr	(ActorBookmark).l
@@ -17605,7 +17606,7 @@ loc_CB70:
 ; ---------------------------------------------------------------------------
 
 loc_CB8E:
-	move.b	#$6A,d0
+	move.b	#SFX_MACHINE_DESTROYED,d0
 	jsr	(PlaySound_ChkPCM).l
 	move.w	#$C8,$26(a0)
 	jsr	(ActorBookmark).l
@@ -17615,7 +17616,7 @@ loc_CB8E:
 ; ---------------------------------------------------------------------------
 
 loc_CBAC:
-	move.b	#$91,d0
+	move.b	#VOI_BEAN_CHEER,d0
 	jsr	(PlaySound_ChkPCM).l
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
@@ -21011,7 +21012,7 @@ loc_FE8C:
 	asl.w	#6,d0
 	addi.w	#$780,d0
 	move.w	d0,$26(a0)
-	move.b	#$45,d0
+	move.b	#SFX_PUYO_LAND,d0
 	jsr	(PlaySound_ChkPCM).l
 	jsr	(ActorBookmark).l
 	jsr	(ActorAnimate).l
@@ -22824,7 +22825,7 @@ loc_10A14:
 
 loc_10A86:
 	move.l	#unk_10AA4,$32(a0)
-	move.b	#$45,d0
+	move.b	#SFX_PUYO_LAND,d0
 	jsr	(PlaySound_ChkPCM).l
 	jsr	(ActorBookmark).l
 	jmp	(ActorAnimate).l
@@ -23185,7 +23186,7 @@ sub_10E18:
 	move.w	d0,VDP_DATA
 	ENABLE_INTS
 	addq.w	#2,$2A(a0)
-	move.b	#$69,d0
+	move.b	#SFX_DIALOGUE,d0
 	jmp	(PlaySound_ChkPCM).l
 ; End of function sub_10E18
 
@@ -23554,7 +23555,7 @@ loc_111EE:
 	move.b	(byte_FF1128).l,d0
 	andi.b	#1,d0
 	bne.s	loc_11246
-	move.b	#$69,d0
+	move.b	#SFX_DIALOGUE,d0
 	jsr	(PlaySound_ChkPCM).l
 
 loc_11246:
@@ -29126,7 +29127,7 @@ loc_1358A:
 	move.b	#$FF,(puyos_popping).l
 	move.w	#5,(word_FF196E).l
 	jsr	(sub_7926).l
-	move.b	#$59,d0
+	move.b	#SFX_LOSE,d0
 	jsr	(PlaySound_ChkPCM).l
 	jsr	(ActorBookmark).l
 	tst.w	$26(a0)
@@ -40798,7 +40799,7 @@ ActSoundTest_Update:
 	bne.w	.Exit
 	btst	#4,d0
 	bne.w	.StopSound
-	andi.b	#$60,d0
+	andi.b	#SFX_THUD,d0
 	bne.w	.PlaySound
 	move.b	(byte_FF110C).l,d0
 	or.b	(byte_FF1112).l,d0
@@ -40885,7 +40886,7 @@ ActSoundTest_Update:
 	dc.b $32
 	dc.b $32
 	dc.b $32
-	dc.b $13
+	dc.b $19
 	dc.b $17
 	dc.b 4
 ; ---------------------------------------------------------------------------
@@ -40914,7 +40915,8 @@ ActSoundTest_Update:
 ; End of function ActSoundTest
 
 ; ---------------------------------------------------------------------------
-SoundTest_PlayTypes:dc.l SoundTest_PlayBGM
+SoundTest_PlayTypes:
+	dc.l SoundTest_PlayBGM
 	dc.l SoundTest_PlayVoice
 	dc.l SoundTest_PlayCmd
 ; ---------------------------------------------------------------------------
@@ -41085,10 +41087,13 @@ loc_229E6:
 ; End of function sub_229C2
 
 ; ---------------------------------------------------------------------------
-off_229EC:	dc.l off_229F8
+off_229EC:
+	dc.l off_229F8
 	dc.l off_22AC8
 	dc.l off_22B90
-off_229F8:	dc.l byte_22A64
+off_229F8:
+	dc.l byte_22A60
+	dc.l byte_22A64
 	dc.l byte_22A68
 	dc.l byte_22A6C
 	dc.l byte_22A70
@@ -41098,22 +41103,21 @@ off_229F8:	dc.l byte_22A64
 	dc.l byte_22A80
 	dc.l byte_22A84
 	dc.l byte_22A88
+	dc.l byte_22A8C
+	dc.l byte_22A90
 	dc.l byte_22A94
+	dc.l byte_22A98
+	dc.l byte_22A9C
 	dc.l byte_22AA0
 	dc.l byte_22AA4
 	dc.l byte_22AA8
+	dc.l byte_22AAC
+	dc.l byte_22AB0
 	dc.l byte_22AB4
 	dc.l byte_22AB8
 	dc.l byte_22ABC
 	dc.l byte_22AC0
 	dc.l byte_22AC4
-	dc.l byte_22A60
-	dc.l byte_22A8C
-	dc.l byte_22A90
-	dc.l byte_22A98
-	dc.l byte_22A9C
-	dc.l byte_22AAC
-	dc.l byte_22AB0
 byte_22A60:	dc.b 1,	$20, $20, $FF
 byte_22A64:	dc.b 2,	$20, $20, $FF
 byte_22A68:	dc.b 3,	$20, $20, $FF
@@ -41140,7 +41144,8 @@ byte_22AB8:	dc.b $17, $20, $20, $FF
 byte_22ABC:	dc.b $18, $20, $20, $FF
 byte_22AC0:	dc.b $19, $20, $20, $FF
 byte_22AC4:	dc.b $1A, $20, $20, $FF
-off_22AC8:	dc.l byte_22B24
+off_22AC8:
+	dc.l byte_22B24
 	dc.l byte_22B28
 	dc.l byte_22B2C
 	dc.l byte_22B30

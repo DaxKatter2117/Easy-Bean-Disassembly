@@ -1,19 +1,19 @@
-Song14_Start:
+BGM_StageUnused_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C3
-	cChannel	Song14_FM1
-	cChannel	Song14_FM2
-	cChannel	Song14_FM3
-	cChannel	Song14_FM4
-	cChannel	Song14_FM5
-	cChannel	Song14_DAC
-	cChannel	Song14_PSG1
-	cChannel	Song14_PSG2
-	cChannel	Song14_PSG3
-	cChannel	Song14_Noise
+	cChannel	BGM_StageUnused_FM1
+	cChannel	BGM_StageUnused_FM2
+	cChannel	BGM_StageUnused_FM3
+	cChannel	BGM_StageUnused_FM4
+	cChannel	BGM_StageUnused_FM5
+	cChannel	BGM_StageUnused_DAC
+	cChannel	BGM_StageUnused_PSG1
+	cChannel	BGM_StageUnused_PSG2
+	cChannel	BGM_StageUnused_PSG3
+	cChannel	BGM_StageUnused_Noise
 
-Song14_FM1:
+BGM_StageUnused_FM1:
 	cLoopStart
 		cRelease	$01
 		cVibrato	$02, $0A
@@ -136,7 +136,7 @@ Song14_FM1:
 	cLoopEnd
 	cStop
 
-Song14_FM2:
+BGM_StageUnused_FM2:
 	cLoopStart
 		cRelease	$01
 		cVibrato	$02, $0A
@@ -176,7 +176,7 @@ Song14_FM2:
 	cLoopEnd
 	cStop
 
-Song14_FM3:
+BGM_StageUnused_FM3:
 	cLoopStart
 		cRelease	$01
 		cVibrato	$02, $0A
@@ -346,7 +346,7 @@ Song14_FM3:
 	cLoopEnd
 	cStop
 
-Song14_FM4:
+BGM_StageUnused_FM4:
 	cNote		cnRst, $07
 	cLoopStart
 		cRelease	$01
@@ -387,7 +387,7 @@ Song14_FM4:
 	cLoopEnd
 	cStop
 
-Song14_FM5:
+BGM_StageUnused_FM5:
 	cNote		cnRst, $0D
 	cLoopStart
 		cRelease	$01
@@ -428,7 +428,7 @@ Song14_FM5:
 	cLoopEnd
 	cStop
 
-Song14_DAC:
+BGM_StageUnused_DAC:
 	cLoopStart
 		cNote		cnC0, $0A
 		cNote		cnC0
@@ -575,16 +575,16 @@ Song14_DAC:
 	cLoopEnd
 	cStop
 
-Song14_PSG1:
+BGM_StageUnused_PSG1:
 	cStop
 
-Song14_PSG2:
+BGM_StageUnused_PSG2:
 	cStop
 
-Song14_PSG3:
+BGM_StageUnused_PSG3:
 	cStop
 
-Song14_Noise:
+BGM_StageUnused_Noise:
 	cLoopStart
 		cInsVolPSG	$0F, $0E
 		cNote		cnG0, $05

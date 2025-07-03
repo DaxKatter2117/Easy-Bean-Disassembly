@@ -1,37 +1,37 @@
-Song0D_Start:
+BGM_SilencePad_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C8
-	cChannel	Song0D_FM1
-	cChannel	Song0D_FM2
-	cChannel	Song0D_FM3
-	cChannel	Song0D_FM4
-	cChannel	Song0D_FM5
-	cChannel	Song0D_DAC
-	cChannel	Song0D_PSG1
-	cChannel	Song0D_PSG2
-	cChannel	Song0D_PSG3
-	cChannel	Song0D_Noise
+	cChannel	BGM_SilencePad_FM1
+	cChannel	BGM_SilencePad_FM2
+	cChannel	BGM_SilencePad_FM3
+	cChannel	BGM_SilencePad_FM4
+	cChannel	BGM_SilencePad_FM5
+	cChannel	BGM_SilencePad_DAC
+	cChannel	BGM_SilencePad_PSG1
+	cChannel	BGM_SilencePad_PSG2
+	cChannel	BGM_SilencePad_PSG3
+	cChannel	BGM_SilencePad_Noise
 
-Song0D_FM1:
+BGM_SilencePad_FM1:
 
-Song0D_FM2:
+BGM_SilencePad_FM2:
 
-Song0D_FM3:
+BGM_SilencePad_FM3:
 
-Song0D_FM4:
+BGM_SilencePad_FM4:
 
-Song0D_FM5:
+BGM_SilencePad_FM5:
 
-Song0D_DAC:
+BGM_SilencePad_DAC:
 
-Song0D_PSG1:
+BGM_SilencePad_PSG1:
 
-Song0D_PSG2:
+BGM_SilencePad_PSG2:
 
-Song0D_PSG3:
+BGM_SilencePad_PSG3:
 
-Song0D_Noise:
+BGM_SilencePad_Noise:
 	cStop
 	cJump		$FFFF
 	cJump		$FFFF

@@ -1,19 +1,19 @@
-Song11_Start:
+BGM_Exercise_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C1
-	cChannel	Song11_FM1
-	cChannel	Song11_FM2
-	cChannel	Song11_FM3
-	cChannel	Song11_FM4
-	cChannel	Song11_FM5
-	cChannel	Song11_DAC
-	cChannel	Song11_PSG1
-	cChannel	Song11_PSG2
-	cChannel	Song11_PSG3
-	cChannel	Song11_Noise
+	cChannel	BGM_Exercise_FM1
+	cChannel	BGM_Exercise_FM2
+	cChannel	BGM_Exercise_FM3
+	cChannel	BGM_Exercise_FM4
+	cChannel	BGM_Exercise_FM5
+	cChannel	BGM_Exercise_DAC
+	cChannel	BGM_Exercise_PSG1
+	cChannel	BGM_Exercise_PSG2
+	cChannel	BGM_Exercise_PSG3
+	cChannel	BGM_Exercise_Noise
 
-Song11_FM1:
+BGM_Exercise_FM1:
 	cLoopStart
 		cRelease	$01
 		cVibrato	$02, $0A
@@ -239,7 +239,7 @@ Song11_FM1:
 	cLoopEnd
 	cStop
 
-Song11_FM2:
+BGM_Exercise_FM2:
 	cLoopStart
 		cInsFM		patch07
 		cVolFM		$0B
@@ -494,7 +494,7 @@ Song11_FM2:
 	cLoopEnd
 	cStop
 
-Song11_FM3:
+BGM_Exercise_FM3:
 	cLoopStart
 		cInsFM		patch77
 		cVolFM		$0D
@@ -693,7 +693,7 @@ Song11_FM3:
 	cLoopEnd
 	cStop
 
-Song11_FM4:
+BGM_Exercise_FM4:
 	cLoopStart
 		cRelease	$01
 		cVibrato	$02, $0A
@@ -947,7 +947,7 @@ Song11_FM4:
 	cLoopEnd
 	cStop
 
-Song11_FM5:
+BGM_Exercise_FM5:
 	cNote		cnRst, $0E
 	cLoopStart
 		cRelease	$01
@@ -1174,7 +1174,7 @@ Song11_FM5:
 	cLoopEnd
 	cStop
 
-Song11_DAC:
+BGM_Exercise_DAC:
 	cLoopStart
 		cPan		cpCenter
 		cNote		cnC0, $14
@@ -1347,16 +1347,16 @@ Song11_DAC:
 	cLoopEnd
 	cStop
 
-Song11_PSG1:
+BGM_Exercise_PSG1:
 	cStop
 
-Song11_PSG2:
+BGM_Exercise_PSG2:
 	cStop
 
-Song11_PSG3:
+BGM_Exercise_PSG3:
 	cStop
 
-Song11_Noise:
+BGM_Exercise_Noise:
 	cLoopStart
 		cRelease	$01
 		cInsVolPSG	$0F, $0C

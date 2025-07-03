@@ -1,19 +1,19 @@
-Song02_Start:
+BGM_Config_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C1
-	cChannel	Song02_FM1
-	cChannel	Song02_FM2
-	cChannel	Song02_FM3
-	cChannel	Song02_FM4
-	cChannel	Song02_FM5
-	cChannel	Song02_DAC
-	cChannel	Song02_PSG1
-	cChannel	Song02_PSG2
-	cChannel	Song02_PSG3
-	cChannel	Song02_Noise
+	cChannel	BGM_Config_FM1
+	cChannel	BGM_Config_FM2
+	cChannel	BGM_Config_FM3
+	cChannel	BGM_Config_FM4
+	cChannel	BGM_Config_FM5
+	cChannel	BGM_Config_DAC
+	cChannel	BGM_Config_PSG1
+	cChannel	BGM_Config_PSG2
+	cChannel	BGM_Config_PSG3
+	cChannel	BGM_Config_Noise
 
-Song02_FM1:
+BGM_Config_FM1:
 	cLoopStart
 		cInsFM		patch0E
 		cVolFM		$0C
@@ -91,7 +91,7 @@ Song02_FM1:
 	cLoopEnd
 	cStop
 
-Song02_FM2:
+BGM_Config_FM2:
 	cLoopStart
 		cRelease	$01
 		cVibrato	$02, $0A
@@ -298,7 +298,7 @@ Song02_FM2:
 	cLoopEnd
 	cStop
 
-Song02_FM3:
+BGM_Config_FM3:
 	cLoopStart
 		cInsFM		patch08
 		cVolFM		$0D
@@ -352,7 +352,7 @@ Song02_FM3:
 	cLoopEnd
 	cStop
 
-Song02_FM4:
+BGM_Config_FM4:
 	cLoopStart
 		cInsFM		patch0F
 		cVolFM		$0C
@@ -407,7 +407,7 @@ Song02_FM4:
 	cLoopEnd
 	cStop
 
-Song02_FM5:
+BGM_Config_FM5:
 	cNote		cnRst, $13
 	cLoopStart
 		cRelease	$01
@@ -616,7 +616,7 @@ Song02_FM5:
 	cLoopEnd
 	cStop
 
-Song02_DAC:
+BGM_Config_DAC:
 	cLoopStart
 		cPan		cpCenter
 		cNote		cnC0, $1C
@@ -633,19 +633,19 @@ Song02_DAC:
 	cLoopEnd
 	cStop
 
-Song02_PSG1:
+BGM_Config_PSG1:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song02_PSG2:
+BGM_Config_PSG2:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song02_PSG3:
+BGM_Config_PSG3:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song02_Noise:
+BGM_Config_Noise:
 	cLoopStart
 		cLoopCnt	$17
 			cInsVolPSG	$0F, $0E

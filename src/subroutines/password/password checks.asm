@@ -320,7 +320,7 @@ loc_D204:
 	muls.w	#$1C,d0
 	addi.w	#$8C,d0
 	move.w	d0,$A(a0)
-	move.b	#$42,d0
+	move.b	#SFX_MENU_MOVE,d0
 	bra.w	PlaySound_ChkPCM
 	
 ; ---------------------------------------------------------------------------
@@ -357,7 +357,7 @@ loc_D24A:
 	or.w	d0,d1
 	rol.w	d2,d1
 	move.w	d1,$2C(a0)
-	move.b	#$41,d0
+	move.b	#SFX_MENU_SELECT,d0
 	bsr.w	PlaySound_ChkPCM
 	rts
 	
@@ -378,7 +378,7 @@ loc_D26E:
 
 loc_D274:
 	move.w	d2,$2A(a0)
-	move.b	#$41,d0
+	move.b	#SFX_MENU_SELECT,d0
 	bsr.w	PlaySound_ChkPCM
 
 locret_D280:
@@ -398,7 +398,7 @@ loc_D29A:
 	cmp.w	-(a1),d0
 	beq.s	loc_D2AC
 	dbf	d1,loc_D29A
-	move.b	#$46,d0
+	move.b	#SFX_WRONG_PASSWORD,d0
 	bsr.w	PlaySound_ChkPCM
 	rts
 ; ---------------------------------------------------------------------------
@@ -421,7 +421,7 @@ loc_D2DC:
 	move.b	(a1)+,d1
 	move.b	#$FF,(a2,d1.w)
 	dbf	d0,loc_D2DC
-	move.b	#SFX_5D,d0
+	move.b	#SFX_RESULT_BONUS_2,d0
 	bsr.w	PlaySound_ChkPCM
 	bsr.w	sub_DF74
 	lea	(locret_D348).l,a1
@@ -504,7 +504,7 @@ locret_D392:
 ; ---------------------------------------------------------------------------
 
 loc_D394:
-	move.b	#SFX_49,d0
+	move.b	#SFX_CANCEL,d0
 	bsr.w	PlaySound_ChkPCM
 	move.b	$27(a0),(level).l
 	move.b	#6,(bytecode_flag).l

@@ -1,19 +1,19 @@
-Song19_Start:
+BGM_Win_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C6
-	cChannel	Song19_FM1
-	cChannel	Song19_FM2
-	cChannel	Song19_FM3
-	cChannel	Song19_FM4
-	cChannel	Song19_FM5
-	cChannel	Song19_DAC
-	cChannel	Song19_PSG1
-	cChannel	Song19_PSG2
-	cChannel	Song19_PSG3
-	cChannel	Song19_Noise
+	cChannel	BGM_Win_FM1
+	cChannel	BGM_Win_FM2
+	cChannel	BGM_Win_FM3
+	cChannel	BGM_Win_FM4
+	cChannel	BGM_Win_FM5
+	cChannel	BGM_Win_DAC
+	cChannel	BGM_Win_PSG1
+	cChannel	BGM_Win_PSG2
+	cChannel	BGM_Win_PSG3
+	cChannel	BGM_Win_Noise
 
-Song19_FM1:
+BGM_Win_FM1:
 	cInsFM		patch0E
 	cVolFM		$0D
 	cRelease	$01
@@ -33,7 +33,7 @@ Song19_FM1:
 	cNote		cnRst, $57
 	cStop
 
-Song19_FM2:
+BGM_Win_FM2:
 	cInsFM		patch0F
 	cVolFM		$00
 	cRelease	$01
@@ -64,7 +64,7 @@ Song19_FM2:
 	cNote		cnB5, $06
 	cStop
 
-Song19_FM3:
+BGM_Win_FM3:
 	cInsFM		patch0F
 	cVolFM		$00
 	cRelease	$01
@@ -131,7 +131,7 @@ Song19_FM3:
 	cNote		cnRst, $57
 	cStop
 
-Song19_DAC:
+BGM_Win_DAC:
 	cPan		cpCenter
 	cNote		cnC0, $0C
 	cNote		cnCs0
@@ -198,16 +198,16 @@ Song19_DAC:
 	cNote		cnFs3, $06
 	cStop
 
-Song19_PSG3:
+BGM_Win_PSG3:
 	cStop
 
-Song19_FM4:
+BGM_Win_FM4:
 
-Song19_FM5:
+BGM_Win_FM5:
 
-Song19_PSG1:
+BGM_Win_PSG1:
 
-Song19_PSG2:
+BGM_Win_PSG2:
 
-Song19_Noise:
+BGM_Win_Noise:
 	cStop

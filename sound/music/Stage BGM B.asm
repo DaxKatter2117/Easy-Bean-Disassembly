@@ -1,19 +1,19 @@
-Song13_Start:
+BGM_StageB_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C4
-	cChannel	Song13_FM1
-	cChannel	Song13_FM2
-	cChannel	Song13_FM3
-	cChannel	Song13_FM4
-	cChannel	Song13_FM5
-	cChannel	Song13_DAC
-	cChannel	Song13_PSG1
-	cChannel	Song13_PSG2
-	cChannel	Song13_PSG3
-	cChannel	Song13_Noise
+	cChannel	BGM_StageB_FM1
+	cChannel	BGM_StageB_FM2
+	cChannel	BGM_StageB_FM3
+	cChannel	BGM_StageB_FM4
+	cChannel	BGM_StageB_FM5
+	cChannel	BGM_StageB_DAC
+	cChannel	BGM_StageB_PSG1
+	cChannel	BGM_StageB_PSG2
+	cChannel	BGM_StageB_PSG3
+	cChannel	BGM_StageB_Noise
 
-Song13_FM1:
+BGM_StageB_FM1:
 	cLoopStart
 		cInsFM		patch15
 		cVolFM		$09
@@ -69,7 +69,7 @@ Song13_FM1:
 	cLoopEnd
 	cStop
 
-Song13_FM2:
+BGM_StageB_FM2:
 	cLoopStart
 		cRelease	$01
 		cVibrato	$02, $0A
@@ -170,7 +170,7 @@ Song13_FM2:
 	cLoopEnd
 	cStop
 
-Song13_FM3:
+BGM_StageB_FM3:
 	cLoopStart
 		cInsFM		patch0D
 		cVolFM		$0C
@@ -242,7 +242,7 @@ Song13_FM3:
 	cLoopEnd
 	cStop
 
-Song13_FM4:
+BGM_StageB_FM4:
 	cNote		cnRst, $0A
 	cLoopStart
 		cInsFM		patch15
@@ -299,7 +299,7 @@ Song13_FM4:
 	cLoopEnd
 	cStop
 
-Song13_FM5:
+BGM_StageB_FM5:
 	cNote		cnRst, $15
 	cLoopStart
 		cInsFM		patch15
@@ -356,7 +356,7 @@ Song13_FM5:
 	cLoopEnd
 	cStop
 
-Song13_DAC:
+BGM_StageB_DAC:
 	cLoopStart
 		cNote		cnC0, $18
 		cNote		cnCs0
@@ -372,16 +372,16 @@ Song13_DAC:
 	cLoopEnd
 	cStop
 
-Song13_PSG1:
+BGM_StageB_PSG1:
 	cStop
 
-Song13_PSG2:
+BGM_StageB_PSG2:
 	cStop
 
-Song13_PSG3:
+BGM_StageB_PSG3:
 	cStop
 
-Song13_Noise:
+BGM_StageB_Noise:
 	cLoopStart
 		cInsVolPSG	$0F, $0E
 		cNote		cnG0, $0C

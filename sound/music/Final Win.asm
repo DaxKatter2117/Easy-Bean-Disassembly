@@ -1,19 +1,19 @@
-Song08_Start:
+BGM_FinalWin_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C9
-	cChannel	Song08_FM1
-	cChannel	Song08_FM2
-	cChannel	Song08_FM3
-	cChannel	Song08_FM4
-	cChannel	Song08_FM5
-	cChannel	Song08_DAC
-	cChannel	Song08_PSG1
-	cChannel	Song08_PSG2
-	cChannel	Song08_PSG3
-	cChannel	Song08_Noise
+	cChannel	BGM_FinalWin_FM1
+	cChannel	BGM_FinalWin_FM2
+	cChannel	BGM_FinalWin_FM3
+	cChannel	BGM_FinalWin_FM4
+	cChannel	BGM_FinalWin_FM5
+	cChannel	BGM_FinalWin_DAC
+	cChannel	BGM_FinalWin_PSG1
+	cChannel	BGM_FinalWin_PSG2
+	cChannel	BGM_FinalWin_PSG3
+	cChannel	BGM_FinalWin_Noise
 
-Song08_FM1:
+BGM_FinalWin_FM1:
 	cInsFM		patch09
 	cVolFM		$0B
 	cRelease	$01
@@ -55,7 +55,7 @@ Song08_FM1:
 	cNote		cnRst, $02
 	cStop
 
-Song08_FM2:
+BGM_FinalWin_FM2:
 	cInsFM		patch09
 	cVolFM		$0B
 	cRelease	$01
@@ -97,7 +97,7 @@ Song08_FM2:
 	cVolFM		$00
 	cStop
 
-Song08_FM3:
+BGM_FinalWin_FM3:
 	cInsFM		patch0E
 	cVolFM		$0C
 	cRelease	$01
@@ -156,7 +156,7 @@ Song08_FM3:
 	cVolFM		$00
 	cStop
 
-Song08_FM4:
+BGM_FinalWin_FM4:
 	cNote		cnRst, $10
 	cInsFM		patch09
 	cVolFM		$09
@@ -188,7 +188,7 @@ Song08_FM4:
 	cVolFM		$00
 	cStop
 
-Song08_FM5:
+BGM_FinalWin_FM5:
 	cNote		cnRst, $10
 	cInsFM		patch09
 	cVolFM		$0A
@@ -220,7 +220,7 @@ Song08_FM5:
 	cVolFM		$00
 	cStop
 
-Song08_DAC:
+BGM_FinalWin_DAC:
 	cPan		cpCenter
 	cNote		cnCs0, $06
 	cNote		cnC0
@@ -260,19 +260,19 @@ Song08_DAC:
 	cNote		cnCs0
 	cStop
 
-Song08_PSG1:
+BGM_FinalWin_PSG1:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song08_PSG2:
+BGM_FinalWin_PSG2:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song08_PSG3:
+BGM_FinalWin_PSG3:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song08_Noise:
+BGM_FinalWin_Noise:
 	cInsVolPSG	$00, $00
 	cNote		cnRst, $60
 	cLoopCnt	$07

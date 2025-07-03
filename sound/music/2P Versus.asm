@@ -1,19 +1,19 @@
-Song12_Start:
+BGM_Versus_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C0
-	cChannel	Song12_FM1
-	cChannel	Song12_FM2
-	cChannel	Song12_FM3
-	cChannel	Song12_FM4
-	cChannel	Song12_FM5
-	cChannel	Song12_DAC
-	cChannel	Song12_PSG1
-	cChannel	Song12_PSG2
-	cChannel	Song12_PSG3
-	cChannel	Song12_Noise
+	cChannel	BGM_Versus_FM1
+	cChannel	BGM_Versus_FM2
+	cChannel	BGM_Versus_FM3
+	cChannel	BGM_Versus_FM4
+	cChannel	BGM_Versus_FM5
+	cChannel	BGM_Versus_DAC
+	cChannel	BGM_Versus_PSG1
+	cChannel	BGM_Versus_PSG2
+	cChannel	BGM_Versus_PSG3
+	cChannel	BGM_Versus_Noise
 
-Song12_FM1:
+BGM_Versus_FM1:
 	cRelease	$01
 	cVibrato	$02, $0A
 	cPan		cpCenter
@@ -391,7 +391,7 @@ Song12_FM1:
 	cLoopEnd
 	cStop
 
-Song12_FM2:
+BGM_Versus_FM2:
 	cInsFM		patch12
 	cVolFM		$09
 	cRelease	$01
@@ -608,7 +608,7 @@ Song12_FM2:
 	cLoopEnd
 	cStop
 
-Song12_FM3:
+BGM_Versus_FM3:
 	cInsFM		patch0E
 	cVolFM		$0E
 	cRelease	$01
@@ -741,7 +741,7 @@ Song12_FM3:
 	cLoopEnd
 	cStop
 
-Song12_FM4:
+BGM_Versus_FM4:
 	cNote		cnRst, $0C
 	cRelease	$01
 	cVibrato	$02, $0A
@@ -1122,7 +1122,7 @@ Song12_FM4:
 	cLoopEnd
 	cStop
 
-Song12_FM5:
+BGM_Versus_FM5:
 	cNote		cnRst, $01
 	cRelease	$01
 	cVibrato	$02, $0A
@@ -1338,7 +1338,7 @@ Song12_FM5:
 	cLoopEnd
 	cStop
 
-Song12_DAC:
+BGM_Versus_DAC:
 	cLoopCnt	$03
 		cPan		cpCenter
 		cNote		cnC0, $0A
@@ -1441,12 +1441,12 @@ Song12_DAC:
 	cLoopEnd
 	cStop
 
-Song12_PSG1:
+BGM_Versus_PSG1:
 
-Song12_PSG2:
+BGM_Versus_PSG2:
 
-Song12_PSG3:
+BGM_Versus_PSG3:
 
-Song12_Noise:
+BGM_Versus_Noise:
 	cInsVolPSG	$00, $00
 	cStop

@@ -1,19 +1,19 @@
-Song0C_Start:
+BGM_PuyoWin_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C6
-	cChannel	Song0C_FM1
-	cChannel	Song0C_FM2
-	cChannel	Song0C_FM3
-	cChannel	Song0C_FM4
-	cChannel	Song0C_FM5
-	cChannel	Song0C_DAC
-	cChannel	Song0C_PSG1
-	cChannel	Song0C_PSG2
-	cChannel	Song0C_PSG3
-	cChannel	Song0C_Noise
+	cChannel	BGM_PuyoWin_FM1
+	cChannel	BGM_PuyoWin_FM2
+	cChannel	BGM_PuyoWin_FM3
+	cChannel	BGM_PuyoWin_FM4
+	cChannel	BGM_PuyoWin_FM5
+	cChannel	BGM_PuyoWin_DAC
+	cChannel	BGM_PuyoWin_PSG1
+	cChannel	BGM_PuyoWin_PSG2
+	cChannel	BGM_PuyoWin_PSG3
+	cChannel	BGM_PuyoWin_Noise
 
-Song0C_FM1:
+BGM_PuyoWin_FM1:
 	cInsFM		patch07
 	cVolFM		$0F
 	cRelease	$01
@@ -39,7 +39,7 @@ Song0C_FM1:
 	cNote		cnF4, $18
 	cStop
 
-Song0C_FM2:
+BGM_PuyoWin_FM2:
 	cNote		cnRst, $12
 	cInsFM		patch07
 	cVolFM		$0C
@@ -66,7 +66,7 @@ Song0C_FM2:
 	cNote		cnF4, $18
 	cStop
 
-Song0C_FM3:
+BGM_PuyoWin_FM3:
 	cInsFM		patch07
 	cVolFM		$0F
 	cRelease	$01
@@ -92,7 +92,7 @@ Song0C_FM3:
 	cNote		cnAs3, $16
 	cStop
 
-Song0C_FM4:
+BGM_PuyoWin_FM4:
 	cNote		cnRst, $12
 	cInsFM		patch07
 	cVolFM		$0B
@@ -119,7 +119,7 @@ Song0C_FM4:
 	cNote		cnAs3, $16
 	cStop
 
-Song0C_FM5:
+BGM_PuyoWin_FM5:
 	cInsFM		patch07
 	cVolFM		$0F
 	cRelease	$01
@@ -145,17 +145,17 @@ Song0C_FM5:
 	cNote		cnD4, $16
 	cStop
 
-Song0C_DAC:
+BGM_PuyoWin_DAC:
 	cStop
 
-Song0C_PSG1:
+BGM_PuyoWin_PSG1:
 	cStop
 
-Song0C_PSG2:
+BGM_PuyoWin_PSG2:
 	cStop
 
-Song0C_PSG3:
+BGM_PuyoWin_PSG3:
 	cStop
 
-Song0C_Noise:
+BGM_PuyoWin_Noise:
 	cStop

@@ -1,19 +1,19 @@
-Song0E_Start:
+BGM_Password_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C5
-	cChannel	Song0E_FM1
-	cChannel	Song0E_FM2
-	cChannel	Song0E_FM3
-	cChannel	Song0E_FM4
-	cChannel	Song0E_FM5
-	cChannel	Song0E_DAC
-	cChannel	Song0E_PSG1
-	cChannel	Song0E_PSG2
-	cChannel	Song0E_PSG3
-	cChannel	Song0E_Noise
+	cChannel	BGM_Password_FM1
+	cChannel	BGM_Password_FM2
+	cChannel	BGM_Password_FM3
+	cChannel	BGM_Password_FM4
+	cChannel	BGM_Password_FM5
+	cChannel	BGM_Password_DAC
+	cChannel	BGM_Password_PSG1
+	cChannel	BGM_Password_PSG2
+	cChannel	BGM_Password_PSG3
+	cChannel	BGM_Password_Noise
 
-Song0E_FM1:
+BGM_Password_FM1:
 	cLoopStart
 		cInsFM		patch09
 		cVolFM		$0C
@@ -99,7 +99,7 @@ Song0E_FM1:
 	cLoopEnd
 	cStop
 
-Song0E_FM2:
+BGM_Password_FM2:
 	cLoopStart
 		cInsFM		patch09
 		cVolFM		$0C
@@ -179,7 +179,7 @@ Song0E_FM2:
 	cLoopEnd
 	cStop
 
-Song0E_FM3:
+BGM_Password_FM3:
 	cLoopStart
 		cInsFM		patch1A
 		cVolFM		$0C
@@ -314,7 +314,7 @@ Song0E_FM3:
 	cLoopEnd
 	cStop
 
-Song0E_FM4:
+BGM_Password_FM4:
 	cNote		cnRst, $12
 	cLoopStart
 		cInsFM		patch09
@@ -401,7 +401,7 @@ Song0E_FM4:
 	cLoopEnd
 	cStop
 
-Song0E_FM5:
+BGM_Password_FM5:
 	cNote		cnRst, $02
 	cLoopStart
 		cInsFM		patch09
@@ -483,7 +483,7 @@ Song0E_FM5:
 	cLoopEnd
 	cStop
 
-Song0E_DAC:
+BGM_Password_DAC:
 	cLoopStart
 		cLoopCnt	$06
 			cNote		cnC0, $1C
@@ -524,16 +524,16 @@ Song0E_DAC:
 	cLoopEnd
 	cStop
 
-Song0E_PSG1:
+BGM_Password_PSG1:
 	cStop
 
-Song0E_PSG2:
+BGM_Password_PSG2:
 	cStop
 
-Song0E_PSG3:
+BGM_Password_PSG3:
 	cStop
 
-Song0E_Noise:
+BGM_Password_Noise:
 	cLoopStart
 		cInsVolPSG	$0F, $0E
 		cNote		cnRst, $07

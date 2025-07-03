@@ -23,7 +23,7 @@ loc_E01C:
 	cmpi.b	#2,d0
 	bne.s	loc_E050
 	move.l	d0,-(sp)
-	move.b	#$94,d0
+	move.b	#VOI_THUNDER_3,d0
 	jsr	(PlaySound_ChkPCM).l
 	move.l	(sp)+,d0
 

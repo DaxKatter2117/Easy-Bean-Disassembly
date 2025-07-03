@@ -11,7 +11,7 @@ SongIndex:
 	ZDW	Song0A
 	ZDW	Song0B
 	ZDW	Song0C
-	ZDW	Song1B
+	ZDW	Song0D
 	ZDW	Song0E
 	ZDW	Song0F
 	ZDW	Song10
@@ -25,66 +25,64 @@ SongIndex:
 	ZDW	Song18
 	ZDW	Song19
 	ZDW	Song1A
-	ZDW	Song1B
-	ZDW	Song1B
-	ZDW	Song1B
-	ZDW	Song1B
-	ZDW	Song1B
-	ZDW	Song1B
+	ZDW	Song1A
+	ZDW	Song1A
+	ZDW	Song1A
+	ZDW	Song1A
+	ZDW	Song1A
+	ZDW	Song1A
 
 Song01:
-	include	"sound/music/01.asm"
+	include	"sound/music/Title.asm"
 Song02:
-	include	"sound/music/02.asm"
+	include	"sound/music/Configuration.asm"
 Song03:
-	include	"sound/music/03.asm"
+	include	"sound/music/Password.asm"
 Song04:
-	include	"sound/music/04.asm"
+	include	"sound/music/Stage Intro A.asm"
 Song05:
-	include	"sound/music/05.asm"
+	include	"sound/music/Stage Intro B.asm"
 Song06:
-	include	"sound/music/06.asm"
+	include	"sound/music/Stage Intro C.asm"
 Song07:
-	include	"sound/music/07.asm"
+	include	"sound/music/Stage Intro D.asm"
 Song08:
-	include	"sound/music/08.asm"
+	include	"sound/music/Stage BGM A.asm"
 Song09:
-	include	"sound/music/09.asm"
+	include	"sound/music/Stage BGM B.asm"
 Song0A:
-	include	"sound/music/0A.asm"
+	include	"sound/music/Stage BGM C.asm"
 Song0B:
-	include	"sound/music/0B.asm"
+	include	"sound/music/Stage BGM D.asm"
 Song0C:
-	include	"sound/music/0C.asm"
+	include	"sound/music/2P Versus.asm"
+Song0D:
+	include	"sound/music/Exercise.asm"
 Song0E:
-	include	"sound/music/0E.asm"
+	include	"sound/music/Role Call.asm"
 Song0F:
-	include	"sound/music/0F.asm"
+	include	"sound/music/Credits.asm"
 Song10:
-	include	"sound/music/10.asm"
+	include	"sound/music/Danger.asm"
 Song11:
-	include	"sound/music/11.asm"
+	include	"sound/music/Game Over.asm"
 Song12:
-	include	"sound/music/12.asm"
+	include	"sound/music/Win.asm"
 Song13:
-	include	"sound/music/13.asm"
+	include	"sound/music/Final Win.asm"
 Song14:
-	include	"sound/music/14.asm"
+	include	"sound/music/Title - Prototype.asm"
 Song15:
-	include	"sound/music/15.asm"
+	include	"sound/music/Brave of Puyo Puyo.asm"
 Song16:
-	include	"sound/music/16.asm"
+	include	"sound/music/Theme of Puyo Puyo.asm"
 Song17:
-	include	"sound/music/17.asm"
+	include	"sound/music/Unused Stage BGM.asm"
 Song18:
-	include	"sound/music/18.asm"
+	include	"sound/music/Puyo Win.asm"
 Song19:
-	include	"sound/music/19.asm"
+	include	"sound/music/Unused Ending Audio.asm"
 Song1A:
-	include	"sound/music/1A.asm"
-	; For some reason, an unused SFX lies here
-	include	"sound/sfx/unused/unused.asm"
-Song1B:
-	include	"sound/music/1B.asm"
+	include	"sound/music/Silence.asm"
 
 ; -------------------------------------------------------------- 

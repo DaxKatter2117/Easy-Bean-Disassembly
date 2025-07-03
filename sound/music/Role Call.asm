@@ -1,19 +1,19 @@
-Song0A_Start:
+BGM_RoleCall_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$BE
-	cChannel	Song0A_FM1
-	cChannel	Song0A_FM2
-	cChannel	Song0A_FM3
-	cChannel	Song0A_FM4
-	cChannel	Song0A_FM5
-	cChannel	Song0A_DAC
-	cChannel	Song0A_PSG1
-	cChannel	Song0A_PSG2
-	cChannel	Song0A_PSG3
-	cChannel	Song0A_Noise
+	cChannel	BGM_RoleCall_FM1
+	cChannel	BGM_RoleCall_FM2
+	cChannel	BGM_RoleCall_FM3
+	cChannel	BGM_RoleCall_FM4
+	cChannel	BGM_RoleCall_FM5
+	cChannel	BGM_RoleCall_DAC
+	cChannel	BGM_RoleCall_PSG1
+	cChannel	BGM_RoleCall_PSG2
+	cChannel	BGM_RoleCall_PSG3
+	cChannel	BGM_RoleCall_Noise
 
-Song0A_FM1:
+BGM_RoleCall_FM1:
 	cLoopStart
 		cVolFM		$00
 		cRelease	$01
@@ -247,7 +247,7 @@ Song0A_FM1:
 	cLoopEnd
 	cStop
 
-Song0A_FM2:
+BGM_RoleCall_FM2:
 	cLoopStart
 		cInsFM		patch1D
 		cVolFM		$0D
@@ -362,7 +362,7 @@ Song0A_FM2:
 	cLoopEnd
 	cStop
 
-Song0A_FM3:
+BGM_RoleCall_FM3:
 	cLoopStart
 		cInsFM		patch7C
 		cVolFM		$0D
@@ -494,7 +494,7 @@ Song0A_FM3:
 	cLoopEnd
 	cStop
 
-Song0A_FM4:
+BGM_RoleCall_FM4:
 	cLoopStart
 		cInsFM		patch1D
 		cVolFM		$0D
@@ -587,7 +587,7 @@ Song0A_FM4:
 	cLoopEnd
 	cStop
 
-Song0A_FM5:
+BGM_RoleCall_FM5:
 	cNote		cnRst, $0F
 	cLoopStart
 		cVolFM		$00
@@ -822,7 +822,7 @@ Song0A_FM5:
 	cLoopEnd
 	cStop
 
-Song0A_DAC:
+BGM_RoleCall_DAC:
 	cLoopStart
 		cLoopCnt	$02
 			cNote		cnC0, $18
@@ -880,19 +880,19 @@ Song0A_DAC:
 	cLoopEnd
 	cStop
 
-Song0A_PSG1:
+BGM_RoleCall_PSG1:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song0A_PSG2:
+BGM_RoleCall_PSG2:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song0A_PSG3:
+BGM_RoleCall_PSG3:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song0A_Noise:
+BGM_RoleCall_Noise:
 	cLoopStart
 		cInsVolPSG	$00, $00
 		cNote		cnRst

@@ -1,19 +1,19 @@
-Song0B_Start:
+BGM_Credits_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$B1
-	cChannel	Song0B_FM1
-	cChannel	Song0B_FM2
-	cChannel	Song0B_FM3
-	cChannel	Song0B_FM4
-	cChannel	Song0B_FM5
-	cChannel	Song0B_DAC
-	cChannel	Song0B_PSG1
-	cChannel	Song0B_PSG2
-	cChannel	Song0B_PSG3
-	cChannel	Song0B_Noise
+	cChannel	BGM_Credits_FM1
+	cChannel	BGM_Credits_FM2
+	cChannel	BGM_Credits_FM3
+	cChannel	BGM_Credits_FM4
+	cChannel	BGM_Credits_FM5
+	cChannel	BGM_Credits_DAC
+	cChannel	BGM_Credits_PSG1
+	cChannel	BGM_Credits_PSG2
+	cChannel	BGM_Credits_PSG3
+	cChannel	BGM_Credits_Noise
 
-Song0B_FM1:
+BGM_Credits_FM1:
 	cLoopStart
 		cInsFM		patch07
 		cVolFM		$0D
@@ -188,7 +188,7 @@ Song0B_FM1:
 	cLoopEnd
 	cStop
 
-Song0B_FM2:
+BGM_Credits_FM2:
 	cLoopStart
 		cInsFM		patch07
 		cVolFM		$0C
@@ -469,7 +469,7 @@ Song0B_FM2:
 	cLoopEnd
 	cStop
 
-Song0B_FM3:
+BGM_Credits_FM3:
 	cLoopStart
 		cInsFM		patch1E
 		cVolFM		$0C
@@ -654,7 +654,7 @@ Song0B_FM3:
 	cLoopEnd
 	cStop
 
-Song0B_FM4:
+BGM_Credits_FM4:
 	cNote		cnRst, $0C
 	cLoopStart
 		cInsFM		patch07
@@ -830,7 +830,7 @@ Song0B_FM4:
 	cLoopEnd
 	cStop
 
-Song0B_FM5:
+BGM_Credits_FM5:
 	cNote		cnRst, $0D
 	cLoopStart
 		cInsFM		patch07
@@ -1112,7 +1112,7 @@ Song0B_FM5:
 	cLoopEnd
 	cStop
 
-Song0B_DAC:
+BGM_Credits_DAC:
 	cLoopStart
 		cLoopCnt	$06
 			cPan		cpCenter
@@ -1144,16 +1144,16 @@ Song0B_DAC:
 	cLoopEnd
 	cStop
 
-Song0B_PSG1:
+BGM_Credits_PSG1:
 	cStop
 
-Song0B_PSG2:
+BGM_Credits_PSG2:
 	cStop
 
-Song0B_PSG3:
+BGM_Credits_PSG3:
 	cStop
 
-Song0B_Noise:
+BGM_Credits_Noise:
 	cLoopStart
 		cInsVolPSG	$0F, $0C
 		cRelease	$01

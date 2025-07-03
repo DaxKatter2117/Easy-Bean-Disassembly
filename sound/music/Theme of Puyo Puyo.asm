@@ -1,19 +1,19 @@
-Song10_Start:
+BGM_ThemePuyo_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$BB
-	cChannel	Song10_FM1
-	cChannel	Song10_FM2
-	cChannel	Song10_FM3
-	cChannel	Song10_FM4
-	cChannel	Song10_FM5
-	cChannel	Song10_DAC
-	cChannel	Song10_PSG1
-	cChannel	Song10_PSG2
-	cChannel	Song10_PSG3
-	cChannel	Song10_Noise
+	cChannel	BGM_ThemePuyo_FM1
+	cChannel	BGM_ThemePuyo_FM2
+	cChannel	BGM_ThemePuyo_FM3
+	cChannel	BGM_ThemePuyo_FM4
+	cChannel	BGM_ThemePuyo_FM5
+	cChannel	BGM_ThemePuyo_DAC
+	cChannel	BGM_ThemePuyo_PSG1
+	cChannel	BGM_ThemePuyo_PSG2
+	cChannel	BGM_ThemePuyo_PSG3
+	cChannel	BGM_ThemePuyo_Noise
 
-Song10_FM1:
+BGM_ThemePuyo_FM1:
 	cLoopStart
 		cInsFM		patch07
 		cVolFM		$0C
@@ -177,7 +177,7 @@ Song10_FM1:
 	cLoopEnd
 	cStop
 
-Song10_FM2:
+BGM_ThemePuyo_FM2:
 	cLoopStart
 		cInsFM		patch01
 		cVolFM		$0B
@@ -280,7 +280,7 @@ Song10_FM2:
 	cLoopEnd
 	cStop
 
-Song10_FM3:
+BGM_ThemePuyo_FM3:
 	cLoopStart
 		cInsFM		patch0E
 		cVolFM		$0C
@@ -341,7 +341,7 @@ Song10_FM3:
 	cLoopEnd
 	cStop
 
-Song10_FM4:
+BGM_ThemePuyo_FM4:
 	cLoopStart
 		cInsFM		patch01
 		cVolFM		$0B
@@ -429,7 +429,7 @@ Song10_FM4:
 	cLoopEnd
 	cStop
 
-Song10_FM5:
+BGM_ThemePuyo_FM5:
 	cNote		cnRst, $10
 	cLoopStart
 		cInsFM		patch07
@@ -594,7 +594,7 @@ Song10_FM5:
 	cLoopEnd
 	cStop
 
-Song10_DAC:
+BGM_ThemePuyo_DAC:
 	cLoopStart
 		cLoopCnt	$02
 			cNote		cnC0, $18
@@ -651,14 +651,14 @@ Song10_DAC:
 	cLoopEnd
 	cStop
 
-Song10_PSG1:
+BGM_ThemePuyo_PSG1:
 	cStop
 
-Song10_PSG2:
+BGM_ThemePuyo_PSG2:
 	cStop
 
-Song10_PSG3:
+BGM_ThemePuyo_PSG3:
 	cStop
 
-Song10_Noise:
+BGM_ThemePuyo_Noise:
 	cStop

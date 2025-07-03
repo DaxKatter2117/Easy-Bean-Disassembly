@@ -1,19 +1,19 @@
-Song01_Start:
+BGM_Kraftwork_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C4
-	cChannel	Song01_FM1
-	cChannel	Song01_FM2
-	cChannel	Song01_FM3
-	cChannel	Song01_FM4
-	cChannel	Song01_FM5
-	cChannel	Song01_DAC
-	cChannel	Song01_PSG1
-	cChannel	Song01_PSG2
-	cChannel	Song01_PSG3
-	cChannel	Song01_Noise
+	cChannel	BGM_Kraftwork_FM1
+	cChannel	BGM_Kraftwork_FM2
+	cChannel	BGM_Kraftwork_FM3
+	cChannel	BGM_Kraftwork_FM4
+	cChannel	BGM_Kraftwork_FM5
+	cChannel	BGM_Kraftwork_DAC
+	cChannel	BGM_Kraftwork_PSG1
+	cChannel	BGM_Kraftwork_PSG2
+	cChannel	BGM_Kraftwork_PSG3
+	cChannel	BGM_Kraftwork_Noise
 
-Song01_FM1:
+BGM_Kraftwork_FM1:
 	cLoopStart
 		cInsFM		patch07
 		cVolFM		$0D
@@ -120,7 +120,7 @@ Song01_FM1:
 	cLoopEnd
 	cStop
 
-Song01_FM2:
+BGM_Kraftwork_FM2:
 	cLoopStart
 		cInsFM		patch1F
 		cVolFM		$09
@@ -272,7 +272,7 @@ Song01_FM2:
 	cLoopEnd
 	cStop
 
-Song01_FM3:
+BGM_Kraftwork_FM3:
 	cLoopStart
 		cInsFM		patch0E
 		cVolFM		$0C
@@ -521,7 +521,7 @@ Song01_FM3:
 	cLoopEnd
 	cStop
 
-Song01_FM4:
+BGM_Kraftwork_FM4:
 	cLoopStart
 		cInsFM		patch25
 		cVolFM		$0D
@@ -760,7 +760,7 @@ Song01_FM4:
 	cLoopEnd
 	cStop
 
-Song01_FM5:
+BGM_Kraftwork_FM5:
 	cNote		cnRst, $0E
 	cLoopStart
 		cInsFM		patch07
@@ -868,7 +868,7 @@ Song01_FM5:
 	cLoopEnd
 	cStop
 
-Song01_DAC:
+BGM_Kraftwork_DAC:
 	cLoopStart
 		cPan		cpLeft
 		cNote		cnD0, $1C
@@ -883,19 +883,19 @@ Song01_DAC:
 	cLoopEnd
 	cStop
 
-Song01_PSG1:
+BGM_Kraftwork_PSG1:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song01_PSG2:
+BGM_Kraftwork_PSG2:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song01_PSG3:
+BGM_Kraftwork_PSG3:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song01_Noise:
+BGM_Kraftwork_Noise:
 	cLoopStart
 		cInsVolPSG	$0F, $0E
 		cRelease	$01

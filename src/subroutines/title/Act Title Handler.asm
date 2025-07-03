@@ -5,7 +5,6 @@
 ; FUNCTION CHUNK AT 0000ECE8 SIZE 0000004A BYTES
 
 	move.w	#$FFFF,(sound_test_enabled).l
-	bsr.w	CheckIfJapan
 	move.b	(p1_ctrl_press).l,d0
 	or.b	(p2_ctrl_press).l,d0
 	andi.b	#$F0,d0
@@ -196,7 +195,7 @@ sub_E2CE:
 	and.w	d0,d1
 	beq.s	loc_E2FE
 	move.w	$26(a0),d0
-	addi.b	#$4C,d0
+	addi.b	#SFX_PUYO_POP_1,d0
 	jsr	(PlaySound_ChkPCM).l
 	andi	#$FFFE,sr
 	rts
@@ -260,7 +259,7 @@ ActTitleMachineText:
 ; ---------------------------------------------------------------------------
 
 loc_E36E:
-	move.b	#$1A,d0
+	move.b	#BGM_TITLE,d0
 	jsr	(JmpTo_PlaySound).l
 	move.b	#1,(word_FF1124).l
 	jsr	(ActorBookmark).l
@@ -347,7 +346,7 @@ loc_E462: ; Beans coming out of the machine
 	cmpi.b	#3,$22(a0)
 	bne.s	locret_E4B2
 	bsr.w	sub_E61E
-	move.b	#$57,d0
+	move.b	#SFX_TITLE_MACHINE,d0
 	jsr	(PlaySound_ChkPCM).l
 	addq.w	#1,$2A(a0)
 	cmpi.w	#8,$2A(a0) ; Outputs 8 Beans
@@ -379,7 +378,7 @@ loc_E4E2:
 loc_E4F2:
 	tst.b	(word_FF1124).l
 	bne.s	loc_E504
-	move.b	#$1A,d0
+	move.b	#BGM_TITLE,d0
 	jsr	(JmpTo_PlaySound).l
 
 loc_E504:
@@ -1297,37 +1296,8 @@ locret_ECB8:
 	rts
 ; End of function sub_EC98
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
-CheckIfJapan:
-	move.b	CONSOLE_VER,d0
-	andi.b	#$C0,d0
-	beq.s	locret_ECDA
-	move.w	(sound_test_enabled).l,d0
-	not.w	d0
-	move.w	d0,(sound_test_enabled).l
-	jmp	(sub_23536).l
-; ---------------------------------------------------------------------------
-
-locret_ECDA:
-	rts
-; End of function CheckIfJapan
-
-; ---------------------------------------------------------------------------
-	rts
-; ---------------------------------------------------------------------------
-	dc.b $40
-	dc.b $40
-	dc.b   4
-	dc.b $10
-	dc.b $10
-	dc.b   4
-	dc.b $20
-	dc.b $20
-	dc.b $FF
-	dc.b   0
 ; ---------------------------------------------------------------------------
 ; START	OF FUNCTION CHUNK FOR ActTitleHandler
 
@@ -1341,7 +1311,7 @@ loc_ECE8:
 	eori.b	#1,(byte_FF196A).l
 
 loc_ED16:
-	move.b	#$41,d0
+	move.b	#SFX_MENU_SELECT,d0
 	jsr	(PlaySound_ChkPCM).l
 	clr.b	(bytecode_disabled).l
 	clr.b	(bytecode_flag).l

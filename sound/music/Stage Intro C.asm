@@ -1,19 +1,19 @@
-Song16_Start:
+BGM_IntroC_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C1
-	cChannel	Song16_FM1
-	cChannel	Song16_FM2
-	cChannel	Song16_FM3
-	cChannel	Song16_FM4
-	cChannel	Song16_FM5
-	cChannel	Song16_DAC
-	cChannel	Song16_PSG1
-	cChannel	Song16_PSG2
-	cChannel	Song16_PSG3
-	cChannel	Song16_Noise
+	cChannel	BGM_IntroC_FM1
+	cChannel	BGM_IntroC_FM2
+	cChannel	BGM_IntroC_FM3
+	cChannel	BGM_IntroC_FM4
+	cChannel	BGM_IntroC_FM5
+	cChannel	BGM_IntroC_DAC
+	cChannel	BGM_IntroC_PSG1
+	cChannel	BGM_IntroC_PSG2
+	cChannel	BGM_IntroC_PSG3
+	cChannel	BGM_IntroC_Noise
 
-Song16_FM1:
+BGM_IntroC_FM1:
 	cLoopStart
 		cInsFM		patch09
 		cVolFM		$0C
@@ -27,7 +27,7 @@ Song16_FM1:
 	cLoopEnd
 	cStop
 
-Song16_FM2:
+BGM_IntroC_FM2:
 	cLoopStart
 		cInsFM		patch09
 		cVolFM		$0D
@@ -41,7 +41,7 @@ Song16_FM2:
 	cLoopEnd
 	cStop
 
-Song16_FM4:
+BGM_IntroC_FM4:
 	cLoopStart
 		cInsFM		patch09
 		cVolFM		$0D
@@ -55,7 +55,7 @@ Song16_FM4:
 	cLoopEnd
 	cStop
 
-Song16_FM3:
+BGM_IntroC_FM3:
 	cLoopStart
 		cInsFM		patch0E
 		cVolFM		$0C
@@ -108,7 +108,7 @@ Song16_FM3:
 	cLoopEnd
 	cStop
 
-Song16_FM5:
+BGM_IntroC_FM5:
 	cNote		cnRst, $10
 	cLoopStart
 		cInsFM		patch09
@@ -123,7 +123,7 @@ Song16_FM5:
 	cLoopEnd
 	cStop
 
-Song16_DAC:
+BGM_IntroC_DAC:
 	cLoopStart
 		cNote		cnC0, $1C
 		cNote		cnCs0, $15
@@ -133,7 +133,7 @@ Song16_DAC:
 	cLoopEnd
 	cStop
 
-Song16_PSG1:
+BGM_IntroC_PSG1:
 	cLoopStart
 		cInsVolPSG	$00, $09
 		cRelease	$01
@@ -172,7 +172,7 @@ Song16_PSG1:
 	cLoopEnd
 	cStop
 
-Song16_PSG2:
+BGM_IntroC_PSG2:
 	cLoopStart
 		cInsVolPSG	$00, $0A
 		cRelease	$01
@@ -201,11 +201,11 @@ Song16_PSG2:
 	cLoopEnd
 	cStop
 
-Song16_PSG3:
+BGM_IntroC_PSG3:
 	cInsVolPSG	$00, $00
 	cStop
 
-Song16_Noise:
+BGM_IntroC_Noise:
 	cLoopStart
 		cInsVolPSG	$0F, $0D
 		cRelease	$01

@@ -1,19 +1,19 @@
-Song0F_Start:
+BGM_Brave_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C0
-	cChannel	Song0F_FM1
-	cChannel	Song0F_FM2
-	cChannel	Song0F_FM3
-	cChannel	Song0F_FM4
-	cChannel	Song0F_FM5
-	cChannel	Song0F_DAC
-	cChannel	Song0F_PSG1
-	cChannel	Song0F_PSG2
-	cChannel	Song0F_PSG3
-	cChannel	Song0F_Noise
+	cChannel	BGM_Brave_FM1
+	cChannel	BGM_Brave_FM2
+	cChannel	BGM_Brave_FM3
+	cChannel	BGM_Brave_FM4
+	cChannel	BGM_Brave_FM5
+	cChannel	BGM_Brave_DAC
+	cChannel	BGM_Brave_PSG1
+	cChannel	BGM_Brave_PSG2
+	cChannel	BGM_Brave_PSG3
+	cChannel	BGM_Brave_Noise
 
-Song0F_FM1:
+BGM_Brave_FM1:
 	cInsFM		patch12
 	cVolFM		$0B
 	cRelease	$01
@@ -225,7 +225,7 @@ Song0F_FM1:
 	cLoopEnd
 	cStop
 
-Song0F_FM2:
+BGM_Brave_FM2:
 	cInsFM		patch09
 	cVolFM		$0D
 	cRelease	$01
@@ -278,7 +278,7 @@ Song0F_FM2:
 	cLoopEnd
 	cStop
 
-Song0F_FM3:
+BGM_Brave_FM3:
 	cLoopStart
 		cInsFM		patch1E
 		cVolFM		$0C
@@ -351,7 +351,7 @@ Song0F_FM3:
 	cLoopEnd
 	cStop
 
-Song0F_FM4:
+BGM_Brave_FM4:
 	cNote		cnRst, $13
 	cInsFM		patch12
 	cVolFM		$09
@@ -564,7 +564,7 @@ Song0F_FM4:
 	cLoopEnd
 	cStop
 
-Song0F_FM5:
+BGM_Brave_FM5:
 	cNote		cnRst, $02
 	cInsFM		patch09
 	cVolFM		$0C
@@ -618,7 +618,7 @@ Song0F_FM5:
 	cLoopEnd
 	cStop
 
-Song0F_DAC:
+BGM_Brave_DAC:
 	cLoopStart
 		cNote		cnC0, $10
 		cNote		cnC0, $08
@@ -635,16 +635,16 @@ Song0F_DAC:
 	cLoopEnd
 	cStop
 
-Song0F_PSG1:
+BGM_Brave_PSG1:
 	cStop
 
-Song0F_PSG2:
+BGM_Brave_PSG2:
 	cStop
 
-Song0F_PSG3:
+BGM_Brave_PSG3:
 	cStop
 
-Song0F_Noise:
+BGM_Brave_Noise:
 	cInsVolPSG	$0F, $0D
 	cLoopStart
 		cNote		cnRst, $08

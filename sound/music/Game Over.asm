@@ -1,19 +1,19 @@
-Song09_Start:
+BGM_GameOver_Start:
 	cType		ctMusic
 	cFadeOut	$0000
 	cTempo		$C6
-	cChannel	Song09_FM1
-	cChannel	Song09_FM2
-	cChannel	Song09_FM3
-	cChannel	Song09_FM4
-	cChannel	Song09_FM5
-	cChannel	Song09_DAC
-	cChannel	Song09_PSG1
-	cChannel	Song09_PSG2
-	cChannel	Song09_PSG3
-	cChannel	Song09_Noise
+	cChannel	BGM_GameOver_FM1
+	cChannel	BGM_GameOver_FM2
+	cChannel	BGM_GameOver_FM3
+	cChannel	BGM_GameOver_FM4
+	cChannel	BGM_GameOver_FM5
+	cChannel	BGM_GameOver_DAC
+	cChannel	BGM_GameOver_PSG1
+	cChannel	BGM_GameOver_PSG2
+	cChannel	BGM_GameOver_PSG3
+	cChannel	BGM_GameOver_Noise
 
-Song09_FM1:
+BGM_GameOver_FM1:
 	cLoopStart
 		cInsFM		patch0A
 		cVolFM		$0C
@@ -42,7 +42,7 @@ Song09_FM1:
 	cLoopEnd
 	cStop
 
-Song09_FM2:
+BGM_GameOver_FM2:
 	cLoopStart
 		cInsFM		patch0A
 		cVolFM		$0C
@@ -72,7 +72,7 @@ Song09_FM2:
 	cLoopEnd
 	cStop
 
-Song09_FM3:
+BGM_GameOver_FM3:
 	cLoopStart
 		cInsFM		patch0D
 		cVolFM		$0C
@@ -106,7 +106,7 @@ Song09_FM3:
 	cLoopEnd
 	cStop
 
-Song09_FM4:
+BGM_GameOver_FM4:
 	cLoopStart
 		cRelease	$01
 		cVibrato	$02, $0A
@@ -125,7 +125,7 @@ Song09_FM4:
 	cLoopEnd
 	cStop
 
-Song09_FM5:
+BGM_GameOver_FM5:
 	cNote		cnRst, $10
 	cLoopStart
 		cInsFM		patch0A
@@ -154,7 +154,7 @@ Song09_FM5:
 		cNote		cnC4, $54
 		cStop
 
-Song09_DAC:
+BGM_GameOver_DAC:
 	cLoopStart
 		cNote		cnC0, $18
 		cNote		cnCs0
@@ -199,16 +199,16 @@ Song09_DAC:
 	cLoopEnd
 	cStop
 
-Song09_PSG1:
+BGM_GameOver_PSG1:
 	cStop
 
-Song09_PSG2:
+BGM_GameOver_PSG2:
 	cStop
 
-Song09_PSG3:
+BGM_GameOver_PSG3:
 	cStop
 
-Song09_Noise:
+BGM_GameOver_Noise:
 	cLoopStart
 		cInsVolPSG	$00, $00
 		cNote		cnRst
