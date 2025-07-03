@@ -1,0 +1,7 @@
+*.gen
+*.lst
+*.log
+*.sym
+*.[ph]
+desktop.ini
+errors.txt

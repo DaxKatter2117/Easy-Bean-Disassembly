@@ -9,6 +9,7 @@
 ;
 ; --------------------------------------------------------------
 
+	include	"include/errorhandler/Debugger.asm"
 	include	"include/md.asm"
 	include	"include/constants.asm"
 	include	"include/ram.asm"
@@ -32,8 +33,8 @@
 ; --------------------------------------------------------------
 
 StartOfRom:
-	include	"header/vectors.asm"	  ; Vector table
-	include	"header/information.asm"  ; ROM Information
+	include	"lib/header/vectors.asm"	  ; Vector table
+	include	"lib/header/information.asm"  ; ROM Information
 EndOfHeader:
 
 ; --------------------------------------------------------------
@@ -41,13 +42,13 @@ EndOfHeader:
 ; --------------------------------------------------------------
 
 Entry:
-	include "libraries/program entry.asm"
+	include "lib/program entry.asm"
 
 ; --------------------------------------------------------------
 ; Initialziation table
 ; --------------------------------------------------------------
 
-	include "libraries/initialziation table.asm"
+	include "lib/initialziation table.asm"
 	even
 
 ; --------------------------------------------------------------
@@ -55,7 +56,7 @@ Entry:
 ; --------------------------------------------------------------
 
 GameProgram:
-	include "game/game program.asm"
+	include "src/game program.asm"
 	
 ; --------------------------------------------------------------
 ; VSync
@@ -88,7 +89,7 @@ LoadDefaultHighScores:
 ; --------------------------------------------------------------
 
 .DefaultScores:
-	include	"data/default settings/high scores.asm"
+	include	"resource/default settings/high scores.asm"
 	even
 
 ; --------------------------------------------------------------
@@ -116,7 +117,7 @@ FixHighScores:
 ; --------------------------------------------------------------
 
 LoadDefaultOptions:
-	include	"data/default settings/options.asm"
+	include	"resource/default settings/options.asm"
 
 ; --------------------------------------------------------------
 ; Wait for DMA to be over
@@ -799,7 +800,7 @@ QueuePlaneCmd:
 ;	a0.l	- Pointer to compressed art
 ; --------------------------------------------------------------
 
-	include "libraries/decompressions/puyo decompression.asm"
+	include "lib/decompressions/puyo decompression.asm"
 
 ; --------------------------------------------------------------
 ; Initialize the VDP
@@ -821,8 +822,8 @@ InitVDP:
 SetupVDPRegs_DisplayOn:
 	DISABLE_INTS
 
-	bsr.w	SetupVDPregs
-	
+	bsr.w	SetupVDPRegs
+
 	lea	vdp_reg_1,a0
 	ori.b	#$40,(a0)
 	move.w	#$8100,d0
@@ -1648,14 +1649,14 @@ RunBytecode:
 ; Bytecode instructions
 ; --------------------------------------------------------------
 	
-	include "libraries/bytecode instructions.asm"
+	include "lib/bytecode instructions.asm"
 
 ; --------------------------------------------------------------
 ; Game bytecode
 ; --------------------------------------------------------------
 
 Bytecode:
-	include "game/bytecode/game bytecode.asm"
+	include "src/bytecode/game bytecode.asm"
 	
 ; ---------------------------------------------------------------------------
 
@@ -1989,14 +1990,14 @@ loc_27CE:
 ; --------------------------------------------------------------
 
 Palettes:
-	include "data/palettes/palette table.asm"
+	include "resource/palettes/palette table.asm"
 
 ; --------------------------------------------------------------
 ; Animation Frames - Has Bean
 ; --------------------------------------------------------------
 
-	include "data/has bean/Has Bean - Start Match.asm"
-	include "data/has bean/Has Bean - Movement.asm"
+	include "resource/anim/has bean/Has Bean - Start Match.asm"
+	include "resource/anim/has bean/Has Bean - Movement.asm"
 
 ; --------------------------------------------------------------
 ; Initialize actors
@@ -8109,7 +8110,7 @@ unk_7016:	dc.b   0
 ; ---------------------------------------------------------------------------
 
 Passwords:
-	include "data/misc/List of Passwords.asm"
+	include "resource/misc/List of Passwords.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -11381,19 +11382,19 @@ loc_90BA:
 ; =============== S U B	R O U T	I N E =======================================
 
 CheckPause:
-	include "game/subroutines/check pause/check pause.asm"
+	include "src/subroutines/check pause/check pause.asm"
 	
 PausePuyoField:
-	include "game/subroutines/check pause/pause field.asm"
+	include "src/subroutines/check pause/pause field.asm"
 	
 UnpausePuyoField:
-	include "game/subroutines/check pause/unpause field.asm"
+	include "src/subroutines/check pause/unpause field.asm"
 	
 GetSavedPuyoField:
-	include "game/subroutines/check pause/load saved field.asm"
+	include "src/subroutines/check pause/load saved field.asm"
 	
 ActPause:
-	include "game/actors/pause.asm"
+	include "src/actors/pause.asm"
 	
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -13308,7 +13309,7 @@ unk_9E7C:	dc.b $10
 	dc.b   0
 	dc.b   4
 ArtNem_GroupedStars:
-	incbin	"data/artnem/VS/Grouped Stars.nem"
+	incbin	"resource/artnem/VS/Grouped Stars.nem"
 	even
 off_A15E:	dc.l loc_A748
 	dc.l loc_A58A
@@ -15442,7 +15443,7 @@ unk_B224:	dc.b  $F
 ; =============== S U B	R O U T	I N E =======================================
 
 LoadSegaLogo:
-	include "game/subroutines/sega logo/sega logo.asm"
+	include "src/subroutines/sega logo/sega logo.asm"
 	
 ; ---------------------------------------------------------------------------
 
@@ -18004,18 +18005,18 @@ unk_CE22:	dc.b   5
 ; ---------------------------------------------------------------------------
 
 Password_LoadBG:
-	include "game/subroutines/password/Load Background.asm"
+	include "src/subroutines/password/Load Background.asm"
 	
 ; ---------------------------------------------------------------------------
 
 MapEni_Password:
-	incbin	"data/mapeni/Background/Password.eni"
+	incbin	"resource/mapeni/Background/Password.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 Password_Checks:
-	include "game/subroutines/password/Password Checks.asm"
+	include "src/subroutines/password/Password Checks.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -18094,7 +18095,7 @@ OpponentScrBoxMap:
 	dc.b %100
 	
 MapEni_OpponentScrBox:
-	incbin	"data/mapeni/Background/Opponent's Screen.eni"
+	incbin	"resource/mapeni/Background/Opponent's Screen.eni"
 	even
 
 ; =============== S U B	R O U T	I N E =======================================
@@ -18971,7 +18972,7 @@ word_DE32:	dc.w $100
 ; =============== S U B	R O U T	I N E =======================================
 
 InitTitle:
-	include "game/subroutines/title/Initiate Title.asm"
+	include "src/subroutines/title/Initiate Title.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -19026,17 +19027,17 @@ loc_E000:
 ; =============== S U B	R O U T	I N E =======================================
 
 ActTitleRobotnik:
-	include "game/subroutines/title/Act Title Robotnik.asm"
+	include "src/subroutines/title/Act Title Robotnik.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
 
 ActTitleRobotnikText:
-	include "game/subroutines/title/Act Title Robotnik Text.asm"
+	include "src/subroutines/title/Act Title Robotnik Text.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
 
 ActTitleHandler:
-	include "game/subroutines/title/Act Title Handler.asm"
+	include "src/subroutines/title/Act Title Handler.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -23567,7 +23568,7 @@ loc_11246:
 ; ---------------------------------------------------------------------------
 
 byte_11258:	; Main Font Table
-	include "data/font tables/Table - Main.asm"
+	include "resource/font tables/Table - Main.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -33747,7 +33748,7 @@ word_19CC8:	dc.w 2
 ; ---------------------------------------------------------------------------
 
 StageTextStrings:	
-	include "data/Text/Stage/Stage.asm"
+	include "resource/Text/Stage/Stage.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -34023,16 +34024,16 @@ loc_1A1C2:
 ; ---------------------------------------------------------------------------
 
 Str_1P:
-	include	"data/text/Stage/Scenario 1P.asm"
+	include	"resource/text/Stage/Scenario 1P.asm"
 	even
 	
 Str_DrR:
-	include	"data/text/Stage/Scenario 2P.asm"
+	include	"resource/text/Stage/Scenario 2P.asm"
 	even
 	
 	if DemoText=1
 Str_Demo:
-	include	"data/text/Stage/Demo 1P.asm"
+	include	"resource/text/Stage/Demo 1P.asm"
 	even
 	endc
 	
@@ -36243,12 +36244,12 @@ Grass2P:
 	
 Stone1P:
 	dc.l CrumbleStone
-	incbin	"data/mapunc/Crumble/Stone/StoneB 1P.bin"
+	incbin	"resource/mapunc/Crumble/Stone/StoneB 1P.bin"
 	even
 
 Stone2P:
 	dc.l CrumbleStone
-	incbin	"data/mapunc/Crumble/Stone/StoneB 2P.bin"
+	incbin	"resource/mapunc/Crumble/Stone/StoneB 2P.bin"
 	even
 	even
 	
@@ -40695,41 +40696,41 @@ byte_223B8:	dc.b $10, $E2, 1, $72, 1, $E5, 1, $72, 1, $D1, 1, $D2, 1, $D3, 1, $C
 
 	if RegionCheckCode=0
 Str_RegionLockNTSC:	
-	include "data/text/Region/Wrong Region NTSC.asm"
+	include "resource/text/Region/Wrong Region NTSC.asm"
 					
 Str_RegionLockPAL:
-	include "data/text/Region/Wrong Region PAL.asm"
+	include "resource/text/Region/Wrong Region PAL.asm"
 					
 	else
 
 Str_RegionLockJapan:	
-	include "data/text/Region/Wrong Region Japan.asm"
+	include "resource/text/Region/Wrong Region Japan.asm"
 					
 Str_RegionLockUSA:
-	include "data/text/Region/Wrong Region USA.asm"	
+	include "resource/text/Region/Wrong Region USA.asm"	
 
 Str_RegionLockEurope:	
-	include "data/text/Region/Wrong Region Europe.asm"
+	include "resource/text/Region/Wrong Region Europe.asm"
 					
 Str_RegionLockAsia:
-	include "data/text/Region/Wrong Region Asia.asm"						
+	include "resource/text/Region/Wrong Region Asia.asm"						
 					endc
 
 ; =============== S U B	R O U T	I N E =======================================
 
 GetRegion:
-	include "game/subroutines/region/get region.asm" 
+	include "src/subroutines/region/get region.asm" 
 
 ; =============== S U B	R O U T	I N E =======================================
 
 RegionLockout:
-	include "game/subroutines/region/region lockout.asm" 
+	include "src/subroutines/region/region lockout.asm" 
 	
 ActRegionLockout:
-	include "game/actors/region lockout.asm"
+	include "src/actors/region lockout.asm"
 	
 RegionLock_Print:
-	include "game/subroutines/region/region lock print.asm" 
+	include "src/subroutines/region/region lock print.asm" 
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -40765,20 +40766,20 @@ SpawnSoundTestActor:
 ; =============== S U B	R O U T	I N E =======================================
 
 ChecksumError:
-	include "game/subroutines/checksum/checksum error.asm" 
+	include "src/subroutines/checksum/checksum error.asm" 
 
 ; ---------------------------------------------------------------------------
 
 Str_ChecksumWarning:
-	include "data/text/checksum/Checksum - Line 1.asm" 
+	include "resource/text/checksum/Checksum - Line 1.asm" 
 	
 Str_ChecksumIncorrect:
-	include "data/text/checksum/Checksum - Line 2.asm" 
+	include "resource/text/checksum/Checksum - Line 2.asm" 
 
 ; =============== S U B	R O U T	I N E =======================================
 
 ActChecksumError:
-	include "game/actors/checksum error.asm" 
+	include "src/actors/checksum error.asm" 
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -42142,12 +42143,12 @@ word_234B6:	dc.w $7B0, $8B0, $AB0, $9B0, $530, $630, $430, $330
 ; =============== S U B	R O U T	I N E =======================================
 
 CheckChecksum:
-	include "game/subroutines/checksum/check checksum.asm" 
+	include "src/subroutines/checksum/check checksum.asm" 
 
 ; ---------------------------------------------------------------------------
 
 LockoutBypassCode:
-	include "data/misc/Lockout Bypass Code.asm"
+	include "resource/misc/Lockout Bypass Code.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -42437,15 +42438,15 @@ byte_2378C:	dc.b 2
 
 	; Nemesis Decompression	
 	if FastNemesis=0
-	include "libraries/decompressions/nemesis decompression - original.asm"
+	include "lib/decompressions/nemesis decompression - original.asm"
 	else
-	include "libraries/decompressions/nemesis decompression - improved.asm"
+	include "lib/decompressions/nemesis decompression - improved.asm"
 	endc
 
 ; =============== S U B	R O U T	I N E =======================================
 
 	; Enigma Decompression	
-	include "libraries/decompressions/enigma decompression.asm"
+	include "lib/decompressions/enigma decompression.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -42584,718 +42585,718 @@ MassFill:
 ; ---------------------------------------------------------------------------
 	ALIGN	$10000, $FF
 ArtUnc_Robotnik_0:
-	incbin	"data/artunc/Robotnik/Robotnik 0.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 0.unc"
 	even
 	
 ArtUnc_Robotnik_1:
-	incbin	"data/artunc/Robotnik/Robotnik 1.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 1.unc"
 	even
 	
 ArtUnc_Robotnik_2:
-	incbin	"data/artunc/Robotnik/Robotnik 2.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 2.unc"
 	even
 	
 ArtUnc_Robotnik_3:
-	incbin	"data/artunc/Robotnik/Robotnik 3.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 3.unc"
 	even
 	
 ArtUnc_Robotnik_4:
-	incbin	"data/artunc/Robotnik/Robotnik 4.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 4.unc"
 	even
 	
 ArtUnc_Robotnik_5:
-	incbin	"data/artunc/Robotnik/Robotnik 5.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 5.unc"
 	even
 	
 ArtUnc_Robotnik_6:
-	incbin	"data/artunc/Robotnik/Robotnik 6.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 6.unc"
 	even
 	
 ArtUnc_Robotnik_7:
-	incbin	"data/artunc/Robotnik/Robotnik 7.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 7.unc"
 	even
 	
 ArtUnc_Robotnik_8:
-	incbin	"data/artunc/Robotnik/Robotnik 8.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 8.unc"
 	even
 	
 ArtUnc_Robotnik_9:
-	incbin	"data/artunc/Robotnik/Robotnik 9.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 9.unc"
 	even
 	
 ArtUnc_Robotnik_10:
-	incbin	"data/artunc/Robotnik/Robotnik 10.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 10.unc"
 	even
 	
 ArtUnc_Robotnik_11:
-	incbin	"data/artunc/Robotnik/Robotnik 11.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 11.unc"
 	even
 	
 ArtUnc_Robotnik_12:
-	incbin	"data/artunc/Robotnik/Robotnik 12.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 12.unc"
 	even
 	
 ArtUnc_Robotnik_13:
-	incbin	"data/artunc/Robotnik/Robotnik 13.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 13.unc"
 	even
 	
 ArtUnc_Robotnik_14:
-	incbin	"data/artunc/Robotnik/Robotnik 14.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 14.unc"
 	even
 	
 ArtUnc_Robotnik_15:
-	incbin	"data/artunc/Robotnik/Robotnik 15.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 15.unc"
 	even
 	
 ArtUnc_Robotnik_16:
-	incbin	"data/artunc/Robotnik/Robotnik 16.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 16.unc"
 	even
 	
 ArtUnc_Robotnik_17:
-	incbin	"data/artunc/Robotnik/Robotnik 17.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 17.unc"
 	even
 	
 ArtUnc_Robotnik_18:
-	incbin	"data/artunc/Robotnik/Robotnik 18.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 18.unc"
 	even
 	
 ArtUnc_Robotnik_19:
-	incbin	"data/artunc/Robotnik/Robotnik 19.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 19.unc"
 	even
 	
 ArtUnc_Robotnik_20:
-	incbin	"data/artunc/Robotnik/Robotnik 20.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 20.unc"
 	even
 	
 ArtNem_RobotnikShip:
-	incbin	"data/artnem/Intro/Robotnik's Ship.nem"
+	incbin	"resource/artnem/Intro/Robotnik's Ship.nem"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_Scratch:
-	incbin	"data/artnem/Enemy/Scratch.nem"
+	incbin	"resource/artnem/Enemy/Scratch.nem"
 	even
 	
 MapEni_Scratch_0:	
-	incbin	"data/mapeni/Enemy/Scratch/Scratch 0.eni"
+	incbin	"resource/mapeni/Enemy/Scratch/Scratch 0.eni"
 	even
 	
 MapEni_Scratch_1:	
-	incbin	"data/mapeni/Enemy/Scratch/Scratch 1.eni"
+	incbin	"resource/mapeni/Enemy/Scratch/Scratch 1.eni"
 	even
 	
 MapEni_Scratch_2:
-	incbin	"data/mapeni/Enemy/Scratch/Scratch 2.eni"
+	incbin	"resource/mapeni/Enemy/Scratch/Scratch 2.eni"
 	even
 	
 MapEni_Scratch_3:
-	incbin	"data/mapeni/Enemy/Scratch/Scratch 3.eni"
+	incbin	"resource/mapeni/Enemy/Scratch/Scratch 3.eni"
 	even
 	
 MapEni_Scratch_4:
-	incbin	"data/mapeni/Enemy/Scratch/Scratch 4.eni"
+	incbin	"resource/mapeni/Enemy/Scratch/Scratch 4.eni"
 	even
 	
 MapEni_Scratch_5:
-	incbin	"data/mapeni/Enemy/Scratch/Scratch 5.eni"
+	incbin	"resource/mapeni/Enemy/Scratch/Scratch 5.eni"
 	even
 	
 MapEni_Scratch_Defeated:
-	incbin	"data/mapeni/Enemy/Scratch/Scratch Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Scratch/Scratch Defeated.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_Frankly:
-	incbin	"data/artnem/Enemy/Frankly.nem"
+	incbin	"resource/artnem/Enemy/Frankly.nem"
 	even
 	
 MapEni_Frankly_0:	
-	incbin	"data/mapeni/Enemy/Frankly/Frankly 0.eni"
+	incbin	"resource/mapeni/Enemy/Frankly/Frankly 0.eni"
 	even
 	
 MapEni_Frankly_1:
-	incbin	"data/mapeni/Enemy/Frankly/Frankly 1.eni"
+	incbin	"resource/mapeni/Enemy/Frankly/Frankly 1.eni"
 	even
 	
 MapEni_Frankly_2:
-	incbin	"data/mapeni/Enemy/Frankly/Frankly 2.eni"
+	incbin	"resource/mapeni/Enemy/Frankly/Frankly 2.eni"
 	even
 	
 MapEni_Frankly_3:
-	incbin	"data/mapeni/Enemy/Frankly/Frankly 3.eni"
+	incbin	"resource/mapeni/Enemy/Frankly/Frankly 3.eni"
 	even
 	
 MapEni_Frankly_4:
-	incbin	"data/mapeni/Enemy/Frankly/Frankly 4.eni"
+	incbin	"resource/mapeni/Enemy/Frankly/Frankly 4.eni"
 	even
 	
 MapEni_Frankly_Defeated:
-	incbin	"data/mapeni/Enemy/Frankly/Frankly Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Frankly/Frankly Defeated.eni"
 	even
 
 ArtNem_Frankly_Lightning:
-	incbin	"data/artnem/Enemy/Frankly Lightning.nem"
+	incbin	"resource/artnem/Enemy/Frankly Lightning.nem"
 	even
 	
 ; ---------------------------------------------------------------------------
 	
 ArtNem_Coconuts:
-	incbin	"data/artnem/Enemy/Coconuts.nem"
+	incbin	"resource/artnem/Enemy/Coconuts.nem"
 	even
 	
 MapEni_Coconuts_0:	
-	incbin	"data/mapeni/Enemy/Coconuts/Coconuts 0.eni"
+	incbin	"resource/mapeni/Enemy/Coconuts/Coconuts 0.eni"
 	even
 
 MapEni_Coconuts_1:	
-	incbin	"data/mapeni/Enemy/Coconuts/Coconuts 1.eni"
+	incbin	"resource/mapeni/Enemy/Coconuts/Coconuts 1.eni"
 	even
 
 MapEni_Coconuts_2:	
-	incbin	"data/mapeni/Enemy/Coconuts/Coconuts 2.eni"
+	incbin	"resource/mapeni/Enemy/Coconuts/Coconuts 2.eni"
 	even
 
 MapEni_Coconuts_3:
-	incbin	"data/mapeni/Enemy/Coconuts/Coconuts 3.eni"
+	incbin	"resource/mapeni/Enemy/Coconuts/Coconuts 3.eni"
 	even
 
 MapEni_Coconuts_4:	
-	incbin	"data/mapeni/Enemy/Coconuts/Coconuts 4.eni"
+	incbin	"resource/mapeni/Enemy/Coconuts/Coconuts 4.eni"
 	even
 
 MapEni_Coconuts_5:	
-	incbin	"data/mapeni/Enemy/Coconuts/Coconuts 5.eni"
+	incbin	"resource/mapeni/Enemy/Coconuts/Coconuts 5.eni"
 	even
 
 MapEni_Coconuts_6:	
-	incbin	"data/mapeni/Enemy/Coconuts/Coconuts 6.eni"
+	incbin	"resource/mapeni/Enemy/Coconuts/Coconuts 6.eni"
 	even
 
 MapEni_Coconuts_Defeated:	
-	incbin	"data/mapeni/Enemy/Coconuts/Coconuts Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Coconuts/Coconuts Defeated.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_Dynamight:
-	incbin	"data/artnem/Enemy/Dynamight.nem"
+	incbin	"resource/artnem/Enemy/Dynamight.nem"
 	even
 	
 MapEni_Dynamight_0:	
-	incbin	"data/mapeni/Enemy/Dynamight/Dynamight 0.eni"
+	incbin	"resource/mapeni/Enemy/Dynamight/Dynamight 0.eni"
 	even
 	
 MapEni_Dynamight_1:		
-	incbin	"data/mapeni/Enemy/Dynamight/Dynamight 1.eni"
+	incbin	"resource/mapeni/Enemy/Dynamight/Dynamight 1.eni"
 	even
 	
 MapEni_Dynamight_2:	
-	incbin	"data/mapeni/Enemy/Dynamight/Dynamight 2.eni"
+	incbin	"resource/mapeni/Enemy/Dynamight/Dynamight 2.eni"
 	even
 	
 MapEni_Dynamight_3:		
-	incbin	"data/mapeni/Enemy/Dynamight/Dynamight 3.eni"
+	incbin	"resource/mapeni/Enemy/Dynamight/Dynamight 3.eni"
 	even
 	
 MapEni_Dynamight_4:		
-	incbin	"data/mapeni/Enemy/Dynamight/Dynamight 4.eni"
+	incbin	"resource/mapeni/Enemy/Dynamight/Dynamight 4.eni"
 	even
 	
 MapEni_Dynamight_5:	
-	incbin	"data/mapeni/Enemy/Dynamight/Dynamight 5.eni"
+	incbin	"resource/mapeni/Enemy/Dynamight/Dynamight 5.eni"
 	even
 	
 MapEni_Dynamight_6:	
-	incbin	"data/mapeni/Enemy/Dynamight/Dynamight 6.eni"
+	incbin	"resource/mapeni/Enemy/Dynamight/Dynamight 6.eni"
 	even
 	
 MapEni_Dynamight_7:	
-	incbin	"data/mapeni/Enemy/Dynamight/Dynamight 7.eni"
+	incbin	"resource/mapeni/Enemy/Dynamight/Dynamight 7.eni"
 	even
 	
 MapEni_Dynamight_8:		
-	incbin	"data/mapeni/Enemy/Dynamight/Dynamight 8.eni"
+	incbin	"resource/mapeni/Enemy/Dynamight/Dynamight 8.eni"
 	even
 	
 MapEni_Dynamight_9:
-	incbin	"data/mapeni/Enemy/Dynamight/Dynamight 9.eni"
+	incbin	"resource/mapeni/Enemy/Dynamight/Dynamight 9.eni"
 	even
 	
 MapEni_Dynamight_Defeated:	
-	incbin	"data/mapeni/Enemy/Dynamight/Dynamight Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Dynamight/Dynamight Defeated.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_Grounder:
-	incbin	"data/artnem/Enemy/Grounder.nem"
+	incbin	"resource/artnem/Enemy/Grounder.nem"
 	even
 	
 MapEni_Grounder_0:
-	incbin	"data/mapeni/Enemy/Grounder/Grounder 0.eni"
+	incbin	"resource/mapeni/Enemy/Grounder/Grounder 0.eni"
 	even
 	
 MapEni_Grounder_1:
-	incbin	"data/mapeni/Enemy/Grounder/Grounder 1.eni"
+	incbin	"resource/mapeni/Enemy/Grounder/Grounder 1.eni"
 	even
 
 MapEni_Grounder_2:
-	incbin	"data/mapeni/Enemy/Grounder/Grounder 2.eni"
+	incbin	"resource/mapeni/Enemy/Grounder/Grounder 2.eni"
 	even
 
 MapEni_Grounder_3:
-	incbin	"data/mapeni/Enemy/Grounder/Grounder 3.eni"
+	incbin	"resource/mapeni/Enemy/Grounder/Grounder 3.eni"
 	even
 
 MapEni_Grounder_4:
-	incbin	"data/mapeni/Enemy/Grounder/Grounder 4.eni"
+	incbin	"resource/mapeni/Enemy/Grounder/Grounder 4.eni"
 	even
 
 MapEni_Grounder_5:
-	incbin	"data/mapeni/Enemy/Grounder/Grounder 5.eni"
+	incbin	"resource/mapeni/Enemy/Grounder/Grounder 5.eni"
 	even
 
 MapEni_Grounder_6:
-	incbin	"data/mapeni/Enemy/Grounder/Grounder 6.eni"
+	incbin	"resource/mapeni/Enemy/Grounder/Grounder 6.eni"
 	even
 
 MapEni_Grounder_Defeated:
-	incbin	"data/mapeni/Enemy/Grounder/Grounder Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Grounder/Grounder Defeated.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_DavySprocket:
-	incbin	"data/artnem/Enemy/Davy Sprocket.nem"
+	incbin	"resource/artnem/Enemy/Davy Sprocket.nem"
 	even
 	
 MapEni_DavySprocket_0:
-	incbin	"data/mapeni/Enemy/Davy Sprocket/Davy Sprocket 0.eni"
+	incbin	"resource/mapeni/Enemy/Davy Sprocket/Davy Sprocket 0.eni"
 	even
 
 MapEni_DavySprocket_1:
-	incbin	"data/mapeni/Enemy/Davy Sprocket/Davy Sprocket 1.eni"
+	incbin	"resource/mapeni/Enemy/Davy Sprocket/Davy Sprocket 1.eni"
 	even
 
 MapEni_DavySprocket_2:
-	incbin	"data/mapeni/Enemy/Davy Sprocket/Davy Sprocket 2.eni"
+	incbin	"resource/mapeni/Enemy/Davy Sprocket/Davy Sprocket 2.eni"
 	even
 
 MapEni_DavySprocket_3:
-	incbin	"data/mapeni/Enemy/Davy Sprocket/Davy Sprocket 3.eni"
+	incbin	"resource/mapeni/Enemy/Davy Sprocket/Davy Sprocket 3.eni"
 	even
 
 MapEni_DavySprocket_4:
-	incbin	"data/mapeni/Enemy/Davy Sprocket/Davy Sprocket 4.eni"
+	incbin	"resource/mapeni/Enemy/Davy Sprocket/Davy Sprocket 4.eni"
 	even
 
 MapEni_DavySprocket_5:
-	incbin	"data/mapeni/Enemy/Davy Sprocket/Davy Sprocket 5.eni"
+	incbin	"resource/mapeni/Enemy/Davy Sprocket/Davy Sprocket 5.eni"
 	even
 
 MapEni_DavySprocket_Defeated:
-	incbin	"data/mapeni/Enemy/Davy Sprocket/Davy Sprocket Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Davy Sprocket/Davy Sprocket Defeated.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_Spike:
-	incbin	"data/artnem/Enemy/Spike.nem"
+	incbin	"resource/artnem/Enemy/Spike.nem"
 	even
 	
 MapEni_Spike_0:	
-	incbin	"data/mapeni/Enemy/Spike/Spike 0.eni"
+	incbin	"resource/mapeni/Enemy/Spike/Spike 0.eni"
 	even
 	
 MapEni_Spike_1:	
-	incbin	"data/mapeni/Enemy/Spike/Spike 1.eni"
+	incbin	"resource/mapeni/Enemy/Spike/Spike 1.eni"
 	even
 
 MapEni_Spike_2:	
-	incbin	"data/mapeni/Enemy/Spike/Spike 2.eni"
+	incbin	"resource/mapeni/Enemy/Spike/Spike 2.eni"
 	even
 
 MapEni_Spike_3:	
-	incbin	"data/mapeni/Enemy/Spike/Spike 3.eni"
+	incbin	"resource/mapeni/Enemy/Spike/Spike 3.eni"
 	even
 
 MapEni_Spike_4:	
-	incbin	"data/mapeni/Enemy/Spike/Spike 4.eni"
+	incbin	"resource/mapeni/Enemy/Spike/Spike 4.eni"
 	even
 
 MapEni_Spike_5:
-	incbin	"data/mapeni/Enemy/Spike/Spike 5.eni"
+	incbin	"resource/mapeni/Enemy/Spike/Spike 5.eni"
 	even
 
 MapEni_Spike_6:
-	incbin	"data/mapeni/Enemy/Spike/Spike 6.eni"
+	incbin	"resource/mapeni/Enemy/Spike/Spike 6.eni"
 	even
 
 MapEni_Spike_Defeated:
-	incbin	"data/mapeni/Enemy/Spike/Spike Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Spike/Spike Defeated.eni"
 	even
 
 ; ---------------------------------------------------------------------------
 
 ArtNem_DragonBreath:
-	incbin	"data/artnem/Enemy/Dragon Breath.nem"
+	incbin	"resource/artnem/Enemy/Dragon Breath.nem"
 	even
 	
 MapEni_DragonBreath_0:
-	incbin	"data/mapeni/Enemy/Dragon Breath/Dragon Breath 0.eni"
+	incbin	"resource/mapeni/Enemy/Dragon Breath/Dragon Breath 0.eni"
 	even
 
 MapEni_DragonBreath_1:
-	incbin	"data/mapeni/Enemy/Dragon Breath/Dragon Breath 1.eni"
+	incbin	"resource/mapeni/Enemy/Dragon Breath/Dragon Breath 1.eni"
 	even
 
 MapEni_DragonBreath_2:
-	incbin	"data/mapeni/Enemy/Dragon Breath/Dragon Breath 2.eni"
+	incbin	"resource/mapeni/Enemy/Dragon Breath/Dragon Breath 2.eni"
 	even
 
 MapEni_DragonBreath_3:	
-	incbin	"data/mapeni/Enemy/Dragon Breath/Dragon Breath 3.eni"
+	incbin	"resource/mapeni/Enemy/Dragon Breath/Dragon Breath 3.eni"
 	even
 
 MapEni_DragonBreath_4:
-	incbin	"data/mapeni/Enemy/Dragon Breath/Dragon Breath 4.eni"
+	incbin	"resource/mapeni/Enemy/Dragon Breath/Dragon Breath 4.eni"
 	even
 
 MapEni_DragonBreath_5:	
-	incbin	"data/mapeni/Enemy/Dragon Breath/Dragon Breath 5.eni"
+	incbin	"resource/mapeni/Enemy/Dragon Breath/Dragon Breath 5.eni"
 	even
 
 MapEni_DragonBreath_6:
-	incbin	"data/mapeni/Enemy/Dragon Breath/Dragon Breath 6.eni"
+	incbin	"resource/mapeni/Enemy/Dragon Breath/Dragon Breath 6.eni"
 	even
 
 MapEni_DragonBreath_7:
-	incbin	"data/mapeni/Enemy/Dragon Breath/Dragon Breath 7.eni"
+	incbin	"resource/mapeni/Enemy/Dragon Breath/Dragon Breath 7.eni"
 	even
 
 MapEni_DragonBreath_Defeated:	
-	incbin	"data/mapeni/Enemy/Dragon Breath/Dragon Breath Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Dragon Breath/Dragon Breath Defeated.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_Humpty:
-	incbin	"data/artnem/Enemy/Humpty.nem"
+	incbin	"resource/artnem/Enemy/Humpty.nem"
 	even
 	
 MapEni_Humpty_0:	
-	incbin	"data/mapeni/Enemy/Humpty/Humpty 0.eni"
+	incbin	"resource/mapeni/Enemy/Humpty/Humpty 0.eni"
 	even
 
 MapEni_Humpty_1:	
-	incbin	"data/mapeni/Enemy/Humpty/Humpty 1.eni"
+	incbin	"resource/mapeni/Enemy/Humpty/Humpty 1.eni"
 	even
 
 MapEni_Humpty_2:
-	incbin	"data/mapeni/Enemy/Humpty/Humpty 2.eni"
+	incbin	"resource/mapeni/Enemy/Humpty/Humpty 2.eni"
 	even
 
 MapEni_Humpty_3:
-	incbin	"data/mapeni/Enemy/Humpty/Humpty 3.eni"
+	incbin	"resource/mapeni/Enemy/Humpty/Humpty 3.eni"
 	even
 
 MapEni_Humpty_4:
-	incbin	"data/mapeni/Enemy/Humpty/Humpty 4.eni"
+	incbin	"resource/mapeni/Enemy/Humpty/Humpty 4.eni"
 	even
 
 MapEni_Humpty_5:	
-	incbin	"data/mapeni/Enemy/Humpty/Humpty 5.eni"
+	incbin	"resource/mapeni/Enemy/Humpty/Humpty 5.eni"
 	even
 
 MapEni_Humpty_6:
-	incbin	"data/mapeni/Enemy/Humpty/Humpty 6.eni"
+	incbin	"resource/mapeni/Enemy/Humpty/Humpty 6.eni"
 	even
 
 MapEni_Humpty_7:	
-	incbin	"data/mapeni/Enemy/Humpty/Humpty 7.eni"
+	incbin	"resource/mapeni/Enemy/Humpty/Humpty 7.eni"
 	even
 
 MapEni_Humpty_8:
-	incbin	"data/mapeni/Enemy/Humpty/Humpty 8.eni"
+	incbin	"resource/mapeni/Enemy/Humpty/Humpty 8.eni"
 	even
 
 MapEni_Humpty_Defeated:
-	incbin	"data/mapeni/Enemy/Humpty/Humpty Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Humpty/Humpty Defeated.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_DrRobotnik:
-	incbin	"data/artnem/Enemy/Dr Robotnik.nem"
+	incbin	"resource/artnem/Enemy/Dr Robotnik.nem"
 	even
 	
 MapEni_DrRobotnik_0:
-	incbin	"data/mapeni/Enemy/Dr Robotnik/Dr Robotnik 0.eni"
+	incbin	"resource/mapeni/Enemy/Dr Robotnik/Dr Robotnik 0.eni"
 	even
 
 MapEni_DrRobotnik_1:
-	incbin	"data/mapeni/Enemy/Dr Robotnik/Dr Robotnik 1.eni"
+	incbin	"resource/mapeni/Enemy/Dr Robotnik/Dr Robotnik 1.eni"
 	even
 
 MapEni_DrRobotnik_2:
-	incbin	"data/mapeni/Enemy/Dr Robotnik/Dr Robotnik 2.eni"
+	incbin	"resource/mapeni/Enemy/Dr Robotnik/Dr Robotnik 2.eni"
 	even
 
 MapEni_DrRobotnik_3:
-	incbin	"data/mapeni/Enemy/Dr Robotnik/Dr Robotnik 3.eni"
+	incbin	"resource/mapeni/Enemy/Dr Robotnik/Dr Robotnik 3.eni"
 	even
 
 MapEni_DrRobotnik_4:
-	incbin	"data/mapeni/Enemy/Dr Robotnik/Dr Robotnik 4.eni"
+	incbin	"resource/mapeni/Enemy/Dr Robotnik/Dr Robotnik 4.eni"
 	even
 
 MapEni_DrRobotnik_5:
-	incbin	"data/mapeni/Enemy/Dr Robotnik/Dr Robotnik 5.eni"
+	incbin	"resource/mapeni/Enemy/Dr Robotnik/Dr Robotnik 5.eni"
 	even
 
 MapEni_DrRobotnik_6:
-	incbin	"data/mapeni/Enemy/Dr Robotnik/Dr Robotnik 6.eni"
+	incbin	"resource/mapeni/Enemy/Dr Robotnik/Dr Robotnik 6.eni"
 	even
 
 MapEni_DrRobotnik_Defeated:	
-	incbin	"data/mapeni/Enemy/Dr Robotnik/Dr Robotnik Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Dr Robotnik/Dr Robotnik Defeated.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_Skweel:
-	incbin	"data/artnem/Enemy/Skweel.nem"
+	incbin	"resource/artnem/Enemy/Skweel.nem"
 	even
 	
 MapEni_Skweel_0:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 0.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 0.eni"
 	even
 
 MapEni_Skweel_1:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 1.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 1.eni"
 	even
 
 MapEni_Skweel_2:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 2.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 2.eni"
 	even
 
 MapEni_Skweel_3:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 3.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 3.eni"
 	even
 
 MapEni_Skweel_4:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 4.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 4.eni"
 	even
 
 MapEni_Skweel_5:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 5.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 5.eni"
 	even
 
 MapEni_Skweel_6:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 6.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 6.eni"
 	even
 
 MapEni_Skweel_7:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 7.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 7.eni"
 	even
 
 MapEni_Skweel_8:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 8.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 8.eni"
 	even
 
 MapEni_Skweel_9:	
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 9.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 9.eni"
 	even
 
 MapEni_Skweel_10:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 10.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 10.eni"
 	even
 
 MapEni_Skweel_11:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel 11.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel 11.eni"
 	even
 
 MapEni_Skweel_Defeated:
-	incbin	"data/mapeni/Enemy/Skweel/Skweel Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Skweel/Skweel Defeated.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_SirFfuzzyLogik:
-	incbin	"data/artnem/Enemy/Sir Ffuzzy Logik.nem"
+	incbin	"resource/artnem/Enemy/Sir Ffuzzy Logik.nem"
 	even
 	
 MapEni_SirFfuzzyLogik_0:
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 0.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 0.eni"
 	even
 
 MapEni_SirFfuzzyLogik_1:
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 1.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 1.eni"
 	even
 
 MapEni_SirFfuzzyLogik_2:
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 2.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 2.eni"
 	even
 
 MapEni_SirFfuzzyLogik_3:
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 3.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 3.eni"
 	even
 
 MapEni_SirFfuzzyLogik_4:
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 4.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 4.eni"
 	even
 
 MapEni_SirFfuzzyLogik_5:
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 5.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 5.eni"
 	even
 
 MapEni_SirFfuzzyLogik_6:	
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 6.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 6.eni"
 	even
 
 MapEni_SirFfuzzyLogik_7:	
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 7.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 7.eni"
 	even
 
 MapEni_SirFfuzzyLogik_8:
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 8.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik 8.eni"
 	even
 	
 MapEni_SirFfuzzyLogik_Defeated_0:
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik Defeated 0.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik Defeated 0.eni"
 	even
 
 MapEni_SirFfuzzyLogik_Defeated_1:	
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik Defeated 1.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik Defeated 1.eni"
 	even
 
 MapEni_SirFfuzzyLogik_Defeated_2:
-	incbin	"data/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik Defeated 2.eni"
+	incbin	"resource/mapeni/Enemy/Sir Ffuzzy Logik/Sir Ffuzzy Logik Defeated 2.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_Arms:
-	incbin	"data/artnem/Enemy/Arms.nem"
+	incbin	"resource/artnem/Enemy/Arms.nem"
 	even
 	
 MapEni_Arms_0:
-	incbin	"data/mapeni/Enemy/Arms/Arms 0.eni"
+	incbin	"resource/mapeni/Enemy/Arms/Arms 0.eni"
 	even
 
 MapEni_Arms_1:
-	incbin	"data/mapeni/Enemy/Arms/Arms 1.eni"
+	incbin	"resource/mapeni/Enemy/Arms/Arms 1.eni"
 	even
 
 MapEni_Arms_2:
-	incbin	"data/mapeni/Enemy/Arms/Arms 2.eni"
+	incbin	"resource/mapeni/Enemy/Arms/Arms 2.eni"
 	even
 
 MapEni_Arms_3:
-	incbin	"data/mapeni/Enemy/Arms/Arms 3.eni"
+	incbin	"resource/mapeni/Enemy/Arms/Arms 3.eni"
 	even
 
 MapEni_Arms_4:
-	incbin	"data/mapeni/Enemy/Arms/Arms 4.eni"
+	incbin	"resource/mapeni/Enemy/Arms/Arms 4.eni"
 	even
 
 MapEni_Arms_5:
-	incbin	"data/mapeni/Enemy/Arms/Arms 5.eni"
+	incbin	"resource/mapeni/Enemy/Arms/Arms 5.eni"
 	even
 
 MapEni_Arms_6:	
-	incbin	"data/mapeni/Enemy/Arms/Arms 6.eni"
+	incbin	"resource/mapeni/Enemy/Arms/Arms 6.eni"
 	even
 
 MapEni_Arms_7:
-	incbin	"data/mapeni/Enemy/Arms/Arms 7.eni"
+	incbin	"resource/mapeni/Enemy/Arms/Arms 7.eni"
 	even
 
 MapEni_Arms_Defeated:	
-	incbin	"data/mapeni/Enemy/Arms/Arms Defeated.eni"
+	incbin	"resource/mapeni/Enemy/Arms/Arms Defeated.eni"
 	even
 
 MapEni_Arms_8:	
-	incbin	"data/mapeni/Enemy/Arms/Arms 8.eni"
+	incbin	"resource/mapeni/Enemy/Arms/Arms 8.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_IntroBadniks:
-	incbin	"data/artnem/Opening/Intro Badniks.nem"
+	incbin	"resource/artnem/Opening/Intro Badniks.nem"
 	even
 	
 ArtNem_OpponentScreen:
-	incbin	"data/artnem/Background/Opponent's Screen.nem"
+	incbin	"resource/artnem/Background/Opponent's Screen.nem"
 	even
 	
 ArtNem_Password:
-	incbin	"data/artnem/Background/Password.nem"
+	incbin	"resource/artnem/Background/Password.nem"
 	even
 	
 ArtNem_RoleCallTextbox:
-	incbin	"data/artnem/Ending/Role Call Textbox.nem"
+	incbin	"resource/artnem/Ending/Role Call Textbox.nem"
 	even
 	
 ArtNem_MainFont:
-	incbin	"data/artnem/Font/Font - Main.nem"
+	incbin	"resource/artnem/Font/Font - Main.nem"
 	even
 	
 ArtNem_CoconutsIntro:
-	incbin	"data/artnem/Intro/Coconuts Intro.nem"
+	incbin	"resource/artnem/Intro/Coconuts Intro.nem"
 	even
 	
 ArtNem_FranklyIntro:
-	incbin	"data/artnem/Intro/Frankly Intro.nem"
+	incbin	"resource/artnem/Intro/Frankly Intro.nem"
 	even
 	
 ArtNem_DavyIntro:
-	incbin	"data/artnem/Intro/Davy Intro.nem"
+	incbin	"resource/artnem/Intro/Davy Intro.nem"
 	even
 	
 ArtNem_DynamightIntro:
-	incbin	"data/artnem/Intro/Dynamight Intro.nem"
+	incbin	"resource/artnem/Intro/Dynamight Intro.nem"
 	even
 	
 ArtNem_ArmsIntro:
-	incbin	"data/artnem/Intro/Arms Intro 1.nem"
+	incbin	"resource/artnem/Intro/Arms Intro 1.nem"
 	even
 	
 ArtNem_ArmsIntro2:
-	incbin	"data/artnem/Intro/Arms Intro 2.nem"
+	incbin	"resource/artnem/Intro/Arms Intro 2.nem"
 	even
 	
 ArtNem_DragonIntro:
-	incbin	"data/artnem/Intro/Dragon Intro.nem"
+	incbin	"resource/artnem/Intro/Dragon Intro.nem"
 	even
 	
 ArtNem_SpikeIntro:
-	incbin	"data/artnem/Intro/Spike Intro.nem"
+	incbin	"resource/artnem/Intro/Spike Intro.nem"
 	even
 	
 ArtNem_SirLogikIntro:
-	incbin	"data/artnem/Intro/Sir Ffuzzy Intro.nem"
+	incbin	"resource/artnem/Intro/Sir Ffuzzy Intro.nem"
 	even
 	
 ArtNem_HumptyIntro:
-	incbin	"data/artnem/Intro/Humpty Intro.nem"
+	incbin	"resource/artnem/Intro/Humpty Intro.nem"
 	even
 ArtNem_GrounderIntro:
-	incbin	"data/artnem/Intro/Grounder Intro.nem"
+	incbin	"resource/artnem/Intro/Grounder Intro.nem"
 	even
 	
 ArtNem_AllRightOhNo:
-	incbin	"data/artnem/VS/All Right - Oh No.nem"
+	incbin	"resource/artnem/VS/All Right - Oh No.nem"
 	even
 	
 ArtNem_SkweelIntro:
-	incbin	"data/artnem/Intro/Skweel Intro.nem"
+	incbin	"resource/artnem/Intro/Skweel Intro.nem"
 	even
 	
 ArtNem_ScratchIntro:
-	incbin	"data/artnem/Intro/Scratch Intro.nem"
+	incbin	"resource/artnem/Intro/Scratch Intro.nem"
 	even
 	
 ; ---------------------------------------------------------------------------	
@@ -43305,37 +43306,37 @@ ArtNem_ScratchIntro:
 ; ---------------------------------------------------------------------------
 	
 ArtNem_LvlIntroBG:	
-	incbin	"data/artnem/Background/Level Intro.nem"
+	incbin	"resource/artnem/Background/Level Intro.nem"
 	even
 	
 MapEni_LvlIntroBG_0:
-	incbin	"data/mapeni/Intro/Level Intro 0.eni"
+	incbin	"resource/mapeni/Intro/Level Intro 0.eni"
 	even
 	
 MapEni_LvlIntroBG_1:
-	incbin	"data/mapeni/Intro/Level Intro 1.eni"
+	incbin	"resource/mapeni/Intro/Level Intro 1.eni"
 	even
 		
 MapEni_LvlIntroBG_2:	
-	incbin	"data/mapeni/Intro/Level Intro 2.eni"
+	incbin	"resource/mapeni/Intro/Level Intro 2.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_Intro:	
-	incbin	"data/artnem/Opening/Intro.nem"
+	incbin	"resource/artnem/Opening/Intro.nem"
 	even
 	
 MapEni_LairMachine:
-	incbin	"data/mapeni/Lair/Robotnik's Lair - Machine.eni"
+	incbin	"resource/mapeni/Lair/Robotnik's Lair - Machine.eni"
 	even
 	
 MapEni_LairWall:
-	incbin	"data/mapeni/Lair/Robotnik's Lair - Wall.eni"
+	incbin	"resource/mapeni/Lair/Robotnik's Lair - Wall.eni"
 	even
 	
 MapEni_LairFloor:
-	incbin	"data/mapeni/Lair/Robotnik's Lair - Floor.eni"
+	incbin	"resource/mapeni/Lair/Robotnik's Lair - Floor.eni"
 	even
 
 MapPrio_LairMachine:
@@ -43393,29 +43394,29 @@ MapPrio_LairMachine:
 ; ---------------------------------------------------------------------------
 	
 ArtNem_EndingBG:
-	incbin	"data/artnem/Background/Ending.nem"
+	incbin	"resource/artnem/Background/Ending.nem"
 	even
 	
 MapEni_LairDestroyed0:	
-	incbin	"data/mapeni/Lair/Robotnik's Lair - Destroyed 0.eni"
+	incbin	"resource/mapeni/Lair/Robotnik's Lair - Destroyed 0.eni"
 	even
 	
 MapEni_LairDestroyed1:
-	incbin	"data/mapeni/Lair/Robotnik's Lair - Destroyed 1.eni"
+	incbin	"resource/mapeni/Lair/Robotnik's Lair - Destroyed 1.eni"
 	even
 
 MapEni_LairDestroyed2:
-	incbin	"data/mapeni/Lair/Robotnik's Lair - Destroyed 2.eni"
+	incbin	"resource/mapeni/Lair/Robotnik's Lair - Destroyed 2.eni"
 	even
 	
 ; ---------------------------------------------------------------------------
 
 ArtNem_CreditsLair:
-	incbin	"data/artnem/Ending/Credits - Lair.nem"
+	incbin	"resource/artnem/Ending/Credits - Lair.nem"
 	even
 	
 ArtNem_GameOver:
-	incbin	"data/artnem/Font/Font - Game Over.nem"
+	incbin	"resource/artnem/Font/Font - Game Over.nem"
 	even
 	
 byte_66C9A:	
@@ -43470,15 +43471,15 @@ byte_66C9A:
 	dc.b $18, 0
 	
 ArtNem_GameOverBG:
-	incbin	"data/artnem/Background/Game Over.nem"
+	incbin	"resource/artnem/Background/Game Over.nem"
 	even
 	
 MapEni_GameOverRobots:	
-	incbin	"data/mapeni/Game Over/Background - Robots.eni"
+	incbin	"resource/mapeni/Game Over/Background - Robots.eni"
 	even
 	
 MapEni_GameOverLight:
-	incbin	"data/mapeni/Game Over/Background - Light.eni"
+	incbin	"resource/mapeni/Game Over/Background - Light.eni"
 	even
 	
 byte_6A144:	
@@ -43554,47 +43555,47 @@ byte_6A144:
 	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0
 	
 ArtNem_MainMenu:
-	incbin	"data/artnem/Background/Main Menu.nem"
+	incbin	"resource/artnem/Background/Main Menu.nem"
 	even
 	
 MapEni_MainMenu:
-	incbin	"data/mapeni/Menu/Main Menu.eni"
+	incbin	"resource/mapeni/Menu/Main Menu.eni"
 	even
 	
 MapEni_ScenarioMenu:
-	incbin	"data/mapeni/Menu/Scenario Menu.eni"
+	incbin	"resource/mapeni/Menu/Scenario Menu.eni"
 	even
 	
 MapEni_MainMenuClouds:
-	incbin	"data/mapeni/Menu/Clouds.eni"
+	incbin	"resource/mapeni/Menu/Clouds.eni"
 	even
 	
 MapEni_MainMenuMountains:
-	incbin	"data/mapeni/Menu/Mountains.eni"
+	incbin	"resource/mapeni/Menu/Mountains.eni"
 	even
 	
 ArtNem_HighScores:
-	incbin	"data/artnem/Background/High Scores.nem"
+	incbin	"resource/artnem/Background/High Scores.nem"
 	even
 	
 MapEni_HighScores:
-	incbin	"data/mapeni/Background/High Scores.eni"
+	incbin	"resource/mapeni/Background/High Scores.eni"
 	even
 	
 ArtNem_CreditsSky:
-	incbin	"data/artnem/Ending/Credits - Sky.nem"
+	incbin	"resource/artnem/Ending/Credits - Sky.nem"
 	even
 	
 MapEni_CreditsSky:	
-	incbin	"data/mapeni/Ending/Credits - Sky.eni"
+	incbin	"resource/mapeni/Ending/Credits - Sky.eni"
 	even
 	
 ArtNem_CreditsSmoke:
-	incbin	"data/artnem/Ending/Credits - Smoke.nem"
+	incbin	"resource/artnem/Ending/Credits - Smoke.nem"
 	even
 	
 ArtNem_CreditsExplosion:
-	incbin	"data/artnem/Ending/Credits - Explosion.nem"
+	incbin	"resource/artnem/Ending/Credits - Explosion.nem"
 	even
 	
 word_6F3FE:	
@@ -43680,55 +43681,55 @@ word_6F85E:
 	if PuyoCompression=0 ; Puyo Graphics use Compile Compression
 	
 ArtPuyo_LevelBG:
-	incbin	"data/artpuyo/Compression - Compile/Stage - Background.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Stage - Background.cmp"
 	even
 					
 ArtPuyo_VSWinLose:
-	incbin	"data/artpuyo/Compression - Compile/VS Win Lose.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/VS Win Lose.cmp"
 	even
 					
 ArtPuyo_LevelIntro:
-	incbin	"data/artpuyo/Compression - Compile/Stage - Cutscene.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Stage - Cutscene.cmp"
 	even
 					
 ArtPuyo_LessonMode:
-	incbin	"data/artpuyo/Compression - Compile/Lesson Mode.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Lesson Mode.cmp"
 	even
 					
 ArtPuyo_LevelFonts:
-	incbin	"data/artpuyo/Compression - Compile/Font - Stage.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Font - Stage.cmp"
 	even
 					
 ArtPuyo_OldRoleCallFont:
-	incbin	"data/artpuyo/Compression - Compile/Font - Puyo Cast.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Font - Puyo Cast.cmp"
 	even
 					
 ArtPuyo_DemoMode:
-	incbin	"data/artpuyo/Compression - Compile/Tutorial.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Tutorial.cmp"
 	even
 					
 ArtPuyo_OldFont:
-	incbin	"data/artpuyo/Compression - Compile/Font - Puyo Options.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Font - Puyo Options.cmp"
 	even
 					
 ArtPuyo_Harpy:
-	incbin	"data/artpuyo/Compression - Compile/Harpy.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Harpy.cmp"
 	even
 					
 ArtPuyo_LevelSprites:
-	incbin	"data/artpuyo/Compression - Compile/Stage - Sprites.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Stage - Sprites.cmp"
 	even
 					
 ArtPuyo_BestRecord:
-	incbin	"data/artpuyo/Compression - Compile/Best Records.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Best Records.cmp"
 	even
 					
 ArtPuyo_BestRecordModes:
-	incbin	"data/artpuyo/Compression - Compile/Record Modes.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Record Modes.cmp"
 	even
 					
 ArtPuyo_OldGameOver:
-	incbin	"data/artpuyo/Compression - Compile/Puyo Game Over.cmp"
+	incbin	"resource/artpuyo/Compression - Compile/Puyo Game Over.cmp"
 	even
 					
 ; --------------------------------------------------------------
@@ -43736,55 +43737,55 @@ ArtPuyo_OldGameOver:
 	else	; Puyo Graphics use Nemesis Compression
 
 ArtPuyo_LevelBG:
-	incbin	"data/artpuyo/Compression - Nemesis/Stage - Background.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Stage - Background.nem"
 	even
 					
 ArtPuyo_VSWinLose:
-	incbin	"data/artpuyo/Compression - Nemesis/VS Win Lose.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/VS Win Lose.nem"
 	even
 					
 ArtPuyo_LevelIntro:
-	incbin	"data/artpuyo/Compression - Nemesis/Stage - Cutscene.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Stage - Cutscene.nem"
 	even
 					
 ArtPuyo_LessonMode:
-	incbin	"data/artpuyo/Compression - Nemesis/Lesson Mode.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Lesson Mode.nem"
 	even
 					
 ArtPuyo_LevelFonts:
-	incbin	"data/artpuyo/Compression - Nemesis/Font - Stage.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Font - Stage.nem"
 	even
 					
 ArtPuyo_OldRoleCallFont:
-	incbin	"data/artpuyo/Compression - Nemesis/Font - Puyo Cast.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Font - Puyo Cast.nem"
 	even
 					
 ArtPuyo_DemoMode:
-	incbin	"data/artpuyo/Compression - Nemesis/Tutorial.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Tutorial.nem"
 	even
 					
 ArtPuyo_OldFont:
-	incbin	"data/artpuyo/Compression - Nemesis/Font - Puyo Options.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Font - Puyo Options.nem"
 	even
 					
 ArtPuyo_Harpy:
-	incbin	"data/artpuyo/Compression - Nemesis/Harpy.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Harpy.nem"
 	even
 					
 ArtPuyo_LevelSprites:
-	incbin	"data/artpuyo/Compression - Nemesis/Stage - Sprites.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Stage - Sprites.nem"
 	even
 					
 ArtPuyo_BestRecord:
-	incbin	"data/artpuyo/Compression - Nemesis/Best Records.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Best Records.nem"
 	even
 					
 ArtPuyo_BestRecordModes:
-	incbin	"data/artpuyo/Compression - Nemesis/Record Modes.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Record Modes.nem"
 	even
 					
 ArtPuyo_OldGameOver:
-	incbin	"data/artpuyo/Compression - Nemesis/Puyo Game Over.nem"
+	incbin	"resource/artpuyo/Compression - Nemesis/Puyo Game Over.nem"
 	even
 	
 	endc	
@@ -43796,51 +43797,51 @@ ArtPuyo_OldGameOver:
 ; --------------------------------------------------------------	
 	
 ArtNem_TitleLogo:
-	incbin	"data/artnem/Title/Title Logo.nem"
+	incbin	"resource/artnem/Title/Title Logo.nem"
 	even
 	
 MapEni_TitleLogo:
-	incbin	"data/mapeni/Title/Logo.eni"
+	incbin	"resource/mapeni/Title/Logo.eni"
 	even
 	
 MapEni_TitleRobotnik:
-	incbin	"data/mapeni/Title/Robotnik.eni"
+	incbin	"resource/mapeni/Title/Robotnik.eni"
 	even
 	
 ArtNem_EndingSprites:
-	incbin	"data/artnem/Ending/Ending Sprites.nem"
+	incbin	"resource/artnem/Ending/Ending Sprites.nem"
 	even
 	
 ArtNem_SegaLogo:
-	incbin	"data/artnem/Title/Sega Logo.nem"
+	incbin	"resource/artnem/Title/Sega Logo.nem"
 	even
 	
 ArtNem_DifficultyFaces:
-	incbin	"data/artnem/VS/Difficulty Faces 1.nem"
+	incbin	"resource/artnem/VS/Difficulty Faces 1.nem"
 	even
 	
 ArtNem_DifficultyFaces2:
-	incbin	"data/artnem/VS/Difficulty Faces 2.nem"
+	incbin	"resource/artnem/VS/Difficulty Faces 2.nem"
 	even
 	
 ArtUnc_Robotnik_21:
-	incbin	"data/artunc/Robotnik/Robotnik 21.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 21.unc"
 	even
 	
 ArtUnc_Robotnik_22:
-	incbin	"data/artunc/Robotnik/Robotnik 22.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 22.unc"
 	even
 	
 ArtUnc_Robotnik_23:
-	incbin	"data/artunc/Robotnik/Robotnik 23.unc"
+	incbin	"resource/artunc/Robotnik/Robotnik 23.unc"
 	even
 	
 ArtNem_HasBeanShadow:
-	incbin	"data/artnem/Ending/Has Bean's Shadow.nem"
+	incbin	"resource/artnem/Ending/Has Bean's Shadow.nem"
 	even
 
 ; --------------------------------------------------------------	
-	
+
 	if BattleBoards=1
 LoadUnderTilesScenario:
 	clr.w	d0
@@ -43849,9 +43850,9 @@ LoadUnderTilesScenario:
 	subi.b	#3, d0
 	lsl.w	#2, d0
 	movea.l UnderTilesIDs(pc,d0.w), a1
-	jmp		(a1)
+	jmp	(a1)
 	even
-	
+
 UnderTilesIDs:
 	dc.l UnderTiles2 ; Stage 1
 	dc.l UnderTiles1 ; Stage 2
@@ -43867,7 +43868,7 @@ UnderTilesIDs:
 	dc.l UnderTiles1 ; Stage 12
 	dc.l UnderTiles1 ; Stage 13
 	even
-	
+
 UnderTiles1:
 	lea	(UnderGrassTiles).l,a4
 	rts
@@ -43877,7 +43878,7 @@ UnderTiles2:
 	lea	(UnderStoneTiles).l,a4
 	rts
 	even
-	
+
 UnderGrassTiles:
 	dc.b $11
 	dc.b $12
@@ -43919,20 +43920,20 @@ UnderStoneTiles:
 ; --------------------------------------------------------------
 
 ArtNem_GrassBoard:
-	incbin	"data/artnem/Boards/Grass.nem"
+	incbin	"resource/artnem/Boards/Grass.nem"
 	even
-	
+
 ArtNem_StoneBoard:
-	incbin	"data/artnem/Boards/Stone.nem"
+	incbin	"resource/artnem/Boards/Stone.nem"
 	even
 
 CrumbleStone:
-	incbin	"data/mapunc/crumble/Stone/StoneA.bin"
+	incbin	"resource/mapunc/crumble/Stone/StoneA.bin"
 	even
 	endc
 
 ; --------------------------------------------------------------
-	
+
 	if DemoOpponenet=1
 SetDemoOpponenet:
 	move.b 	#13, level ; Enter Stage #
@@ -43951,42 +43952,53 @@ SetDemoOpponenet:
 	andi.b	#15,d0				; Set left bit to 0
 	cmpi.b	#2,d0				; Is 2 or less (these are Lessons)?
 	bls.s 	SetDemoOpponenet	; If so, generate another #
-	
+
 	move.b 	d0, level			; Load level # into RAM
-		
+
 	jsr (SetOpponent).l			; Set opponent.
 	rts	
 	endc
-	
+
 ; --------------------------------------------------------------
-	
+
 	ALIGN	$B0000, $FF
-	
+
 ; --------------------------------------------------------------
 ; Sound data
 ; --------------------------------------------------------------
 
 	include  "sound/sound.asm"
-	
+
 ; ==============================================================
-	
-	ALIGN	$100000, $FF ; Set ROM Size to 1MB
-	
+
 ; --------------------------------------------------------------
 ; Splash screen
 ; --------------------------------------------------------------
-	
+
 	if SplashScreen=1
-	
+
 SHC:	
-	include "game/subroutines/splash screen/sonic hacking contest.asm"
-	
+	include "src/subroutines/splash screen/sonic hacking contest.asm"
+
 	ALIGN	$200000, $FF ; Set ROM Size to 2MB
 	endc
 
-; --------------------------------------------------------------	
-	
-EndOfRom:					
+; ==============================================================
+; --------------------------------------------------------------
+; Debugging modules
+; --------------------------------------------------------------
+
+	include	"include/errorhandler/ErrorHandler.asm"
+
+; --------------------------------------------------------------
+; WARNING!
+;	DO NOT put any data from now on! DO NOT use ROM padding!
+;	Symbol data should be appended here after ROM is compiled
+;	by ConvSym utility, otherwise debugger modules won't be able
+;	to resolve symbol names.
+; --------------------------------------------------------------
+
+EndOfRom:
 	END
-	
+
 ; ==============================================================

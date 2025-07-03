@@ -126,7 +126,7 @@ BCJMPTBL\#tbl_id\:
 
 BJTBLE macro
 
-BCJMPTBL\#tbl_id\_End:
+BCJMPTBL\#tbl_id\_END:
 
 	endm
 
