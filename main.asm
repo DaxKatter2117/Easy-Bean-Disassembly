@@ -14,9 +14,11 @@
 	include	"include/constants.asm"
 	include	"include/ram.asm"
 	include "include/cube2asm.asm"
+
 	include	"include/macros - other.asm"
 	include	"include/macros - bytecodes.asm"
-	
+	include "include/macros - dialog.asm"
+
 	include	"include/Text Tables/Checksum Text.asm"
 	include	"include/Text Tables/Stage Text.asm"
 	include	"include/Text Tables/Name Text.asm"
@@ -25,7 +27,7 @@
 ; --------------------------------------------------------------
 ; ROM settings
 ; --------------------------------------------------------------
-				
+
 	include	"settings.asm"
 
 ; --------------------------------------------------------------
