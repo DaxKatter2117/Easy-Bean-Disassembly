@@ -216,7 +216,7 @@ word_FF1126		rs.w	1
 byte_FF1128		rs.b	1
 byte_FF1129		rs.b	1
 
-use_lair_background	rs.w	1
+use_lair_assets		rs.w	1
 
 dword_FF112C		rs.l	1
 dword_FF1130		rs.l	1
@@ -425,7 +425,8 @@ player_2_b		rs.b	1
 player_2_c		rs.b	1
 disable_samples		rs.b	1
 
-			rs.b	$153
+			rs.b	$152
+init_done		rs.b	1
 byte_FFFE00		rs.b	$B0
 			rs.b	$150
 

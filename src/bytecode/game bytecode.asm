@@ -2,17 +2,17 @@
 ; Game bytecode
 ; --------------------------------------------------------------
 
+	include "src/bytecode/sections/developer check.asm"
+
+BC_Checksum:
+	include "src/bytecode/sections/checksum.asm"
+
+BC_Sega:
+	include "src/bytecode/sections/sega logo.asm"
+
 	if SplashScreen=1
 	BRUN	SHC ; Run Sonic Hacking Contest splash screen
 	endc
-
-	include "src/bytecode/sections/region check.asm"
-			
-BC_Checksum:
-	include "src/bytecode/sections/checksum.asm"
-	
-BC_Sega:
-	include "src/bytecode/sections/sega logo.asm"
 
 BC_Title:
 	include "src/bytecode/sections/title.asm"
@@ -97,7 +97,7 @@ BC_MainMenu:
 
 BC_Password:
 	include "src/bytecode/sections/password.asm"
-	
+
 BC_GameStart:
 	BSFADE
 	BPAL	Pal_Black, 0
@@ -219,14 +219,8 @@ BC_OpponentScreen:
 	BRUN	ClearScroll
 	BDELAY	$3C
 	BFRMEND
-	
-	if BattleBoards=0
-	BRUN	LoadLevelBGArt
-	else
 	BRUN	LoadScenarioBGArt
-	endc
-	
-	BFADE	Pal_GreenTealPuyos, 2, 0
+	BRUN	FadeDemoBGPal
 	BFADEW
 	BFRMEND
 	BJMP	BC_Level
@@ -234,13 +228,13 @@ BC_OpponentScreen:
 BC_LevelIntro:
 	BVDP	1
 	BRUN	DisableSHMode
-	
+
 	if PuyoCompression=0
 	BPUYOI	$6000, ArtPuyo_LevelIntro
 	else
 	BNEMI	$6000, ArtPuyo_LevelIntro
 	endc
-	
+
 	BWRITE	word_FF1122, $FFFF
 	BFRMEND
 	BWRITE	vscroll_buffer,	$FF20
@@ -263,8 +257,8 @@ BC_LevelIntro:
 	BRUN	loc_B0D6
 	BRUN	loc_F8FC
 	BFRMEND
-	BFADEI	Pal_LevelIntroFG, Pal_RobotnikLair, 0, 0
-	BFADEI	Pal_LevelIntroBG, Pal_GameIntroGrounder, 1, 0
+	BRUN	LoadCutsceneFGPal
+	BRUN	LoadCutsceneBGPal
 	BFADEI	Pal_GreenTealPuyos, Pal_GameIntroScratch, 2, 0
 	BFADEI	Pal_Black, Pal_GameIntroRobotnik, 3, 0
 	BWRITE	word_FF1122, 0
@@ -285,14 +279,10 @@ BC_LevelIntro:
 BC_LevelTransition:
 	BFADEW
 	BFRMEND
-	
-	if BattleBoards=0
-	BRUN	LoadLevelBGArt
-	else
+
 	BRUN	LoadScenarioBGArt
-	BRUN	LoadScenarioBGPal
-	endc
-	
+	BRUN	LoadDemoBGPal
+
 	BSFADE
 	BRUN	CheckTutorialPalInit
 	BFRMEND
@@ -317,13 +307,7 @@ BC_Level:
 	BPAL	Pal_RedYellowPuyos, 0
 	BPAL	Pal_BluePurplePuyos, 1
 	BPAL	Pal_Characters_Puyo, 3
-	
-	if BattleBoards=0
-	BRUN	LoadLevelBGPal
-	else
-	BRUN	LoadScenarioBGPal
-	endc
-	
+	BRUN	LoadDemoBGPal
 	BWRITE	pressed_time, $802
 	BRUN	GenPuyoOrder
 	BFRMEND
@@ -387,8 +371,6 @@ BC_GameOver:
 	BJMP	BC_HighScores_1
 
 BC_Ending:
-	BWRITE	sound_test_enabled, $FFFF
-	BRUN	sub_23536
 	BVDP	1
 	BRUN	DisableSHMode
 	BNEM	$4000, ArtNem_EndingBG
@@ -440,7 +422,7 @@ BC_RoleCall:
 	BSND	BGM_ROLE_CALL
 	BRUN	sub_10E5C
 	BFRMEND
-	BWRITE	use_lair_background, 0
+	BWRITE	use_lair_assets, 0
 	BRUN	LoadLevelIntroArt
 	BFRMEND
 	BRUN	sub_F5F6
@@ -513,7 +495,7 @@ BC_Credits:
 	BFRMEND
 	BNEM	0, ArtNem_CreditsSky
 	BFRMEND
-	BWRITE	use_lair_background, 0
+	BWRITE	use_lair_assets, 0
 	BRUN	LoadLevelIntroArt
 	BFRMEND
 	BRUN	sub_F5F6
@@ -611,13 +593,13 @@ BC_VersusMode:
 	BWRITE	byte_FF0128, 0
 	BRUN	sub_9308
 	BVDP	1
-	
+
 	if PuyoCompression=0
 	BPUYO	$A000,	ArtPuyo_LevelFonts
 	else
 	BNEM	$A000,	ArtPuyo_LevelFonts
 	endc
-	
+
 	BRUN	LoadLevelBGArt
 	BNEM	$1DE0, ArtNem_GroupedStars
 	BFRMEND
@@ -645,7 +627,7 @@ BC_VersusModeLoop:
 	BDISABLE
 	BJSET	stru_2400
 	BRUN	InitActors
-	BPCMD	4
+	BPCMD	$18
 	BFRMEND
 	BJMP	BC_VersusModeLoop
 
@@ -665,7 +647,7 @@ stru_2400:
 BC_ExerciseMode:
 	BWRITE	level, $303
 	BVDP	1
-	
+
 	if PuyoCompression=0
 	BPUYO	$0000,  ArtPuyo_LevelBG
 	BPUYO	$2000,	ArtPuyo_LevelSprites
@@ -703,30 +685,9 @@ BC_ExerciseMode:
 BC_Demo:
 	BWRITE	level_mode, $400
 
-	if DemoOpponenet=1
-	BRUN	SetDemoOpponenet
-	endc
-	
-	if DemoOpponenet=2 
-	BRUN	SetDemoOpponenet
-	endc
-	
+	BRUN	SetDemoOpponent
 	BVDP	1
-	
-	if BattleBoards=0
-	
-	if PuyoCompression=0
-	BPUYO	$0000,  ArtPuyo_LevelBG
-	else
-	BNEM	$0000,  ArtPuyo_LevelBG
-	endc
-	
-	BPCMD	3
-	else
-
 	BRUN	LoadScenarioBGArt
-	endc	
-	
 	BFRMEND
 	
 	if PuyoCompression=0
@@ -739,13 +700,8 @@ BC_Demo:
 	
 	BPAL	Pal_RedYellowPuyos, 0
 	BPAL	Pal_BluePurplePuyos, 1
-	
-	if BattleBoards=0
-	BPAL	Pal_GreenTealPuyos, 2
-	else 
+
 	BRUN	LoadDemoBGPal
-	endc
-	
 	BPAL	Pal_Characters_Puyo, 3
 	BRUN	sub_DDD8
 	BRUN	GenPuyoOrder
@@ -789,7 +745,7 @@ BC_Tutorial:
 	BNEM	$A000,	ArtPuyo_LevelFonts
 	endc
 	
-	BPCMD	3
+	BPCMD	$15
 	BPCMD	$2A
 	BFRMEND
 	BRUN	sub_DDD8

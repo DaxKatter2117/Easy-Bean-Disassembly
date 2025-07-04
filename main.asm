@@ -35,8 +35,8 @@
 ; --------------------------------------------------------------
 
 StartOfRom:
-	include	"lib/header/vectors.asm"	  ; Vector table
-	include	"lib/header/information.asm"  ; ROM Information
+	include	"lib/header/vectors.asm"	; Vector table
+	include	"lib/header/information.asm"	; ROM Information
 EndOfHeader:
 
 ; --------------------------------------------------------------
@@ -215,13 +215,8 @@ InitGame:
 
 Exception:
 	DISABLE_INTS
-	bsr.w	InvertPalette
-	bsr.w	CopyPalToCRAM
-
-.Loop:
-	nop
-	nop
-	bra.s	.Loop
+	lea	(stack_base).l,sp
+	jmp	(Entry).l
 
 ; --------------------------------------------------------------
 ; In the arcade version of Puyo Puyo, this function checked
@@ -238,7 +233,7 @@ CheckCoinInserted:
 ; --------------------------------------------------------------
 
 VBlank:
-	DISABLE_INTS
+;	DISABLE_INTS
 	movem.l	d0-a6,-(sp)
 
 	addq.w	#1,frame_count
@@ -305,8 +300,8 @@ VBlank:
 
 .End:
 	movem.l	(sp)+,d0-a6
-	ENABLE_INTS
-	rtr
+;	ENABLE_INTS
+	rte
 
 ; --------------------------------------------------------------
 ; Transfer the plane A buffer to VRAM
@@ -337,19 +332,19 @@ TransferPlaneABuffer:
 HandleTime:
 	move.b	player_1_flags,d0
 	or.b	player_2_flags,d0
-	bmi.w	.TimeDisabled
+	bmi.s	.TimeDisabled
 
 	addq.w	#1,time_frames
-	bcc.w	.SplitTime
+	bcc.s	.SplitTime
 	subq.w	#1,time_frames
 
 .SplitTime:
-	clr.l	d0
+	moveq	#0,d0
 	move.w	time_frames,d0
 	divu.w	#60,d0
 	move.w	d0,time_total_secs
 	
-	clr.l	d0
+	moveq	#0,d0
 	move.w	time_total_secs,d0
 	divu.w	#60,d0
 	move.l	d0,time_seconds
@@ -394,7 +389,7 @@ HBlank:
 	DISABLE_INTS
 	tst.b	hblank_count
 	beq.w	.End
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 
 	move.l	#$40000010,VDP_CTRL
 	movea.l	hblank_buffer_ptr,a0
@@ -404,19 +399,19 @@ HBlank:
 	subq.w	#1,hblank_counter
 	bne.w	.EndRestore
 
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	bsr.w	DisableHBlank
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 
 	move.l	#$40000010,VDP_CTRL
 	move.w	#0,VDP_DATA
 
 .EndRestore:
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 
 .End:
 	ENABLE_INTS
-	rtr
+	rte
 
 ; --------------------------------------------------------------
 ; Disable H-BLANK
@@ -487,7 +482,7 @@ CopyPalToCRAM:
 ; --------------------------------------------------------------
 
 CopyPalLineToCRAM:
-	movem.l	a3,-(sp)
+	move.l	a3,-(sp)
 
 	movea.l	2(a2),a4
 	move.w	#$C000,d2
@@ -502,7 +497,7 @@ CopyPalLineToCRAM:
 	move.w	(a4)+,(a3)+
 	dbf	d2,.CopyPal
 
-	movem.l	(sp)+,a3
+	move.l	(sp)+,a3
 	rts
 
 ; --------------------------------------------------------------
@@ -753,7 +748,7 @@ QueuePlaneCmdList:
 	adda.w	d3,a2
 
 	subq.w	#1,d0
-	bcs.w	.Done
+	bcs.s	.Done
 
 .QueueLoop:
 	move.l	(a3)+,(a2)+
@@ -983,7 +978,7 @@ pfSteps		EQU	$2A
 FadeToPal_StepCount:
 	lea	ActPalFade,a1
 	bsr.w	FindActorSlot
-	bcc.w	.Spawned
+	bcc.s	.Spawned
 	rts
 
 .Spawned:
@@ -1004,7 +999,7 @@ FadeToPal_StepCount:
 FadeToPalette:
 	lea	ActPalFade,a1
 	bsr.w	FindActorSlot
-	bcc.w	.Spawned
+	bcc.s	.Spawned
 	rts
 
 .Spawned:
@@ -1025,9 +1020,9 @@ FadeToPal_Setup:
 	addq.w	#1,(a3)
 	move.w	(a3),pfFlag(a1)
 
-	movem.l	a2,-(sp)
+	move.l	a2,-(sp)
 
-	clr.l	d0
+	moveq	#0,d0
 	move.w	pfLine(a1),d0
 	lsl.l	#5,d0
 	lea	palette_buffer,a2
@@ -1035,7 +1030,7 @@ FadeToPal_Setup:
 	adda.l	#2,a3
 	bsr.w	ActPalFade_Split
 
-	movem.l	(sp)+,a2
+	move.l	(sp)+,a2
 
 	movea.l	pfData(a1),a3
 	adda.l	#$32,a3
@@ -1056,14 +1051,14 @@ ActPalFade:
 	addq.w	#1,pfTimer(a0)
 	move.w	pfSpeed(a0),d0
 	cmp.w	pfTimer(a0),d0
-	bcs.w	.DoFade
+	bcs.s	.DoFade
 	rts
 
 .DoFade:
 	clr.w	pfTimer(a0)
 	bsr.w	ActPalFade_DoFade
 	subq.w	#1,pfSteps(a0)
-	beq.w	.Done
+	beq.s	.Done
 	rts
 
 .Done:
@@ -1128,7 +1123,7 @@ ActPalFade_GetAccums:
 ; --------------------------------------------------------------
 ; PARAMETERS:
 ;	a2.l	- Palette buffer
-;	a3.l	- Palette fade data color buffer
+;	a3.l	- Palette fade data colour buffer
 ; --------------------------------------------------------------
 
 ActPalFade_Split:
@@ -1157,7 +1152,7 @@ ActPalFade_Split:
 ; Get Mega Drive compatible palette from palette fade data
 ; --------------------------------------------------------------
 ; PARAMETERS:
-;	a2.l	- Palette fade data color buffer
+;	a2.l	- Palette fade data colour buffer
 ;	a3.l	- Palette buffer
 ; --------------------------------------------------------------
 
@@ -1185,16 +1180,16 @@ ActPalFade_GetMDPal:
 	rts
 
 ; --------------------------------------------------------------
-; Get color channel from palette fade data
+; Get colour channel from palette fade data
 ; --------------------------------------------------------------
 ; PARAMETERS:
-;	a2.l	- Palette fade data color buffer
+;	a2.l	- Palette fade data colour buffer
 ; --------------------------------------------------------------
 
 ActPalFade_GetColChannel:
 	move.b	(a2)+,d1
 	btst	#1,d1
-	beq.w	.End
+	beq.s	.End
 	addq.b	#4,d1
 
 .End:
@@ -1340,24 +1335,23 @@ ReadControllers:
 
 ReadController:
 	move.b	#0,(a1)
-	nop
-	nop
-	move.b	(a1),d1
-	move.b	d1,d2
-	asl.b	#2,d1
-	andi.b	#$C0,d1
+	moveq	#$3C,d0		; 4(1,0) ; ..SA00.. mask
+	moveq	#$3F,d1		; 4(1,0) ; ..CBRLDU mask
+	and.b	(a1),d0
 	move.b	#$40,(a1)
-	nop
-	nop
-	move.b	(a1),d0
-	andi.b	#$3F,d0
-	or.b	d1,d0
-	not.b	d0
-	andi.b	#$C,d2
-	beq.w	.Not6Button
-	andi.b	#$CF,d0
+	add.b	d0,d0		; 4(1,0) ; .SA00...
+	add.b	d0,d0		; 4(1,0) ; SA00....
+	and.b	(a1),d1
 
-.Not6Button:
+	moveq	#$30,d2		; ..00....
+	and.b	d0,d2		; check 0 bits
+	beq.s	.Is3Button	; if they're 0 as expected, branch
+; if not, it's likely a 2pad (SMS controller)
+	or.b	#$30,d1		; mask out B and C, 2 = Start, 1 = A
+.Is3Button:
+	or.b	d1,d0		; SACBRLDU
+	not.b	d0		; invert to active high; 0 = release, 1 = press
+
 	move.b	0(a0),d1
 	move.b	d0,0(a0)
 	move.b	0(a0),1(a0)
@@ -1365,8 +1359,7 @@ ReadController:
 	and.b	d1,1(a0)
 
 	bsr.w	CtrlVertiTimes
-	bsr.w	CtrlHorizTimes
-	rts
+;	bra.w	CtrlHorizTimes
 
 ; --------------------------------------------------------------
 ; Handle button press timers for left and right
@@ -1444,7 +1437,7 @@ CtrlVertiTimes:
 ; --------------------------------------------------------------
 
 Random:
-	movem.l	d1,-(sp)
+	move.l	d1,-(sp)
 
 	move.l	rng_seed,d1
 	bne.s	.GotSeed
@@ -1463,7 +1456,7 @@ Random:
 	swap	d1
 	move.l	d1,rng_seed
 
-	movem.l	(sp)+,d1
+	move.l	(sp)+,d1
 	rts
 
 ; --------------------------------------------------------------
@@ -1476,14 +1469,14 @@ Random:
 ; --------------------------------------------------------------
 
 RandomBound:
-	movem.l	d1,-(sp)
+	move.l	d1,-(sp)
 
 	move.l	d0,d1
 	bsr.s	Random
 	mulu.w	d1,d0
 	swap	d0
 
-	movem.l	(sp)+,d1
+	move.l	(sp)+,d1
 	rts
 
 ; --------------------------------------------------------------
@@ -1506,21 +1499,27 @@ Cos:
 ;	d0.w	- Value
 ;	d1.w	- Multiplier
 ; RETURNS:
-;	d0.l	- The sine of the input value
+;	d2.l	- The sine of the input value
+; TRASHES:
+;	d0.l	- Value with sign extension (movem.w)
 ; --------------------------------------------------------------
 
 Sin:
 	movem.w	d0,-(sp)
 
-	andi.w	#$7F,d0
-	lsl.w	#1,d0
-	move.w	SineTable(pc,d0.w),d2
+	clr.w	d2		; ML: if you can't immediately 
+	move.b	d0,d2		; understand this, I don't blame
+	add.b	d2,d2		; you whatsoever.
+	move.w	SineTable(pc,d2.w),d2
+;	andi.w	#$7F,d0		; ML: original for comparison
+;	lsl.w	#1,d0		; (easier to read)
+;	move.w	SineTable(pc,d0.w),d2
 	mulu.w	d1,d2
 
 	movem.w	(sp)+,d0
 
 	or.b	d0,d0
-	bpl.w	.End
+	bpl.s	.End
 	neg.l	d2
 
 .End:
@@ -1554,9 +1553,9 @@ SineTable:
 ; --------------------------------------------------------------
 
 SpawnSatanCloudEffects:
-	lea	ActSatanCloudEffects,a1
+	lea	ActSatanCloudEffects(pc),a1
 	bsr.w	FindActorSlot
-	bcc.w	@Spawned
+	bcc.s	@Spawned
 	rts
 
 @Spawned:
@@ -1575,9 +1574,9 @@ ActSatanCloudEffects:
 	move.w	#$6F,d4
 	move.w	vscroll_buffer+2,d3
 	subi.w	#-$A1,d3
-	bcs.w	loc_157A
+	bcs.s	loc_157A
 	cmpi.w	#$70,d3
-	bcc.w	loc_1596
+	bcc.s	loc_1596
 	sub.w	d3,d4
 
 .Clear:
@@ -1585,7 +1584,7 @@ ActSatanCloudEffects:
 	clr.w	-(a2)
 	dbf	d3,.Clear
 	subq.w	#1,d4
-	bcc.w	loc_157A
+	bcc.s	loc_157A
 	rts
 
 loc_157A:
@@ -1609,9 +1608,6 @@ loc_1596:
 	clr.w	hscroll_buffer+2
 	bra.w	ActorDeleteSelf
 
-	rts
-	rts
-
 ; --------------------------------------------------------------
 ; Initialize bytecode
 ; --------------------------------------------------------------
@@ -1628,7 +1624,7 @@ InitBytecode:
 
 RunBytecode:
 	tst.b	bytecode_disabled
-	beq.w	.Run
+	beq.s	.Run
 	rts
 
 .Run:
@@ -1639,7 +1635,8 @@ RunBytecode:
 	move.w	(a0)+,d0
 	move.l	a0,bytecode_addr
 
-	asl.w	#2,d1
+	add.w	d1,d1
+	add.w	d1,d1
 	movea.l	.Instructions(pc,d1.w),a0
 	jsr	(a0)
 
@@ -1667,24 +1664,25 @@ PlayLevelIntroMusic:
 	move.b	(level).l,d1
 	move.b	LevelIntroMusicIDs(pc,d1.w),d0
 	jmp	(JmpTo_PlaySound).l
+
 ; ---------------------------------------------------------------------------
 LevelIntroMusicIDs:
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b BGM_INTRO_1
-	dc.b BGM_INTRO_1
-	dc.b BGM_INTRO_1
-	dc.b BGM_INTRO_1
-	dc.b BGM_INTRO_2
-	dc.b BGM_INTRO_2
-	dc.b BGM_INTRO_2
-	dc.b BGM_INTRO_2
-	dc.b BGM_INTRO_3
-	dc.b BGM_INTRO_3
-	dc.b BGM_INTRO_3
-	dc.b BGM_INTRO_3
-	dc.b BGM_FINAL_INTRO
+	dc.b 0			; Practise Stage 1
+	dc.b 0			; Practise Stage 2
+	dc.b 0			; Practise Stage 3
+	dc.b BGM_INTRO_1	; Stage 1
+	dc.b BGM_INTRO_1	; Stage 2
+	dc.b BGM_INTRO_1	; Stage 3
+	dc.b BGM_INTRO_1	; Stage 4
+	dc.b BGM_INTRO_2	; Stage 5
+	dc.b BGM_INTRO_2	; Stage 6
+	dc.b BGM_INTRO_2	; Stage 7
+	dc.b BGM_INTRO_2	; Stage 8
+	dc.b BGM_INTRO_3	; Stage 9
+	dc.b BGM_INTRO_3	; Stage 10
+	dc.b BGM_INTRO_3	; Stage 11
+	dc.b BGM_INTRO_3	; Stage 12
+	dc.b BGM_FINAL_INTRO	; Stage 13
 	dc.b 0
 	dc.b 0
 ; ---------------------------------------------------------------------------
@@ -1695,7 +1693,7 @@ PlayLevelMusic:
 	move.b	(level).l,d1
 	move.b	LevelMusicIDs(pc,d1.w),d0
 	cmp.b	(cur_level_music).l,d0
-	bne.w	.NewID
+	bne.s	.NewID
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -1705,22 +1703,22 @@ PlayLevelMusic:
 ; END OF FUNCTION CHUNK	FOR HandleLevelMusic
 ; ---------------------------------------------------------------------------
 LevelMusicIDs:
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b BGM_STAGE_1
-	dc.b BGM_STAGE_1
-	dc.b BGM_STAGE_1
-	dc.b BGM_STAGE_1
-	dc.b BGM_STAGE_2
-	dc.b BGM_STAGE_2
-	dc.b BGM_STAGE_2
-	dc.b BGM_STAGE_2
-	dc.b BGM_STAGE_3
-	dc.b BGM_STAGE_3
-	dc.b BGM_STAGE_3
-	dc.b BGM_STAGE_3
-	dc.b BGM_FINAL_STAGE
+	dc.b 0			; Practise Stage 1
+	dc.b 0			; Practise Stage 2
+	dc.b 0			; Practise Stage 3
+	dc.b BGM_STAGE_1	; Stage 1
+	dc.b BGM_STAGE_1	; Stage 2
+	dc.b BGM_STAGE_1	; Stage 3
+	dc.b BGM_STAGE_1	; Stage 4
+	dc.b BGM_STAGE_2	; Stage 5
+	dc.b BGM_STAGE_2	; Stage 6
+	dc.b BGM_STAGE_2	; Stage 7
+	dc.b BGM_STAGE_2	; Stage 8
+	dc.b BGM_STAGE_3	; Stage 9
+	dc.b BGM_STAGE_3	; Stage 10
+	dc.b BGM_STAGE_3	; Stage 11
+	dc.b BGM_STAGE_3	; Stage 12
+	dc.b BGM_FINAL_STAGE	; Stage 13
 	dc.b 0
 	dc.b 0
 ; ---------------------------------------------------------------------------
@@ -1730,7 +1728,7 @@ PlayLevelWinMusic:
 	move.b	(level).l,d1
 	move.b	LevelWinMusicIDs(pc,d1.w),d0
 	cmp.b	(cur_level_music).l,d0
-	bne.w	.NewID
+	bne.s	.NewID
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -1740,69 +1738,66 @@ PlayLevelWinMusic:
 ; ---------------------------------------------------------------------------
 
 LevelWinMusicIDs:
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b BGM_WIN
-	dc.b BGM_WIN
-	dc.b BGM_WIN
-	dc.b BGM_WIN
-	dc.b BGM_WIN
-	dc.b BGM_WIN
-	dc.b BGM_WIN
-	dc.b BGM_WIN
-	dc.b BGM_WIN
-	dc.b BGM_WIN
-	dc.b BGM_WIN
-	dc.b BGM_WIN
-	dc.b BGM_FINAL_WIN
+	dc.b 0			; Practise Stage 1
+	dc.b 0			; Practise Stage 2
+	dc.b 0			; Practise Stage 3
+	dc.b BGM_WIN		; Stage 1
+	dc.b BGM_WIN		; Stage 2
+	dc.b BGM_WIN		; Stage 3
+	dc.b BGM_WIN		; Stage 4
+	dc.b BGM_WIN		; Stage 5
+	dc.b BGM_WIN		; Stage 6
+	dc.b BGM_WIN		; Stage 7
+	dc.b BGM_WIN		; Stage 8
+	dc.b BGM_WIN		; Stage 9
+	dc.b BGM_WIN		; Stage 10
+	dc.b BGM_WIN		; Stage 11
+	dc.b BGM_WIN		; Stage 12
+	dc.b BGM_FINAL_WIN	; Stage 13
 	dc.b 0
 	dc.b 0
 
 ; =============== S U B	R O U T	I N E =======================================
 
+; << This controls the battle board art that Versus Mode loads!! >>
+
 LoadLevelBGArt:
-	lea	(ArtPuyo_LevelBG).l,a0
+	lea	(ArtNem_GrassBoard).l,a0	; Insert your custom VS Battle Board Art Here)
 	move.w	#0,d0
-	
-	if PuyoCompression=0
-	jsr	(PuyoDec).l
-	else
+
 	DISABLE_INTS
 	jsr	(NemDec).l
 	ENABLE_INTS
-	endc
-	
-	move.w	#3,d0
+
+	move.w	#$18,d0			; Input your custom PlaneID for your Versus Mode Board Here
 	jmp	(QueuePlaneCmdList).l
-	
-	
+
 ; ---------------------------------------------------------------------------
 
-	if BattleBoards=1
-LoadScenarioBGArt:				
+LoadScenarioBGArt:
 	clr.w	d0
 	move.b	(level).l, d0
-	subi.b	#3, d0
 	lsl.w	#2, d0
-	movea.l BoardIDs(pc,d0.w), a1	
-	jsr		(a1)	
+	movea.l BoardIDs(pc,d0.w), a1
+	jsr	(a1)
 	move.w	#$0000,d0
-	
+
 	DISABLE_INTS
 	jsr	(NemDec).l
 	ENABLE_INTS
-	
+
 	clr.w	d0
 	move.b	(level).l,d0
-	subi.b	#3, d0
 	move.b	PlaneIDs(pc,d0.w),d0
-	
+
 	jmp	(QueuePlaneCmdList).l
 	even
 
 BoardIDs:
-	dc.l ArtBoardTiles2 ; Stage 1
+	dc.l ArtBoardTiles1 ; Practise Stage 1
+	dc.l ArtBoardTiles1 ; Practise Stage 2
+	dc.l ArtBoardTiles1 ; Practise Stage 3
+	dc.l ArtBoardTiles1 ; Stage 1
 	dc.l ArtBoardTiles1 ; Stage 2
 	dc.l ArtBoardTiles1 ; Stage 3
 	dc.l ArtBoardTiles1 ; Stage 4
@@ -1816,9 +1811,12 @@ BoardIDs:
 	dc.l ArtBoardTiles1 ; Stage 12
 	dc.l ArtBoardTiles1 ; Stage 13
 	even
-	
+
 PlaneIDs:
-	dc.b 5 ; Stage 1
+	dc.b 3 ; Practise Stage 1
+	dc.b 3 ; Practise Stage 2
+	dc.b 3 ; Practise Stage 3
+	dc.b 3 ; Stage 1
 	dc.b 3 ; Stage 2
 	dc.b 3 ; Stage 3
 	dc.b 3 ; Stage 4
@@ -1832,50 +1830,52 @@ PlaneIDs:
 	dc.b 3 ; Stage 12
 	dc.b 3 ; Stage 13
 	even
-	
-ArtBoardTiles1:
+
+ArtBoardTiles1:	; General Grass Board
 	lea	(ArtNem_GrassBoard).l,a0
 	rts
 	even
-	
-ArtBoardTiles2:
+
+ArtBoardTiles2:	; Puyo Puyo Stone Board
 	lea	(ArtNem_StoneBoard).l,a0
 	rts
 	even
-	
-	endc
-		
-; =============== S U B	R O U T	I N E =======================================
 
-LoadLevelBGPal:
-	move.w	#2,d0
-	lea	(Palettes).l,a2
-	adda.l	#(Pal_GreenTealPuyos-Palettes),a2
-	jmp	(LoadPalette).l
-; End of function LoadLevelBGPal
+; << Link your custom battle board art here for custom battle boards!! >>
+;	Example;
+;ArtBoardTiles3:
+;	lea	(ArtNem_GHZBoard).l,a0	; Loads your art of choice into VRAM
+;	rts
+;	even				; Make sure to include this to avoid odd offset errors!!!
 
 ; =============== S U B	R O U T	I N E =======================================
 
-	if BattleBoards=1
-LoadScenarioBGPal:
+FadeDemoBGPal:	
 	clr.w	d0
-	
-	cmpi.b	#$F,(level).l
-	beq		BoardPaletteFade ; Scenario Stage 13
+	move.b	(level).l, d0	
+	lsl.w	#2, d0
+	movea.l PaletteIDs(pc,d0.w), a1
+	jsr	(a1)
+	move.b	#2,d0
+	move.b	#0,d1
+	jmp	(FadeToPalette).l	
+	even
 
 LoadDemoBGPal:	
 	clr.w	d0
 	move.b	(level).l, d0	
-	subi.b	#3, d0
 	lsl.w	#2, d0
 	movea.l PaletteIDs(pc,d0.w), a1
-	jsr		(a1)
+	jsr	(a1)
 	move.w	#2,d0
 	jmp	(LoadPalette).l	
 	even
-	
+
 PaletteIDs:
-	dc.l BoardPalette3 ; Scenario/Demo Stage 1
+	dc.l BoardPalette1 ; Practise Stage 1
+	dc.l BoardPalette1 ; Practise Stage 2
+	dc.l BoardPalette1 ; Practise Stage 3
+	dc.l BoardPalette1 ; Scenario/Demo Stage 1
 	dc.l BoardPalette1 ; Scenario/Demo Stage 2
 	dc.l BoardPalette1 ; Scenario/Demo Stage 3
 	dc.l BoardPalette1 ; Scenario/Demo Stage 4
@@ -1889,66 +1889,184 @@ PaletteIDs:
 	dc.l BoardPalette1 ; Scenario/Demo Stage 12
 	dc.l BoardPalette1 ; Demo Stage 13
 	even
-	
-BoardPalette1:
+
+BoardPalette1:	; General Grass Board
 	lea	(Pal_GreenTealPuyos).l,a2
 	rts
 	even
-	
-BoardPalette2:
+
+BoardPalette2:	; Puyo Puyo Practise Board
 	lea	(Pal_Options).l,a2
 	rts
 	even
-	
-BoardPalette3:
+
+BoardPalette3:	; Puyo Puyo Stone Board (Main)
 	lea	(Pal_StoneBoard1_Puyo).l,a2
 	rts
 	even
-	
-BoardPalette4:
+
+BoardPalette4:	; Puyo Puyo Stone Board (Final)
 	lea	(Pal_StoneBoard2_Puyo).l,a2
 	rts
 	even
 
-BoardPaletteFade: 
-	move.b	#2,d0
-	move.b	#0,d1
-	lea	(Pal_GreenTealPuyos).l,a2 ; Scenario Stage 13
-	jmp	(FadeToPalette).l
-	even
-
-	endc
+; << Link your custom battle board palettes here for your custom battle boards!! >>
+;	Example;
+;BoardPalette5:
+;	lea	(Pal_GreenPuyosGHZ).l,a2	; Loads your palette of choice
+;	rts
+;	even				; Make sure to include this to avoid odd offset errors!!!
 
 ; =============== S U B	R O U T	I N E =======================================
 
+; Mean Bean Tsuu Cutscene FG Palette Loading System
+
+; ---------------------------------------------------------------------------
+
+LoadCutsceneFGPal:	
+	clr.w	d0
+	move.b	(level).l, d0	
+	lsl.w	#2, d0
+	movea.l CutsceneFG_PalIDs(pc,d0.w), a1
+	jsr	(a1)
+	move.b	#0,d0
+	move.b	#0,d1
+	jmp	(FadeToPalette).l	
+	even
+
+CutsceneFG_PalIDs:
+	dc.l CutsceneFGPalette1 ; Practise Stage 1
+	dc.l CutsceneFGPalette1 ; Practise Stage 2
+	dc.l CutsceneFGPalette1 ; Practise Stage 3
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 1
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 2
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 3
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 4
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 5
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 6
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 7
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 8
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 9
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 10
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 11
+	dc.l CutsceneFGPalette1 ; Scenario/Demo Stage 12
+	dc.l CutsceneFGPalette0 ; Demo Stage 13
+	even
+
+CutsceneFGPalette0:	; Robotnik's Lair Palette
+	lea	(Pal_RobotnikLair).l,a2
+	rts
+	even
+
+CutsceneFGPalette1:	; Mean Bean Hill Palette
+	lea	(Pal_LevelIntroFG).l,a2
+	rts
+	even
+
+; << Link your custom intro cutscene foreground palettes here for your custom cutscene backgrounds!! >>
+;	Example;
+;CutsceneFGPalette2:
+;	lea	(Pal_GHZIntroFG).l,a2	; Loads your palette of choice
+;	rts
+;	even				; Make sure to include this to avoid odd offset errors!!!
+
+; =============== S U B	R O U T	I N E =======================================
+
+LoadCutsceneBGPal:	
+	clr.w	d0
+	move.b	(level).l, d0	
+	lsl.w	#2, d0
+	movea.l CutsceneBG_PalIDs(pc,d0.w), a1
+	jsr	(a1)
+	move.w	#1,d0
+	move.b	#0,d1
+	jmp	(FadeToPalette).l	
+	even
+
+CutsceneBG_PalIDs:
+	dc.l CutsceneBGPalette1 ; Practise Stage 1
+	dc.l CutsceneBGPalette1 ; Practise Stage 2
+	dc.l CutsceneBGPalette1 ; Practise Stage 3
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 1
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 2
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 3
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 4
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 5
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 6
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 7
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 8
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 9
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 10
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 11
+	dc.l CutsceneBGPalette1 ; Scenario/Demo Stage 12
+	dc.l CutsceneBGPalette0 ; Demo Stage 13
+	even
+
+CutsceneBGPalette0:	; Robotnik's Lair Palette
+	lea	(Pal_GameIntroGrounder).l,a2
+	rts
+	even
+
+CutsceneBGPalette1:	; Mean Bean Hill Palette
+	lea	(Pal_LevelIntroBG).l,a2
+	rts
+	even
+
+; << Link your custom intro cutscene background palettes here for your custom cutscene backgrounds!! >>
+;	Example;
+;CutsceneBGPalette2:
+;	lea	(Pal_GHZIntroBG).l,a2	; Loads your palette of choice
+;	rts
+;	even				; Make sure to include this to avoid odd offset errors!!!
+
+; =============== S U B	R O U T	I N E =======================================
 
 CheckTutorialPalInit:
 	cmpi.b	#3,(level).l
-	bcc.w	.NotTutorial
+	bcc.s	.NotTutorial
 	bsr.w	InitPalette_Safe
 
 .NotTutorial:
 	rts
 ; End of function CheckTutorialPalInit
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 SetOpponent:
 	moveq	#0,d0
-	cmpi.b	#$F,(level).l
-	bne.s	.GetOpponentID
-	moveq	#1,d0
-
-.GetOpponentID:
-	move.b	d0,(bytecode_flag).l
+	moveq	#0,d1
+	move.b	(level).l,d0
+	move.b	CutsceneFade_Flags(pc,d0.w), d1
+	move.b	d1,(bytecode_flag).l
 	move.b	(level).l,d0
 	lea	(Opponents).l,a1
 	move.b	(a1,d0.w),(opponent).l
+	tst.b	(bytecode_flag).l
+	bne.w	JmpToDisableHScroll
 	rts
 ; End of function SetOpponent
 
+JmpToDisableHScroll:
+	jmp	(DisableLineHScroll).l
+
+CutsceneFade_Flags:
+	dc.b 1	; Practise Stage 1
+	dc.b 1	; Practise Stage 2
+	dc.b 1	; Practise Stage 3
+	dc.b 0	; Scenario/Demo Stage 1
+	dc.b 0	; Scenario/Demo Stage 2
+	dc.b 0	; Scenario/Demo Stage 3
+	dc.b 0	; Scenario/Demo Stage 4
+	dc.b 0	; Scenario/Demo Stage 5
+	dc.b 0	; Scenario/Demo Stage 6
+	dc.b 0	; Scenario/Demo Stage 7
+	dc.b 0	; Scenario/Demo Stage 8
+	dc.b 0	; Scenario/Demo Stage 9
+	dc.b 0	; Scenario/Demo Stage 10
+	dc.b 0	; Scenario/Demo Stage 11
+	dc.b 0	; Scenario/Demo Stage 12
+	dc.b 1	; Demo Stage 13
+	even
 ; ---------------------------------------------------------------------------
 Opponents:
 	dc.b OPP_SKELETON	; Puyo Puyo leftover
@@ -1979,14 +2097,30 @@ InitDebugFlags:
 
 CheckFinalLevel:
 	moveq	#0,d0
-	cmpi.b	#$F,(level).l
-	bne.s	loc_27CE
-	moveq	#1,d0
-
-loc_27CE:
-	move.b	d0,(bytecode_flag).l
+	moveq	#0,d1
+	move.b	(level).l,d0
+	move.b	OpponentScreen_Flags(pc,d0.w),d1
+	move.b	d1,(bytecode_flag).l
 	rts
 
+OpponentScreen_Flags:
+	dc.b 1	; Practise Stage 1
+	dc.b 1	; Practise Stage 2
+	dc.b 1	; Practise Stage 3
+	dc.b 0	; Scenario/Demo Stage 1
+	dc.b 0	; Scenario/Demo Stage 2
+	dc.b 0	; Scenario/Demo Stage 3
+	dc.b 0	; Scenario/Demo Stage 4
+	dc.b 0	; Scenario/Demo Stage 5
+	dc.b 0	; Scenario/Demo Stage 6
+	dc.b 0	; Scenario/Demo Stage 7
+	dc.b 0	; Scenario/Demo Stage 8
+	dc.b 0	; Scenario/Demo Stage 9
+	dc.b 0	; Scenario/Demo Stage 10
+	dc.b 0	; Scenario/Demo Stage 11
+	dc.b 0	; Scenario/Demo Stage 12
+	dc.b 1	; Demo Stage 13
+	even
 ; --------------------------------------------------------------
 ; Palette table
 ; --------------------------------------------------------------
@@ -1998,8 +2132,8 @@ Palettes:
 ; Animation Frames - Has Bean
 ; --------------------------------------------------------------
 
-	include "resource/anim/has bean/Has Bean - Start Match.asm"
-	include "resource/anim/has bean/Has Bean - Movement.asm"
+	include "resource/anim/Has Bean/Has Bean - Start Match.asm"
+	include "resource/anim/Has Bean/Has Bean - Movement.asm"
 
 ; --------------------------------------------------------------
 ; Initialize actors
@@ -2071,7 +2205,7 @@ RunActors:
 
 FindActorSlot:
 	bsr.w	FindActorSlotQuick
-	bcc.w	.Loaded
+	bcc.s	.Loaded
 	movem.l	d0/a0,-(sp)
 
 	lea	actors,a0
@@ -2079,7 +2213,7 @@ FindActorSlot:
 
 .FindSlot:
 	btst	#7,aField1(a0)
-	beq.w	.FoundSlot
+	beq.s	.FoundSlot
 	adda.l	#aSize,a0
 	dbf	d0,.FindSlot
 
@@ -2121,7 +2255,7 @@ FindActorSlotQuick:
 
 .FindSlot:
 	tst.w	aField0(a0)
-	beq.w	.FoundSlot
+	beq.s	.FoundSlot
 	adda.l	#aSize,a0
 	dbf	d0,.FindSlot
 
@@ -2147,7 +2281,7 @@ FindActorSlotQuick:
 ; --------------------------------------------------------------
 
 ActorDeleteSelf:
-	movem.l	a2,-(sp)
+	move.l	a2,-(sp)
 	movea.l	a0,a2
 	bra.w	DeleteActor
 
@@ -2159,7 +2293,7 @@ ActorDeleteSelf:
 ; --------------------------------------------------------------
 
 ActorDeleteOther:
-	movem.l	a2,-(sp)
+	move.l	a2,-(sp)
 	movea.l	a1,a2
 
 ; --------------------------------------------------------------
@@ -2180,7 +2314,7 @@ DeleteActor:
 	dbf	d1,.Clear
 
 	movem.l	(sp)+,d0-d1
-	movem.l	(sp)+,a2
+	move.l	(sp)+,a2
 	rts
 
 ; --------------------------------------------------------------
@@ -2206,7 +2340,7 @@ ActorBookmark:
 	tst.w	aDelay(a0)
 	beq.w	.Bookmark
 	subq.w	#1,aDelay(a0)
-	beq.w	.Bookmark
+	beq.s	.Bookmark
 	move.l	(sp)+,d0
 	rts
 
@@ -2226,12 +2360,12 @@ ActorBookmark_Ctrl:
 	move.b	p1_ctrl_press,d0
 	or.b	p2_ctrl_press,d0
 	andi.b	#$F0,d0
-	bne.w	.Bookmark
+	bne.s	.Bookmark
 
 	tst.w	aDelay(a0)
-	beq.w	.Bookmark
+	beq.s	.Bookmark
 	subq.w	#1,aDelay(a0)
-	beq.w	.Bookmark
+	beq.s	.Bookmark
 	move.l	(sp)+,d0
 	rts
 
@@ -2249,7 +2383,7 @@ ActorBookmark_Ctrl:
 
 ActorAnimate:
 	tst.b	aAnimTime(a0)
-	beq.w	.ChkStop
+	beq.s	.ChkStop
 	subq.b	#1,aAnimTime(a0)
 	rts
 
@@ -2257,7 +2391,7 @@ ActorAnimate:
 	movea.l	aAnim(a0),a2
 	cmpi.b	#$FE,(a2)
 	bcs.w	ActorParseAnim
-	bne.w	.Jump
+	bne.s	.Jump
 
 	SET_CARRY
 	rts
@@ -2281,7 +2415,7 @@ ActorAnimate:
 ActorParseAnim:
 	move.b	(a2)+,d0
 	cmpi.b	#$F0,d0
-	bcs.w	.GetFrame
+	bcs.s	.GetFrame
 	bsr.w	ActorRandomAnimTime
 
 .GetFrame:
@@ -2350,7 +2484,7 @@ sub_3810:
 
 sub_382A:
 	btst	#1,d0
-	bne.w	loc_3834
+	bne.s	loc_3834
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -2359,12 +2493,12 @@ loc_3834:
 	move.l	aField12(a0),d2
 	add.l	d2,d1
 	btst	#5,d0
-	bne.w	loc_385A
+	bne.s	loc_385A
 	swap	d1
 	cmpi.w	#128,d1
-	bcs.w	loc_3860
+	bcs.s	loc_3860
 	cmpi.w	#320+128,d1
-	bcc.w	loc_3860
+	bcc.s	loc_3860
 	swap	d1
 
 loc_385A:
@@ -2385,7 +2519,7 @@ loc_3860:
 
 sub_386E:
 	btst	#0,d0
-	bne.w	loc_3878
+	bne.s	loc_3878
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -2394,12 +2528,12 @@ loc_3878:
 	move.l	aField16(a0),d2
 	add.l	d2,d1
 	btst	#4,d0
-	bne.w	loc_389E
+	bne.s	loc_389E
 	swap	d1
 	cmpi.w	#128,d1
-	bcs.w	loc_38A4
+	bcs.s	loc_38A4
 	cmpi.w	#224+128,d1
-	bcc.w	loc_38A4
+	bcc.s	loc_38A4
 	swap	d1
 
 loc_389E:
@@ -2420,27 +2554,27 @@ loc_38A4:
 
 sub_38B2:
 	btst	#3,d0
-	bne.w	loc_38BC
+	bne.s	loc_38BC
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_38BC:
 	move.w	aX(a0),d1
 	cmp.w	aField1E(a0),d1
-	bcs.w	loc_38CE
-	bne.w	loc_38DA
+	bcs.s	loc_38CE
+	bne.s	loc_38DA
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_38CE:
-	clr.l	d1
+	moveq	#0,d1
 	move.w	aField1A(a0),d1
 	add.l	d1,aField12(a0)
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_38DA:
-	clr.l	d1
+	moveq	#0,d1
 	move.w	aField1A(a0),d1
 	sub.l	d1,aField12(a0)
 	rts
@@ -2452,35 +2586,34 @@ loc_38DA:
 
 sub_38E6:
 	btst	#2,d0
-	bne.w	loc_38F0
+	bne.s	loc_38F0
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_38F0:
 	move.w	aY(a0),d1
 	cmp.w	aField20(a0),d1
-	bcs.w	loc_3902
-	bne.w	loc_390E
+	bcs.s	loc_3902
+	bne.s	loc_390E
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_3902:
-	clr.l	d1
+	moveq	#0,d1
 	move.w	aField1C(a0),d1
 	add.l	d1,aField16(a0)
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_390E:
-	clr.l	d1
+	moveq	#0,d1
 	move.w	aField1C(a0),d1
 	sub.l	d1,aField16(a0)
 	rts
 ; End of function sub_38E6
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
+; TODO - De-Hard Code this so that it's easier to adjust which characters have effects
 
 PuyoLandEffects:
 	cmpi.b	#OPP_FRANKLY,(opponent).l
@@ -2493,18 +2626,18 @@ PuyoLandEffects:
 	beq.w	PlayPuyoLandSound
 	move.b	#SFX_PUYO_LAND_HARD,d0
 	jsr	(PlaySound_ChkPCM).l
-	movem.l	a1,-(sp)
+	move.l	a1,-(sp)
 	lea	(ActShakeField).l,a1
 	bsr.w	FindActorSlotQuick
-	bcs.w	loc_3974
+	bcs.s	loc_3974
 	move.w	#$400,aField38(a1)
 	move.l	#(vscroll_buffer+$34),aAnim(a1)
 	tst.b	(swap_controls).l
-	beq.w	loc_3974
+	beq.s	loc_3974
 	move.l	#(vscroll_buffer+4),aAnim(a1)
 
 loc_3974:
-	movem.l	(sp)+,a1
+	move.l	(sp)+,a1
 	rts
 ; End of function PuyoLandEffects
 
@@ -2539,7 +2672,7 @@ loc_398A:
 PlayPuyoLandSound:
 	move.b	#SFX_PUYO_LAND,d0
 	cmpi.b	#OPP_ROBOTNIK,(opponent).l
-	bne.w	loc_39C6
+	bne.s	loc_39C6
 	move.b	#SFX_PUYO_LAND,d0
 
 loc_39C6:
@@ -2552,7 +2685,7 @@ loc_39C6:
 PlayPuyoMoveSound:
 	move.b	#SFX_PUYO_MOVE,d0
 	cmpi.b	#OPP_ROBOTNIK,(opponent).l
-	bne.w	loc_39E0
+	bne.s	loc_39E0
 	move.b	#SFX_PUYO_MOVE,d0
 
 loc_39E0:
@@ -2564,7 +2697,7 @@ loc_39E0:
 PlayPuyoRotateSound:
 	move.b	#SFX_PUYO_ROTATE,d0
 	cmpi.b	#OPP_ROBOTNIK,(opponent).l
-	bne.w	loc_39FA
+	bne.s	loc_39FA
 	move.b	#SFX_PUYO_ROTATE,d0
 
 loc_39FA:
@@ -2576,13 +2709,13 @@ loc_39FA:
 
 HandleLevelMusic:
 	tst.b	(level_mode).l
-	beq.w	.CheckPlayer
+	beq.s	.CheckPlayer
 	rts
 ; ---------------------------------------------------------------------------
 
 .CheckPlayer:
 	tst.b	aPlayerID(a0)
-	beq.w	.CheckDanger
+	beq.s	.CheckDanger
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -2590,7 +2723,7 @@ HandleLevelMusic:
 	cmpi.b	#BGM_DANGER,(cur_level_music).l
 	beq.w	.CheckDangerOver
 	cmpi.w	#60,(puyo_field_p1+pCount).l
-	bcc.w	.InDanger
+	bcc.s	.InDanger
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -2602,7 +2735,7 @@ HandleLevelMusic:
 
 .CheckDangerOver:
 	cmpi.w	#54,(puyo_field_p1+pCount).l
-	bcs.w	JmpTo_PlayLevelMusic
+	bcs.s	JmpTo_PlayLevelMusic
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -2611,70 +2744,70 @@ JmpTo_PlayLevelMusic:
 ; End of function HandleLevelMusic
 
 ; ---------------------------------------------------------------------------
-MaxPuyoColors:	dc.b PuyoColors_LessonCount-PuyoColors
-	dc.b PuyoColors_LessonCount-PuyoColors
-	dc.b PuyoColors_LessonCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
-	dc.b PuyoColors_NormalCount-PuyoColors
+MaxPuyoColours:
+	dc.b PuyoColours_LessonCount-PuyoColours	; Practise Stage 1
+	dc.b PuyoColours_LessonCount-PuyoColours	; Practise Stage 2
+	dc.b PuyoColours_LessonCount-PuyoColours	; Practise Stage 3
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 1
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 2
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 3
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 4
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 5
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 6
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 7
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 8
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 9
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 10
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 11
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 12
+	dc.b PuyoColours_NormalCount-PuyoColours	; Stage 13
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 GenPuyoOrder:
-	move.b	#PuyoColors_LessonCount-PuyoColors,d2
+	move.b	#PuyoColours_NormalCount-PuyoColours,d2
 	cmpi.b	#1,(level_mode).l
-	beq.w	loc_3A80
+	beq.s	loc_3A80
 	clr.w	d1
 	move.b	(level).l,d1
-	move.b	MaxPuyoColors(pc,d1.w),d2
+	move.b	MaxPuyoColours(pc,d1.w),d2
 
 loc_3A80:
 	move.w	#$100-1,d1
 	clr.w	d0
 	lea	(p1_puyo_order).l,a1
-	lea	(PuyoColors).l,a2
+	lea	(PuyoColours).l,a2
 
-.StoreP1Colors:
+.StoreP1Colours:
 	move.b	(a2,d0.w),(a1)+
 	addq.b	#1,d0
 	cmp.b	d2,d0
-	bcs.w	.NoP1ListReset
+	bcs.s	.NoP1ListReset
 	clr.b	d0
 
 .NoP1ListReset:
-	dbf	d1,.StoreP1Colors
+	dbf	d1,.StoreP1Colours
 
 	move.w	#$100-1,d1
 	lea	(p1_puyo_order).l,a1
 
-.ShuffleP1Colors:
+.ShuffleP1Colours:
 	jsr	(Random).l
 	andi.w	#$FF,d0
 	move.b	(a1,d0.w),d2
 	move.b	(a1,d1.w),(a1,d0.w)
 	move.b	d2,(a1,d1.w)
-	dbf	d1,.ShuffleP1Colors
+	dbf	d1,.ShuffleP1Colours
 
 	move.w	#$100-1,d1
 	lea	(p2_puyo_order).l,a2
 
-.CopyP1ColorsToP2:
+.CopyP1ColoursToP2:
 	move.b	(a1)+,(a2)+
-	dbf	d1,.CopyP1ColorsToP2
+	dbf	d1,.CopyP1ColoursToP2
 
 	cmpi.b	#1,(level_mode).l
-	beq.w	.DifferentP2Order
+	beq.s	.DifferentP2Order
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -2682,40 +2815,40 @@ loc_3A80:
 	move.w	#$F8-1,d1
 	clr.w	d0
 	lea	(p2_puyo_order+8).l,a1
-	lea	(PuyoColors).l,a2
+	lea	(PuyoColours).l,a2
 
-.StoreP2Colors:
+.StoreP2Colours:
 	move.b	(a2,d0.w),(a1)+
 	addq.b	#1,d0
-	cmpi.b	#PuyoColors_NormalCount-PuyoColors,d0
-	bcs.w	.NoP2ListReset
+	cmpi.b	#PuyoColours_NormalCount-PuyoColours,d0
+	bcs.s	.NoP2ListReset
 	clr.b	d0
 
 .NoP2ListReset:
-	dbf	d1,.StoreP2Colors
+	dbf	d1,.StoreP2Colours
 
 	move.w	#$F8-1,d1
 	lea	(p2_puyo_order+8).l,a1
 
-.ShuffleP2Colors:
+.ShuffleP2Colours:
 	move.w	#$F8,d0
 	jsr	(RandomBound).l
 	move.b	(a1,d0.w),d2
 	move.b	(a1,d1.w),(a1,d0.w)
 	move.b	d2,(a1,d1.w)
-	dbf	d1,.ShuffleP2Colors
+	dbf	d1,.ShuffleP2Colours
 	rts
 ; End of function GenPuyoOrder
 
 ; ---------------------------------------------------------------------------
-PuyoColors:
+PuyoColours:
 	dc.b PUYO_RED
-	dc.b PUYO_YELLOW
 	dc.b PUYO_GREEN
-	dc.b PUYO_PURPLE
-PuyoColors_LessonCount:
 	dc.b PUYO_BLUE
-PuyoColors_NormalCount:
+	dc.b PUYO_YELLOW
+PuyoColours_LessonCount:
+	dc.b PUYO_PURPLE
+PuyoColours_NormalCount:
 	dc.b PUYO_GARBAGE	; Unused
 	dc.b PUYO_TEAL		; Unused
 	dc.b 0
@@ -2727,7 +2860,7 @@ sub_3B3E:
 	clr.w	d1
 	move.b	$2B(a0),d1
 	cmpi.b	#5,d1
-	bcs.w	loc_3B50
+	bcs.s	loc_3B50
 	move.b	#4,d1
 
 loc_3B50:
@@ -2737,12 +2870,13 @@ loc_3B50:
 ; End of function sub_3B3E
 
 ; ---------------------------------------------------------------------------
-word_3B58:	dc.w $C
+word_3B58:
+	dc.w $C
 	dc.w 8
 	dc.w 4
 	dc.w 2
 	dc.w 0
-	
+
 ; --------------------------------------------------------------
 ; Mark the current level as finished and determine where
 ; to go next
@@ -2755,7 +2889,7 @@ word_3B58:	dc.w $C
 
 LevelEnd:
 	cmpi.b	#$F,(level).l
-	bcc.w	.Ending
+	bcc.s	.Ending
 	addq.b	#1,(level).l
 	clr.w	d0
 	move.b	(opponent).l,d0
@@ -2763,7 +2897,7 @@ LevelEnd:
 	move.b	#$FF,(a1,d0.w)
 	move.b	#0,(bytecode_flag).l
 	cmpi.b	#3,(level).l
-	bne.w	.Exit
+	bne.s	.Exit
 	move.b	#2,(bytecode_flag).l
 
 .Exit:
@@ -2784,7 +2918,6 @@ sub_3BB0:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_3BBA:
 	move.b	#$FF,8(a0)
 	move.l	#byte_3BF2,$32(a0)
@@ -2792,7 +2925,7 @@ sub_3BBA:
 	bsr.w	ActorAnimate
 	move.b	9(a0),d0
 	cmp.b	8(a0),d0
-	bne.w	loc_3BDE
+	bne.s	loc_3BDE
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -2805,7 +2938,8 @@ loc_3BDE:
 ; End of function sub_3BBA
 
 ; ---------------------------------------------------------------------------
-byte_3BF2:	dc.b $F3, 0
+byte_3BF2:
+	dc.b $F3, 0
 	dc.b 2,	4
 	dc.b 4,	5
 	dc.b 2,	4
@@ -2816,7 +2950,7 @@ byte_3BF2:	dc.b $F3, 0
 loc_3C00:
 	move.w	#$CB1E,(word_FF198A).l
 	tst.b	(swap_controls).l
-	beq.w	loc_3C1A
+	beq.s	loc_3C1A
 	move.w	#$CC22,(word_FF198A).l
 
 loc_3C1A:
@@ -2824,7 +2958,7 @@ loc_3C1A:
 	clr.w	(time_minutes).l
 	clr.b	(byte_FF1965).l
 	tst.b	(level_mode).l
-	bne.w	loc_3C40
+	bne.s	loc_3C40
 	clr.b	(cur_level_music).l
 	bsr.w	JmpTo_PlayLevelMusic
 
@@ -2854,7 +2988,7 @@ loc_3C40:
 	jsr	(sub_1233A).l
 	bsr.w	sub_3CDA
 	cmpi.b	#2,(level_mode).l
-	bne.w	locret_3CD8
+	bne.s	locret_3CD8
 	move.l	#$800F0000,d0
 	jsr	(QueuePlaneCmd).l
 	bsr.w	sub_9376
@@ -2869,7 +3003,7 @@ sub_3CDA:
 	move.l	#$80000000,d0
 	move.b	(level_mode).l,d1
 	andi.b	#3,d1
-	bne.w	loc_3CF4
+	bne.s	loc_3CF4
 	move.l	#$80060000,d0
 
 loc_3CF4:
@@ -2883,7 +3017,7 @@ loc_3CF4:
 sub_3CFA:
 	move.b	(level_mode).l,d2
 	btst	#2,d2
-	bne.w	locret_3D1A
+	bne.s	locret_3D1A
 	clr.w	d0
 	move.b	$2A(a0),d0
 	lea	(player_1_flags).l,a1
@@ -2896,13 +3030,14 @@ locret_3D1A:
 ; ---------------------------------------------------------------------------
 
 loc_3D1C:
-	jsr	(sub_11EF2).l
+;	jsr	(sub_11EF2).l		; This controls the Lesson mode text spawning in Practise Stage 1
+					; As the art for it was removed, garbage graphics spawn, so I commented it out.
 	bsr.w	sub_44EA
 	move.b	(byte_FF196A).l,d0
 	cmp.b	$2A(a0),d0
-	beq.w	loc_3D44
+	beq.s	loc_3D44
 	btst	#1,(level_mode).l
-	beq.w	loc_3D44
+	beq.s	loc_3D44
 	bra.w	loc_813C
 ; ---------------------------------------------------------------------------
 
@@ -2914,7 +3049,7 @@ loc_3D44:
 	bsr.w	ResetPuyoField
 	DISABLE_INTS
 	ENABLE_INTS
-	clr.l	d0
+	moveq	#0,d0
 	bsr.w	sub_9C4A
 	clr.w	d1
 	bsr.w	sub_9502
@@ -2923,7 +3058,7 @@ loc_3D44:
 	bsr.w	sub_3F94
 	bsr.w	ActorBookmark
 	btst	#0,7(a0)
-	beq.w	loc_3D8C
+	beq.s	loc_3D8C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -2934,7 +3069,7 @@ loc_3D8C:
 	bsr.w	sub_9502
 	bsr.w	ActorBookmark
 	btst	#1,7(a0)
-	beq.w	loc_3DAC
+	beq.s	loc_3DAC
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -2951,7 +3086,7 @@ loc_3DB0:
 	bsr.w	sub_9814
 	bsr.w	ActorBookmark
 	btst	#2,7(a0)
-	beq.w	loc_3DDE
+	beq.s	loc_3DDE
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -2973,16 +3108,16 @@ loc_3DDE:
 	clr.b	(a1,d0.w)
 	jsr	(sub_127BA).l
 	tst.b	(control_puyo_drop).l
-	beq.w	loc_3E40
+	beq.s	loc_3E40
 	jsr	(nullsub_4).l
 
 loc_3E40:
 	bsr.w	ActorBookmark
 	tst.b	(control_puyo_drop).l
-	beq.w	loc_3E5C
+	beq.s	loc_3E5C
 	bsr.w	sub_56C0
 	btst	#5,d0
-	bne.w	loc_3E5C
+	bne.s	loc_3E5C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -2994,9 +3129,9 @@ loc_3E5C:
 	addq.b	#1,$26(a0)
 	move.b	7(a0),d0
 	andi.b	#3,d0
-	beq.w	loc_3E96
+	beq.s	loc_3E96
 	btst	#3,7(a0)
-	bne.w	loc_3E8A
+	bne.s	loc_3E8A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3016,7 +3151,7 @@ loc_3E96:
 	ENABLE_INTS
 	bsr.w	ActorBookmark
 	tst.w	$26(a0)
-	bne.w	loc_3EDA
+	bne.s	loc_3EDA
 	bsr.w	sub_3B3E
 	bsr.w	ActorBookmark_SetDelay
 	bsr.w	ActorBookmark
@@ -3052,7 +3187,7 @@ loc_3EDA:
 	bset	#4,7(a0)
 	bsr.w	ActorBookmark
 	btst	#4,7(a0)
-	beq.w	loc_3F50
+	beq.s	loc_3F50
 	bra.w	loc_4E14
 ; ---------------------------------------------------------------------------
 
@@ -3061,7 +3196,7 @@ loc_3F50:
 	bsr.w	sub_9CA2
 	bsr.w	ActorBookmark
 	addq.b	#1,9(a0)
-	bcc.w	loc_3F6A
+	bcc.s	loc_3F6A
 	move.b	#$FF,9(a0)
 
 loc_3F6A:
@@ -3077,36 +3212,33 @@ loc_3F6E:
 	rts
 ; END OF FUNCTION CHUNK	FOR sub_3F94
 ; ---------------------------------------------------------------------------
-unk_3F84:	dc.b   7
-	dc.b   9
-	dc.b  $B
-	dc.b   8
-	dc.b   9
-	dc.b  $A
-	dc.b  $B
-	dc.b  $C
-	dc.b  $D
-	dc.b  $E
-	dc.b  $F
-	dc.b $11
-	dc.b $11
-	dc.b $12
-	dc.b $12
-	dc.b $13
+unk_3F84:	; Does this control puyo drop speeds?
+	dc.b   7	; Practise Stage 1
+	dc.b   9	; Practise Stage 2
+	dc.b  $B	; Practise Stage 3
+	dc.b   8	; Stage 1
+	dc.b   9	; Stage 2
+	dc.b  $A	; Stage 3
+	dc.b  $B	; Stage 4
+	dc.b  $C	; Stage 5
+	dc.b  $D	; Stage 6
+	dc.b  $E	; Stage 7
+	dc.b  $F	; Stage 8
+	dc.b $11	; Stage 9
+	dc.b $11	; Stage 10
+	dc.b $12	; Stage 11
+	dc.b $12	; Stage 12
+	dc.b $13	; Stage 13
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_3F94:
-
-; FUNCTION CHUNK AT 00003F6E SIZE 00000016 BYTES
-
 	move.b	(level_mode).l,d0
 	andi.b	#3,d0
 	beq.s	loc_3F6E
 	lea	(loc_3FE6).l,a1
 	bsr.w	FindActorSlot
-	bcc.w	loc_3FB0
+	bcc.s	loc_3FB0
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3123,8 +3255,11 @@ loc_3FB0:
 	movea.l	a1,a2
 	bra.w	loc_41EC
 ; ---------------------------------------------------------------------------
-word_3FDE:	dc.w $A0
-word_3FE0:	dc.w $D4
+word_3FDE:
+	dc.w $A0
+
+word_3FE0:
+	dc.w $D4
 	dc.w $180
 	dc.w $14C
 ; ---------------------------------------------------------------------------
@@ -3144,7 +3279,7 @@ loc_3FE6:
 	move.w	$28(a0),d0
 	jsr	(QueuePlaneCmd).l
 	subq.w	#1,$28(a0)
-	bcs.w	loc_4022
+	bcs.s	loc_4022
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3169,7 +3304,7 @@ loc_4022:
 	move.w	#$CC0A,d5
 	move.w	#$8500,d6
 	tst.b	$2A(a0)
-	beq.w	loc_4084
+	beq.s	loc_4084
 	move.w	#$CC3A,d5
 	move.w	#$A500,d6
 
@@ -3177,12 +3312,12 @@ loc_4084:
 	bsr.w	ActorBookmark
 	bsr.w	sub_56C0
 	andi.b	#$F0,d0
-	bne.w	loc_4112
+	bne.s	loc_4112
 	bsr.w	sub_56C0
 	btst	#0,d0
-	bne.w	loc_40AA
+	bne.s	loc_40AA
 	btst	#1,d0
-	bne.w	loc_40BA
+	bne.s	loc_40BA
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3200,7 +3335,7 @@ loc_40BA:
 
 loc_40C8:
 	cmpi.b	#2,(level_mode).l
-	bne.w	loc_40D6
+	bne.s	loc_40D6
 	asl.b	#1,d1
 
 loc_40D6:
@@ -3240,7 +3375,7 @@ loc_4112:
 	or.w	d1,d0
 	jsr	(QueuePlaneCmd).l
 	subq.w	#1,$28(a0)
-	beq.w	loc_4158
+	beq.s	loc_4158
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3265,7 +3400,7 @@ loc_4158:
 	jsr	(QueuePlaneCmd).l
 	addq.w	#1,$26(a0)
 	cmpi.w	#8,$26(a0)
-	bcc.w	loc_41B0
+	bcc.s	loc_41B0
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3290,7 +3425,7 @@ loc_41B0:
 loc_41EC:
 	move.w	#$B8,d1
 	btst	#1,(level_mode).l
-	bne.w	loc_4200
+	bne.s	loc_4200
 	move.w	#$B0,d1
 
 loc_4200:
@@ -3320,7 +3455,7 @@ loc_4230:
 	movea.l	a1,a3
 	lea	(loc_436A).l,a1
 	bsr.w	FindActorSlotQuick
-	bcs.w	locret_4292
+	bcs.s	locret_4292
 	move.l	a2,$2E(a1)
 	move.l	a3,$32(a1)
 	move.b	#0,6(a1)
@@ -3355,7 +3490,7 @@ loc_42A8:
 loc_42AE:
 	move.l	(sp)+,d0
 	mulu.w	#$A,d0
-	lea	(word_42C8).l,a0
+	lea	(PalTable_Difficulty).l,a0
 	adda.w	d0,a0
 	moveq	#4,d1
 
@@ -3367,26 +3502,36 @@ loc_42BE:
 ; End of function sub_4294
 
 ; ---------------------------------------------------------------------------
-word_42C8:	dc.w 6
+PalTable_Difficulty:	; Difficulty Face Palettes!
+	; Arms
+	dc.w 6
 	dc.w $2A
 	dc.w $24C
 	dc.w $48E
 	dc.w $666
+
+	; Frankly
 	dc.w $404
 	dc.w $A46
 	dc.w $C8A
 	dc.w $46
 	dc.w $AC
+
+	; Humpty
 	dc.w $40
 	dc.w $282
 	dc.w $4A6
 	dc.w $46
 	dc.w $AC
+
+	; Coconuts
 	dc.w 4
 	dc.w $48
 	dc.w $48C
 	dc.w $8CE
 	dc.w $CE
+
+	; Davy Sprocket
 	dc.w $624
 	dc.w $A48
 	dc.w $E8A
@@ -3416,7 +3561,7 @@ loc_4338:
 	move.w	d0,d1
 	moveq	#$14,d2
 	btst	#1,(level_mode).l
-	bne.w	loc_434A
+	bne.s	loc_434A
 	moveq	#$18,d2
 
 loc_434A:
@@ -3446,7 +3591,7 @@ loc_436A:
 	move.b	d0,9(a0)
 	moveq	#$14,d2
 	btst	#1,(level_mode).l
-	bne.w	loc_43A6
+	bne.s	loc_43A6
 	moveq	#$18,d2
 
 loc_43A6:
@@ -3487,48 +3632,51 @@ sub_43EA:
 	clr.w	d1
 	move.b	$2B(a0),d1
 	cmpi.b	#5,d1
-	bcs.w	loc_4412
+	bcs.s	loc_4412
 	move.b	#4,d1
 
 loc_4412:
 	clr.w	d0
-	move.b	unk_444A(pc,d1.w),d0
-	movem.l	d2,-(sp)
+	move.b	ExercisePuyoCount(pc,d1.w),d0
+	move.l	d2,-(sp)
 	move.w	d0,d1
 	jsr	(RandomBound).l
-	move.b	unk_4450(pc,d0.w),d2
+	move.b	ExercisePuyoOrder(pc,d0.w),d2
 	move.b	d2,d0
 	exg	d0,d1
 	jsr	(RandomBound).l
-	move.b	unk_4450(pc,d0.w),d2
+	move.b	ExercisePuyoOrder(pc,d0.w),d2
 	move.b	d2,d0
-	movem.l	(sp)+,d2
+	move.l	(sp)+,d2
 	cmpi.b	#2,(level_mode).l
-	beq.w	loc_4456
+	beq.s	loc_4456
 	rts
 ; ---------------------------------------------------------------------------
-unk_444A:	dc.b   4
+ExercisePuyoCount:	; Exercise Mode Level Puyo Counts
+	dc.b   4
 	dc.b   5
 	dc.b   5
 	dc.b   5
 	dc.b   5
 	dc.b   0
-unk_4450:	dc.b   0
-	dc.b   1
+
+ExercisePuyoOrder:	; Order of Puyos in Exercise Mode
+	dc.b   0
 	dc.b   3
-	dc.b   4
 	dc.b   5
+	dc.b   1
+	dc.b   4
 	dc.b   2
 ; ---------------------------------------------------------------------------
 
 loc_4456:
-	movem.l	d2,-(sp)
+	move.l	d2,-(sp)
 	move.w	$20(a1),d2
 	cmp.w	$1E(a1),d2
-	bcc.w	loc_4484
+	bcc.s	loc_4484
 	clr.w	$1E(a1)
 	addi.w	#$C,$20(a1)
-	bcc.w	loc_447A
+	bcc.s	loc_447A
 	move.w	#$FFFF,$20(a1)
 
 loc_447A:
@@ -3537,7 +3685,7 @@ loc_447A:
 	move.b	d0,d1
 
 loc_4484:
-	movem.l	(sp)+,d2
+	move.l	(sp)+,d2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3547,7 +3695,7 @@ loc_448A:
 	move.b	$20(a1),d2
 	lea	(p1_puyo_order).l,a2
 	tst.b	$2A(a0)
-	beq.w	loc_44A8
+	beq.s	loc_44A8
 	lea	(p2_puyo_order).l,a2
 
 loc_44A8:
@@ -3564,7 +3712,7 @@ loc_44BA:
 	move.b	$20(a1),d2
 	lea	(p1_puyo_order).l,a2
 	tst.b	$2B(a0)
-	beq.w	loc_44D8
+	beq.s	loc_44D8
 	lea	(p2_puyo_order).l,a2
 
 loc_44D8:
@@ -3575,9 +3723,7 @@ loc_44D8:
 	rts
 ; End of function sub_43EA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_44EA:
 	clr.w	d3
@@ -3586,14 +3732,14 @@ sub_44EA:
 loc_44EE:
 	lea	(nullsub_5).l,a1
 	bsr.w	FindActorSlot
-	bcc.w	loc_44FE
+	bcc.s	loc_44FE
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_44FE:
 	move.l	a1,$32(a0)
 	cmpi.b	#2,(level_mode).l
-	bne.w	loc_4514
+	bne.s	loc_4514
 	move.w	#$FFFF,$20(a1)
 
 loc_4514:
@@ -3628,7 +3774,7 @@ loc_452E:
 	add.w	d4,d2
 	lea	(loc_45EA).l,a1
 	bsr.w	FindActorSlot
-	bcc.w	loc_457C
+	bcc.s	loc_457C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3641,7 +3787,7 @@ loc_457C:
 	move.b	#$FF,$36(a1)
 	lea	(loc_45EA).l,a1
 	bsr.w	FindActorSlot
-	bcc.w	loc_45A8
+	bcc.s	loc_45A8
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3655,17 +3801,18 @@ loc_45A8:
 	rts
 ; End of function sub_44EA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 nullsub_5:
 	rts
 ; End of function nullsub_5
 
 ; ---------------------------------------------------------------------------
-word_45CA:	dc.w $108
-word_45CC:	dc.w $C6
+word_45CA:
+	dc.w $108
+
+word_45CC:
+	dc.w $C6
 	dc.w $138
 	dc.w $C6
 	dc.w $108
@@ -3689,7 +3836,7 @@ loc_45EA:
 	move.b	$26(a1,d1.w),d0
 	move.b	d0,8(a0)
 	cmp.b	$36(a0),d0
-	beq.w	loc_4610
+	beq.s	loc_4610
 	move.b	d0,$36(a0)
 	clr.w	$22(a0)
 	bsr.w	sub_4632
@@ -3697,9 +3844,9 @@ loc_45EA:
 loc_4610:
 	move.b	#$80,6(a0)
 	tst.b	7(a0)
-	beq.w	loc_462E
+	beq.s	loc_462E
 	cmpi.b	#$19,8(a0)
-	bcs.w	loc_462E
+	bcs.s	loc_462E
 	move.b	#0,6(a0)
 
 loc_462E:
@@ -3707,12 +3854,11 @@ loc_462E:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_4632:
 	move.l	#unk_465E,$32(a0)
 	cmpi.b	#$19,8(a0)
-	beq.w	loc_464A
-	bcc.w	loc_4654
+	beq.s	loc_464A
+	bcc.s	loc_4654
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3727,7 +3873,10 @@ loc_4654:
 ; End of function sub_4632
 
 ; ---------------------------------------------------------------------------
-unk_465E:	dc.b $F0
+; TODO: Document what these animations are for
+
+unk_465E:
+	dc.b $F0
 	dc.b   0
 	dc.b   1
 	dc.b   2
@@ -3746,7 +3895,9 @@ unk_465E:	dc.b $F0
 	dc.b $FF
 	dc.b   0
 	dc.l unk_465E
-unk_4674:	dc.b   4
+
+unk_4674:
+	dc.b   4
 	dc.b   0
 	dc.b   5
 	dc.b   1
@@ -3757,7 +3908,9 @@ unk_4674:	dc.b   4
 	dc.b $FF
 	dc.b   0
 	dc.l unk_4674
-unk_4682:	dc.b $F0
+
+unk_4682:
+	dc.b $F0
 	dc.b   0
 	dc.b   1
 	dc.b   1
@@ -3779,10 +3932,9 @@ unk_4682:	dc.b $F0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 SpawnGarbage:
 	tst.w	aField14(a0)
-	bne.w	loc_46A2
+	bne.s	loc_46A2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3796,7 +3948,7 @@ loc_46A2:
 	sub.w	d7,aField14(a0)
 	lea	(ActGarbagePuyo).l,a1
 	bsr.w	FindActorSlot
-	bcc.w	.Spawned
+	bcc.s	.Spawned
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3809,20 +3961,20 @@ loc_46A2:
 	bset	#2,aField7(a0)
 	move.w	#2,d0
 	tst.b	(level_mode).l
-	bne.w	loc_4710
+	bne.s	loc_4710
 	cmpi.b	#3,(byte_FF0104).l
-	bcc.w	loc_4710
+	bcc.s	loc_4710
 	move.b	(byte_FF0104).l,d0
 
 loc_4710:
-	lsl.w	#1,d0
+	add.w	d0,d0
 	move.w	word_4730(pc,d0.w),d3
 	move.w	#5,d2
 	bsr.w	GetPuyoFieldPos
 
 loc_471E:
 	tst.b	$C(a3,d2.w)
-	beq.w	loc_472A
+	beq.s	loc_472A
 	bsr.w	sub_4736
 
 loc_472A:
@@ -3831,17 +3983,17 @@ loc_472A:
 ; End of function SpawnGarbage
 
 ; ---------------------------------------------------------------------------
-word_4730:	dc.w 3
+word_4730:
+	dc.w 3
 	dc.w 2
 	dc.w 0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_4736:
 	lea	(sub_486A).l,a1
 	bsr.w	FindActorSlot
-	bcc.w	loc_4746
+	bcc.s	loc_4746
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3880,7 +4032,8 @@ loc_4746:
 ; End of function sub_4736
 
 ; ---------------------------------------------------------------------------
-word_47BA:	dc.w $2400
+word_47BA:
+	dc.w $2400
 	dc.w $2600
 	dc.w $2000
 	dc.w $2A00
@@ -3888,7 +4041,6 @@ word_47BA:	dc.w $2400
 	dc.w $2800
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 SetGarbageOrder:
 	move.w	#5,d0
@@ -3908,9 +4060,7 @@ loc_47D6:
 	rts
 ; End of function SetGarbageOrder
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 GetGarbageFreeSpace:
 	move.w	#5,d0
@@ -3923,7 +4073,7 @@ loc_47F8:
 
 loc_4802:
 	tst.b	(a2,d2.w)
-	bne.w	loc_480C
+	bne.s	loc_480C
 	addq.b	#1,d1
 
 loc_480C:
@@ -3934,9 +4084,7 @@ loc_480C:
 	rts
 ; End of function GetGarbageFreeSpace
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 SetGarbageCounts:
 	move.w	#5,d0
@@ -3946,7 +4094,7 @@ loc_4822:
 	dbf	d0,loc_4822
 	move.w	aField14(a0),d0
 	cmpi.w	#$1F,d0
-	bcs.w	loc_483A
+	bcs.s	loc_483A
 	move.w	#$1E,d0
 
 loc_483A:
@@ -3959,14 +4107,14 @@ loc_4840:
 	move.b	(a3,d1.w),d2
 	move.b	$C(a3,d2.w),d3
 	cmp.b	6(a3,d2.w),d3
-	bcc.w	loc_4858
+	bcc.s	loc_4858
 	addq.b	#1,$C(a3,d2.w)
 	addq.w	#1,d7
 
 loc_4858:
 	addq.b	#1,d1
 	cmpi.b	#6,d1
-	bcs.w	loc_4864
+	bcs.s	loc_4864
 	clr.b	d1
 
 loc_4864:
@@ -3974,16 +4122,11 @@ loc_4864:
 	rts
 ; End of function SetGarbageCounts
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_486A:
-
-; FUNCTION CHUNK AT 0000502C SIZE 00000034 BYTES
-
 	bsr.w	sub_4948
-	bcs.w	loc_4874
+	bcs.s	loc_4874
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -3993,9 +4136,9 @@ loc_4874:
 	subi.w	#$14,d0
 
 loc_487E:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	bsr.w	MarkPuyoSpot
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	subq.w	#1,$1C(a0)
 	dbf	d0,loc_487E
 	movea.l	$2E(a0),a1
@@ -4004,9 +4147,7 @@ loc_487E:
 	bra.w	loc_502C
 ; End of function sub_486A
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ActGarbagePuyo:
 	move.w	aField26(a0),aField28(a0)
@@ -4018,11 +4159,11 @@ ActGarbagePuyo:
 ActGarbagePuyo_Update:
 	move.w	aField26(a0),d0
 	cmp.w	aField28(a0),d0
-	beq.w	loc_48EA
+	beq.s	loc_48EA
 	move.w	d0,aField28(a0)
 	move.w	aField20(a0),aField38(a0)
 	btst	#0,aField7(a0)
-	bne.w	loc_48EA
+	bne.s	loc_48EA
 	move.b	#VOI_GARBAGE_1,d0
 	jsr	(PlaySound_ChkPCM).l
 	bset	#0,aField7(a0)
@@ -4044,14 +4185,14 @@ loc_4900:
 	dbf	d4,loc_4900
 	addi.b	#$18,aField36(a0)
 	tst.w	aField38(a0)
-	beq.w	loc_4930
+	beq.s	loc_4930
 	subi.w	#$40,aField38(a0)
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_4930:
 	tst.w	aField26(a0)
-	beq.w	loc_493A
+	beq.s	loc_493A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -4061,9 +4202,7 @@ loc_493A:
 	bra.w	ActorDeleteSelf
 ; End of function ActGarbagePuyo
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_4948:
 	move.l	aY(a0),d0
@@ -4077,11 +4216,11 @@ sub_4948:
 	sub.w	aField20(a0),d3
 	eor.l	d2,d3
 	btst	#4,d3
-	beq.w	loc_4990
+	beq.s	loc_4990
 	move.b	#2,d0
 	bsr.w	CheckPuyoLand2
 	btst	#0,d0
-	beq.w	loc_498C
+	beq.s	loc_498C
 	swap	d1
 	andi.b	#$F8,d1
 	move.w	d1,aY(a0)
@@ -4094,12 +4233,12 @@ loc_498C:
 
 loc_4990:
 	move.l	d1,aY(a0)
-	clr.l	d0
+	moveq	#0,d0
 	move.w	aField1E(a0),d0
 	move.l	aField16(a0),d1
 	add.l	d0,d1
 	cmpi.l	#$80000,d1
-	bcs.w	loc_49B0
+	bcs.s	loc_49B0
 	move.l	#$80000,d1
 
 loc_49B0:
@@ -4110,7 +4249,6 @@ loc_49B0:
 
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_49BA:
 	bsr.w	GetPuyoField
@@ -4124,9 +4262,7 @@ loc_49CA:
 	rts
 ; End of function sub_49BA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_49D2:
 	bsr.w	GetPuyoField
@@ -4159,9 +4295,7 @@ loc_49FE:
 	rts
 ; End of function sub_49D2
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 CheckPuyoPop:
 	bsr.w	GetPuyoField
@@ -4208,14 +4342,15 @@ CheckPuyoPop:
 	bcs.s	.CheckPuyos
 	bra.s	loc_4ABC
 ; ---------------------------------------------------------------------------
+;	Leftover from Puyo Puyo's system of handling Voices when Popping Puyos
 	btst	#1,(level_mode).l
-	bne.w	loc_4ABC
+	bne.s	loc_4ABC
 	clr.w	d1
 	cmpi.b	#1,aFrame(a0)
-	bne.w	loc_4ABC
+	bne.s	loc_4ABC
 	move.b	#VOI_EGGMOBILE,d0
 	tst.b	aPlayerID(a0)
-	beq.w	loc_4AB6
+	beq.s	loc_4AB6
 	move.b	#VOI_P1_COMBO_1,d0
 
 loc_4AB6:
@@ -4226,7 +4361,7 @@ loc_4ABC:
 	clr.w	d1
 	move.b	aFrame(a0),d1
 	cmpi.b	#7,d1
-	bcs.w	loc_4ACE
+	bcs.s	loc_4ACE
 	move.b	#6,d1
 
 loc_4ACE:
@@ -4247,11 +4382,10 @@ PuyoPopSounds:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 SpawnPuyoPop:
 	lea	(ActPuyoPop).l,a1
 	bsr.w	FindActorSlotQuick
-	bcc.w	.Spawned
+	bcc.s	.Spawned
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -4275,14 +4409,12 @@ SpawnPuyoPop:
 	rts
 ; End of function SpawnPuyoPop
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 SpawnGarbageRemove:
 	lea	(ActGarbageRemove).l,a1
 	bsr.w	FindActorSlotQuick
-	bcc.w	.Spawned
+	bcc.s	.Spawned
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -4299,7 +4431,6 @@ SpawnGarbageRemove:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 ActPuyoPop:
 	bsr.w	ActorBookmark
 	bsr.w	ActPuyoPop_Pop
@@ -4310,7 +4441,8 @@ ActPuyoPop:
 ; End of function ActPuyoPop
 
 ; ---------------------------------------------------------------------------
-Anim_PuyoPop:	dc.b   8
+Anim_PuyoPop:
+	dc.b   8
 	dc.b   8
 	dc.b   1
 	dc.b   4
@@ -4322,7 +4454,6 @@ Anim_PuyoPop:	dc.b   8
 	dc.b   0
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ActPuyoPop_Pop:
 	move.b	(level_mode).l,d2
@@ -4336,22 +4467,23 @@ ActPuyoPop_Pop:
 	movea.l	off_4BB8(pc,d0.w),a1
 	jmp	(a1)
 ; ---------------------------------------------------------------------------
-off_4BB8:	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
-	dc.l ActPuyoPop_PopNormal
+off_4BB8:
+	dc.l ActPuyoPop_PopNormal	; Practise Stage 1
+	dc.l ActPuyoPop_PopNormal	; Practise Stage 2
+	dc.l ActPuyoPop_PopNormal	; Practise Stage 3
+	dc.l ActPuyoPop_PopNormal	; Stage 1
+	dc.l ActPuyoPop_PopNormal	; Stage 2
+	dc.l ActPuyoPop_PopNormal	; Stage 3
+	dc.l ActPuyoPop_PopNormal	; Stage 4
+	dc.l ActPuyoPop_PopNormal	; Stage 5
+	dc.l ActPuyoPop_PopNormal	; Stage 6
+	dc.l ActPuyoPop_PopNormal	; Stage 7
+	dc.l ActPuyoPop_PopNormal	; Stage 8
+	dc.l ActPuyoPop_PopNormal	; Stage 9
+	dc.l ActPuyoPop_PopNormal	; Stage 10
+	dc.l ActPuyoPop_PopNormal	; Stage 11
+	dc.l ActPuyoPop_PopNormal	; Stage 12
+	dc.l ActPuyoPop_PopNormal	; Stage 13
 ; ---------------------------------------------------------------------------
 	lea	(loc_4C46).l,a1
 	bsr.w	FindActorSlotQuick
@@ -4380,7 +4512,7 @@ loc_4C46:
 	move.b	#$85,6(a0)
 	bsr.w	sub_3810
 	subq.w	#1,$26(a0)
-	beq.w	loc_4C66
+	beq.s	loc_4C66
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -4401,12 +4533,12 @@ loc_4C78:
 	move.w	$A(a0),$A(a1)
 	move.w	$E(a0),$E(a1)
 	move.w	#$18,$26(a1)
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	jsr	(Sin).l
 	move.l	d2,$12(a1)
 	jsr	(Cos).l
 	move.l	d2,$16(a1)
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	addi.b	#$40,d0
 
 loc_4CC8:
@@ -4421,7 +4553,7 @@ loc_4CCE:
 	move.b	#$83,6(a0)
 	jsr	(sub_3810).l
 	subq.w	#1,$26(a0)
-	beq.w	loc_4CF0
+	beq.s	loc_4CF0
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -4464,9 +4596,7 @@ ActPuyoPop_PopNormal:
 	rts
 ; End of function ActPuyoPop_Pop
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ActPuyoPoppedPiece:
 	move.w	#4,d0
@@ -4486,7 +4616,6 @@ Anim_PuyoPoppedPiece:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 ActGarbageRemove:
 	bsr.w	ActorAnimate
 	bcs.w	ActorDeleteSelf
@@ -4494,19 +4623,10 @@ ActGarbageRemove:
 ; End of function ActGarbageRemove
 
 ; ---------------------------------------------------------------------------
-Anim_GarbageRemove:dc.b	6
-	dc.b 0
-	dc.b 6
-	dc.b 1
-	dc.b 6
-	dc.b 2
-	dc.b 6
-	dc.b 3
-	dc.b $FE
-	dc.b 0
+Anim_GarbageRemove:
+	dc.b	6, 0, 6, 1, 6, 2, 6, 3, $FE, 0
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_4DB8:
 	bsr.w	GetPuyoField
@@ -4524,14 +4644,14 @@ loc_4DD4:
 	clr.w	(a3,d1.w)
 	addi.w	#$100,d3
 	tst.b	(a2,d1.w)
-	beq.w	loc_4E04
+	beq.s	loc_4E04
 	move.w	(a2,d1.w),d4
 	clr.b	(a2,d1.w)
 	andi.w	#$FF00,d4
 	move.w	d4,(a2,d2.w)
 	subi.w	#$C,d2
 	subi.w	#$100,d3
-	beq.w	loc_4E04
+	beq.s	loc_4E04
 	move.w	d3,(a3,d1.w)
 
 loc_4E04:
@@ -4554,12 +4674,7 @@ loc_4E14:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_4E24:
-
-; FUNCTION CHUNK AT 00008960 SIZE 0000004E BYTES
-; FUNCTION CHUNK AT 00008CC2 SIZE 00000054 BYTES
-
 	bsr.w	sub_43B8
 	cmpi.b	#$19,d0
 	beq.w	loc_8960
@@ -4569,7 +4684,7 @@ sub_4E24:
 	bsr.w	GetPuyoField
 	movem.l	(sp)+,d0-d1
 	tst.b	$1C(a2)
-	beq.w	loc_4E52
+	beq.s	loc_4E52
 	ori	#1,sr
 	rts
 ; ---------------------------------------------------------------------------
@@ -4603,7 +4718,10 @@ loc_4E52:
 ; End of function sub_4E24
 
 ; ---------------------------------------------------------------------------
-unk_4ED4:	dc.b   1
+; TODO: Document this animation code
+
+unk_4ED4:
+	dc.b   1
 	dc.b   2
 	dc.b   0
 	dc.b   0
@@ -4619,9 +4737,13 @@ unk_4ED4:	dc.b   1
 	dc.b   3
 	dc.b   0
 	dc.b   0
-unk_4EE4:	dc.b $FE
+
+unk_4EE4:
+	dc.b $FE
 	dc.b   0
-unk_4EE6:	dc.b   1
+
+unk_4EE6:
+	dc.b   1
 	dc.b   2
 	dc.b   0
 	dc.b   0
@@ -4640,7 +4762,9 @@ unk_4EE6:	dc.b   1
 	dc.b $FF
 	dc.b   0
 	dc.l unk_4EFC
-unk_4EFC:	dc.b  $A
+
+unk_4EFC:
+	dc.b  $A
 	dc.b   1
 	dc.b   8
 	dc.b   0
@@ -4655,12 +4779,12 @@ loc_4F06:
 	bsr.w	ActorBookmark
 	movea.l	aField2E(a0),a1
 	btst	#0,aField7(a1)
-	beq.w	loc_4F3A
+	beq.s	loc_4F3A
 	bsr.w	ActorAnimate
 	bsr.w	sub_5060
 	bsr.w	sub_5384
 	bsr.w	sub_50DA
-	bcs.w	loc_4F50
+	bcs.s	loc_4F50
 	bra.w	sub_543C
 ; ---------------------------------------------------------------------------
 
@@ -4678,7 +4802,7 @@ loc_4F50:
 	ori.b	#4,d0
 	move.b	d0,aField7(a0)
 	btst	#0,d0
-	bne.w	loc_4FA0
+	bne.s	loc_4FA0
 	move.w	$E(a0),d0
 	subi.w	#$F,d0
 	move.w	d0,$20(a0)
@@ -4687,7 +4811,7 @@ loc_4F50:
 	move.b	#0,9(a0)
 	bsr.w	ActorBookmark
 	bsr.w	sub_4948
-	bcs.w	loc_4F94
+	bcs.s	loc_4F94
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -4699,7 +4823,7 @@ loc_4FA0:
 	clr.b	$22(a0)
 	bsr.w	ActorBookmark
 	bsr.w	ActorAnimate
-	bcs.w	loc_4FB2
+	bcs.s	loc_4FB2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -4727,7 +4851,7 @@ loc_4FC0:
 	bne.w	ActorDeleteSelf
 	addq.b	#1,$28(a0)
 	cmpi.b	#4,$28(a0)
-	bcc.w	loc_5016
+	bcc.s	loc_5016
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -4758,16 +4882,12 @@ loc_502C:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_5060:
-
-; FUNCTION CHUNK AT 000039CC SIZE 0000001A BYTES
-
 	tst.w	$1E(a0)
-	beq.w	loc_507E
+	beq.s	loc_507E
 	move.w	#8,d0
 	btst	#7,$1E(a0)
-	bne.w	loc_5078
+	bne.s	loc_5078
 	neg.w	d0
 
 loc_5078:
@@ -4777,16 +4897,16 @@ loc_5078:
 
 loc_507E:
 	btst	#3,7(a0)
-	beq.w	loc_508A
+	beq.s	loc_508A
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_508A:
 	bsr.w	sub_56C0
 	btst	#2,d1
-	bne.w	loc_50A0
+	bne.s	loc_50A0
 	btst	#3,d1
-	bne.w	loc_50B0
+	bne.s	loc_50B0
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -4805,7 +4925,7 @@ loc_50B0:
 loc_50BC:
 	bsr.w	CheckPuyoLand2
 	tst.b	d0
-	beq.w	loc_50C8
+	beq.s	loc_50C8
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -4817,14 +4937,9 @@ loc_50C8:
 	bra.w	PlayPuyoMoveSound
 ; End of function sub_5060
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_50DA:
-
-; FUNCTION CHUNK AT 00005222 SIZE 00000066 BYTES
-
 	btst	#3,7(a0)
 	bne.w	loc_51B4
 	movea.l	$2E(a0),a1
@@ -4835,7 +4950,7 @@ sub_50DA:
 	lsr.w	#8,d0
 	andi.b	#$E,d0
 	cmpi.b	#2,d0
-	bne.w	loc_511A
+	bne.s	loc_511A
 	move.w	#$8000,d1
 	move.w	(frame_count).l,d2
 	lsl.b	#3,d2
@@ -4845,28 +4960,28 @@ sub_50DA:
 loc_511A:
 	move.w	$20(a0),d0
 	add.w	d0,d1
-	bcs.w	loc_516A
+	bcs.s	loc_516A
 	move.w	d1,$20(a0)
 	eor.w	d1,d0
 	bpl.w	loc_5164
 	bsr.w	CheckPuyoLand
 	tst.b	d0
-	beq.w	loc_5164
+	beq.s	loc_5164
 	move.b	d0,d2
 	bsr.w	PuyoLandEffects
 	btst	#0,d2
-	beq.w	loc_514A
+	beq.s	loc_514A
 	bsr.w	sub_5288
 
 loc_514A:
 	btst	#1,d2
-	beq.w	loc_5156
+	beq.s	loc_5156
 	bsr.w	sub_52AE
 
 loc_5156:
 	addq.w	#1,$26(a0)
 	cmpi.w	#8,$26(a0)
-	bcc.w	loc_51B4
+	bcc.s	loc_51B4
 
 loc_5164:
 	andi	#$FFFE,sr
@@ -4876,7 +4991,7 @@ loc_5164:
 loc_516A:
 	bsr.w	CheckPuyoLand
 	tst.b	d0
-	bne.w	loc_5182
+	bne.s	loc_5182
 	clr.w	$20(a0)
 	addq.w	#1,$1C(a0)
 	andi	#$FFFE,sr
@@ -4885,7 +5000,7 @@ loc_516A:
 
 loc_5182:
 	tst.w	$28(a0)
-	bne.w	loc_5194
+	bne.s	loc_5194
 	bsr.w	sub_51DA
 	andi	#$FFFE,sr
 	rts
@@ -4893,12 +5008,12 @@ loc_5182:
 
 loc_5194:
 	subq.w	#1,$28(a0)
-	beq.w	loc_51B4
+	beq.s	loc_51B4
 	bsr.w	sub_56C0
 	lsr.w	#8,d0
 	andi.b	#$E,d0
 	cmpi.b	#2,d0
-	beq.w	loc_51B4
+	beq.s	loc_51B4
 	andi	#$FFFE,sr
 	rts
 ; ---------------------------------------------------------------------------
@@ -4906,12 +5021,12 @@ loc_5194:
 loc_51B4:
 	bset	#3,7(a0)
 	tst.w	$1E(a0)
-	bne.w	loc_51D4
+	bne.s	loc_51D4
 	movea.l	$36(a0),a1
 	tst.b	$38(a1)
 
 loc_51CA:
-	bne.w	loc_51D4
+	bne.s	loc_51D4
 	ori	#1,sr
 	rts
 ; ---------------------------------------------------------------------------
@@ -4921,9 +5036,7 @@ loc_51D4:
 	rts
 ; End of function sub_50DA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_51DA:
 	movea.l	aField2E(a0),a1
@@ -4947,7 +5060,7 @@ loc_51F2:
 	subq.b	#8,d0
 	lsr.b	#2,d0
 	cmpi.b	#8,d0
-	bcs.w	loc_5216
+	bcs.s	loc_5216
 	move.b	#7,d0
 
 loc_5216:
@@ -4961,14 +5074,14 @@ loc_5216:
 loc_5222:
 	move.w	aField20(a0),d2
 	add.w	d1,aField20(a0)
-	bcs.w	loc_5230
+	bcs.s	loc_5230
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_5230:
 	bsr.w	CheckPuyoLand
 	tst.b	d0
-	bne.w	loc_524A
+	bne.s	loc_524A
 	addq.w	#1,aField1C(a0)
 	andi.b	#$FE,aField21(a0)
 	andi	#$FFFE,sr
@@ -4977,16 +5090,16 @@ loc_5230:
 
 loc_524A:
 	cmpi.w	#$FFFF,d2
-	beq.w	loc_527E
+	beq.s	loc_527E
 	move.b	d0,d2
 	bsr.w	PuyoLandEffects
 	btst	#0,d2
-	beq.w	loc_5264
+	beq.s	loc_5264
 	bsr.w	sub_5288
 
 loc_5264:
 	btst	#1,d2
-	beq.w	loc_5270
+	beq.s	loc_5270
 	bsr.w	sub_52AE
 
 loc_5270:
@@ -5001,7 +5114,6 @@ loc_527E:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_5288:
 	cmpi.b	#$19,aMappings(a0)
 	beq.w	locret_52AC
@@ -5014,14 +5126,12 @@ locret_52AC:
 	rts
 ; End of function sub_5288
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_52AE:
 	cmpi.b	#$19,aMappings(a0)
 	beq.w	locret_52D4
-	bcs.w	loc_52C8
+	bcs.s	loc_52C8
 	move.l	#unk_8E92,aAnim(a0)
 	bra.w	locret_52D4
 ; ---------------------------------------------------------------------------
@@ -5037,7 +5147,6 @@ locret_52D4:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 CheckPuyoLand:
 	move.b	#2,d0
 	bsr.w	CheckPuyoLand2
@@ -5051,9 +5160,7 @@ locret_52F2:
 	rts
 ; End of function CheckPuyoLand
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 CheckPuyoLand2:
 	movem.l	d1-d7/a2,-(sp)
@@ -5069,27 +5176,27 @@ CheckPuyoLand2:
 	move.w	aField1C(a0),d1
 	add.w	word_5376(pc,d2.w),d1
 	cmpi.w	#6,d0
-	bcc.w	loc_5344
+	bcc.s	loc_5344
 	cmpi.w	#$E,d1
-	bcc.w	loc_5344
+	bcc.s	loc_5344
 	movem.l	d0-d1,-(sp)
 	bsr.w	GetPuyoFieldTile
 	move.b	(a2,d1.w),d4
 	movem.l	(sp)+,d0-d1
 	tst.b	d4
-	bne.w	loc_5344
+	bne.s	loc_5344
 	andi.b	#$FE,d7
 
 loc_5344:
 	add.w	word_5374(pc,d3.w),d0
 	add.w	word_5376(pc,d3.w),d1
 	cmpi.w	#6,d0
-	bcc.w	loc_536C
+	bcc.s	loc_536C
 	cmpi.w	#$E,d1
-	bcc.w	loc_536C
+	bcc.s	loc_536C
 	bsr.w	GetPuyoFieldTile
 	tst.b	(a2,d1.w)
-	bne.w	loc_536C
+	bne.s	loc_536C
 	andi.b	#$FD,d7
 
 loc_536C:
@@ -5099,8 +5206,11 @@ loc_536C:
 ; End of function CheckPuyoLand2
 
 ; ---------------------------------------------------------------------------
-word_5374:	dc.w 0
-word_5376:	dc.w -1
+word_5374:
+	dc.w 0
+
+word_5376:
+	dc.w -1
 	dc.w 1
 	dc.w 0
 	dc.w 0
@@ -5110,18 +5220,14 @@ word_5376:	dc.w -1
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_5384:
-
-; FUNCTION CHUNK AT 000039E6 SIZE 0000001A BYTES
-
 	movea.l	aField36(a0),a1
 	tst.b	aField38(a1)
 	beq.w	*+4
 
 loc_5390:
 	btst	#3,7(a0)
-	beq.w	loc_539C
+	beq.s	loc_539C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -5129,9 +5235,9 @@ loc_539C:
 	bsr.w	sub_56C0
 	bsr.w	sub_5712
 	btst	#6,d0
-	bne.w	loc_53B6
+	bne.s	loc_53B6
 	btst	#5,d0
-	bne.w	loc_53C2
+	bne.s	loc_53C2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -5151,12 +5257,12 @@ loc_53CA:
 	move.b	d0,d2
 	bsr.w	CheckPuyoLand2
 	btst	#0,d0
-	beq.w	loc_5416
+	beq.s	loc_5416
 	move.b	d2,d0
 	eori.b	#2,d0
 	bsr.w	CheckPuyoLand2
 	btst	#0,d0
-	beq.w	loc_53F4
+	beq.s	loc_53F4
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -5169,7 +5275,7 @@ loc_53F4:
 	add.w	d3,$1A(a0)
 	add.w	d4,$1C(a0)
 	tst.w	d4
-	beq.w	loc_5416
+	beq.s	loc_5416
 	move.w	#$7FFE,aField20(a0)
 
 loc_5416:
@@ -5182,8 +5288,11 @@ loc_5416:
 ; End of function sub_5384
 
 ; ---------------------------------------------------------------------------
-word_542C:	dc.w 0
-word_542E:	dc.w 1
+word_542C:
+	dc.w 0
+
+word_542E:
+	dc.w 1
 	dc.w -1
 	dc.w 0
 	dc.w 0
@@ -5192,7 +5301,6 @@ word_542E:	dc.w 1
 	dc.w 0
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_543C:
 	bsr.w	GetPuyoFieldPos
@@ -5228,7 +5336,7 @@ loc_5474:
 	bsr.w	sub_5552
 	movea.l	$2E(a0),a1
 	btst	#2,7(a1)
-	bne.w	loc_549E
+	bne.s	loc_549E
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -5247,7 +5355,7 @@ loc_549E:
 	move.b	7(a1),7(a0)
 	bsr.w	ActorBookmark
 	btst	#1,7(a0)
-	bne.w	loc_5510
+	bne.s	loc_5510
 	move.w	$E(a0),d0
 	subi.w	#$F,d0
 	move.w	d0,$20(a0)
@@ -5255,7 +5363,7 @@ loc_549E:
 	move.w	#1,$16(a0)
 	bsr.w	ActorBookmark
 	bsr.w	sub_4948
-	bcs.w	loc_5504
+	bcs.s	loc_5504
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -5266,7 +5374,7 @@ loc_5504:
 loc_5510:
 	bsr.w	ActorBookmark
 	bsr.w	ActorAnimate
-	bcs.w	loc_551E
+	bcs.s	loc_551E
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -5278,10 +5386,9 @@ loc_551E:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_5530:
 	move.b	$38(a0),d0
-	bne.w	loc_553A
+	bne.s	loc_553A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -5289,7 +5396,7 @@ loc_553A:
 	add.b	d0,$36(a0)
 	move.b	$36(a0),d0
 	andi.b	#$3F,d0
-	beq.w	loc_554C
+	beq.s	loc_554C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -5298,9 +5405,7 @@ loc_554C:
 	rts
 ; End of function sub_5530
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_5552:
 	movea.l	$2E(a0),a1
@@ -5318,9 +5423,7 @@ sub_5552:
 	rts
 ; End of function sub_5552
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 MarkPuyoSpot:
 	move.b	aPlayerID(a0),d0
@@ -5356,9 +5459,7 @@ MarkPuyoSpot:
 	rts
 ; End of function MarkPuyoSpot
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ResetPuyoField:
 	bsr.w	GetPuyoField
@@ -5372,12 +5473,12 @@ loc_55E4:
 
 ; ---------------------------------------------------------------------------
 	tst.b	(byte_FF196B).l
-	bne.w	loc_55FA
+	bne.s	loc_55FA
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_55FA:
-	movem.l	a2,-(sp)
+	move.l	a2,-(sp)
 	suba.l	#$48,a2
 	clr.w	d0
 	move.b	(byte_FF196B).l,d0
@@ -5393,10 +5494,11 @@ loc_561E:
 	dbf	d0,loc_561E
 	movea.l	$32(a0),a2
 	move.w	(a1)+,$26(a2)
-	movem.l	(sp)+,a2
+	move.l	(sp)+,a2
 	rts
 ; ---------------------------------------------------------------------------
-byte_5636:	dc.b 0
+byte_5636:
+	dc.b 0
 	dc.b 0
 	dc.b 0
 	dc.b 0
@@ -5510,7 +5612,6 @@ byte_5636:	dc.b 0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 GetCtrlData:
 	move.w	(p1_ctrl_hold).l,d0
 	tst.b	(swap_controls).l
@@ -5521,9 +5622,7 @@ locret_56BE:
 	rts
 ; End of function GetCtrlData
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_56C0:
 	movem.l	d2/a2,-(sp)
@@ -5537,12 +5636,12 @@ sub_56C0:
 	move.b	2(a2,d2.w),d1
 	move.b	(level_mode).l,d2
 	btst	#2,d2
-	bne.w	loc_5706
+	bne.s	loc_5706
 	lsl.b	#1,d2
 	or.b	$2A(a0),d2
 	eori.b	#1,d2
 	and.b	(control_player_1).l,d2
-	bne.w	loc_570C
+	bne.s	loc_570C
 
 loc_5706:
 	jsr	(sub_12E6C).l
@@ -5552,9 +5651,7 @@ loc_570C:
 	rts
 ; End of function sub_56C0
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_5712:
 	move.b	(level_mode).l,d2
@@ -5571,7 +5668,7 @@ sub_5712:
 	move.b	(swap_controls).l,d2
 	lea	(player_1_a).l,a2
 	eor.b	d2,d1
-	beq.w	loc_5756
+	beq.s	loc_5756
 	lea	(player_2_a).l,a2
 
 loc_5756:
@@ -5582,7 +5679,7 @@ loc_575E:
 	move.b	(a3)+,d2
 	bmi.w	loc_5770
 	and.b	d0,d2
-	beq.w	loc_576C
+	beq.s	loc_576C
 	or.b	(a2),d1
 
 loc_576C:
@@ -5599,7 +5696,8 @@ locret_5778:
 ; End of function sub_5712
 
 ; ---------------------------------------------------------------------------
-byte_577A:	dc.b $40
+byte_577A:
+	dc.b $40
 	dc.b $10
 	dc.b $20
 	dc.b $FF
@@ -5610,7 +5708,6 @@ byte_577A:	dc.b $40
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_5782:
 	bsr.w	GetPuyoField
 	move.w	d0,d1
@@ -5620,7 +5717,7 @@ sub_5782:
 loc_578C:
 	move.b	pVisiblePuyos(a2,d2.w),d0
 	cmp.b	pVisiblePuyos+1(a2,d2.w),d0
-	beq.w	loc_57A0
+	beq.s	loc_57A0
 	move.b	d0,pVisiblePuyos+1(a2,d2.w)
 	bsr.w	DrawPuyo
 
@@ -5628,7 +5725,7 @@ loc_57A0:
 	addq.w	#4,d1
 	addq.w	#1,d3
 	cmpi.w	#6,d3
-	bcs.w	loc_57B2
+	bcs.s	loc_57B2
 	clr.w	d3
 	addi.w	#$E8,d1
 
@@ -5639,9 +5736,7 @@ loc_57B2:
 	rts
 ; End of function sub_5782
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 DrawPuyo:
 	movem.l	d0-d3,-(sp)
@@ -5684,15 +5779,13 @@ DrawPuyo:
 	rts
 ; End of function DrawPuyo
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 GetPuyoTileID:
 	movem.l	d1-d4,-(sp)
 	move.w	#$83FE,d1
 	or.b	d0,d0
-	beq.w	loc_589E
+	beq.s	loc_589E
 	move.w	#$8000,d1
 	clr.b	d1
 	clr.w	d2
@@ -5718,7 +5811,7 @@ loc_5874:
 	lsr.b	#3,d2
 	andi.b	#$E,d2
 	cmpi.b	#$C,d2
-	bne.w	loc_589A
+	bne.s	loc_589A
 	move.b	d0,d2
 	andi.b	#7,d2
 	addq.b	#6,d2
@@ -5734,7 +5827,8 @@ loc_589E:
 ; End of function GetPuyoTileID
 
 ; ---------------------------------------------------------------------------
-PuyoPalLines:	dc.w 0
+PuyoPalLines:
+	dc.w 0
 	dc.w 0
 	dc.w $4000
 	dc.w $4000
@@ -5748,7 +5842,9 @@ PuyoPalLines:	dc.w 0
 	dc.w $4000
 	dc.w $4000
 	dc.w $4000
-byte_58C2:	dc.b 0
+
+byte_58C2:
+	dc.b 0
 	dc.b 0
 	dc.b $10
 	dc.b $11
@@ -5756,7 +5852,6 @@ byte_58C2:	dc.b 0
 	dc.b $14
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_58C8:
 	bsr.w	GetPuyoField
@@ -5770,13 +5865,13 @@ loc_58DE:
 	move.b	(a2,d0.w),d3
 	andi.b	#$60,d3
 	cmpi.b	#$60,d3
-	bne.w	loc_58F2
+	bne.s	loc_58F2
 	bsr.w	sub_5908
 
 loc_58F2:
 	addq.b	#1,d1
 	cmpi.b	#6,d1
-	bcs.w	loc_58FE
+	bcs.s	loc_58FE
 	clr.b	d1
 
 loc_58FE:
@@ -5789,7 +5884,6 @@ loc_58FE:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_5908:
 	move.w	#6,d2
 	clr.b	d3
@@ -5799,23 +5893,23 @@ loc_590E:
 	move.b	d1,d4
 	add.w	byte_5958(pc,d2.w),d4
 	cmpi.w	#$FFFE,d4
-	beq.w	loc_5942
+	beq.s	loc_5942
 	cmpi.w	#7,d4
-	beq.w	loc_5942
+	beq.s	loc_5942
 	move.w	d0,d4
 	add.w	byte_5958(pc,d2.w),d4
 	cmpi.w	#$90,d4
-	bcc.w	loc_5942
+	bcc.s	loc_5942
 	move.b	(a3,d4.w),d5
 	andi.b	#$C0,d5
-	bne.w	loc_5942
+	bne.s	loc_5942
 	addq.b	#1,d3
 
 loc_5942:
 	subq.w	#2,d2
 	bcc.s	loc_590E
 	tst.b	d3
-	bne.w	loc_594E
+	bne.s	loc_594E
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -5826,7 +5920,8 @@ loc_594E:
 ; End of function sub_5908
 
 ; ---------------------------------------------------------------------------
-byte_5958:	dc.b 0
+byte_5958:
+	dc.b 0
 	dc.b $C
 	dc.b $FF
 	dc.b $F4
@@ -5837,7 +5932,6 @@ byte_5958:	dc.b 0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_5960:
 	bsr.w	GetPuyoField
 	adda.l	#pVisiblePuyos,a2
@@ -5846,7 +5940,7 @@ sub_5960:
 	movea.l	a3,a4
 	adda.l	#pPuyosCopy-pUnk1,a4
 	movea.l	a3,a5
-	clr.l	d1
+	moveq	#0,d1
 	move.w	#$23,d0
 
 loc_5982:
@@ -5872,9 +5966,7 @@ loc_59A6:
 	rts
 ; End of function sub_5960
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_59B0:
 	movem.l	d0-d1,-(sp)
@@ -5883,7 +5975,7 @@ sub_59B0:
 	move.w	d0,(a4)
 
 loc_59BC:
-	clr.l	d5
+	moveq	#0,d5
 	move.w	(a4,d3.w),d5
 	lsr.w	#1,d5
 	divu.w	#6,d5
@@ -5928,12 +6020,13 @@ loc_5A22:
 	bcs.s	loc_59BC
 	movem.l	(sp)+,d0-d1
 	cmpi.w	#8,d4
-	bcc.w	loc_5A66
+	bcc.s	loc_5A66
 	cmpi.w	#4,d4
-	bcc.w	loc_5A4E
+	bcc.s	loc_5A4E
 	rts
 ; ---------------------------------------------------------------------------
-byte_5A46:	dc.b 0
+byte_5A46:
+	dc.b 0
 	dc.b $C
 	dc.b $FF
 	dc.b $F4
@@ -5980,9 +6073,7 @@ loc_5A6C:
 	rts
 ; End of function sub_59B0
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 GetPuyoFieldTile:
 	movem.l	d2-d3,-(sp)
@@ -6004,9 +6095,7 @@ GetPuyoFieldTile:
 	rts
 ; End of function GetPuyoFieldTile
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 GetPuyoFieldID:
 	movem.l	d0-d1,-(sp)
@@ -6017,12 +6106,10 @@ GetPuyoFieldID:
 	rts
 ; End of function GetPuyoFieldID
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 GetPuyoField:
-	movem.l	d1,-(sp)
+	move.l	d1,-(sp)
 	clr.w	d1
 	move.b	(swap_controls).l,d1
 	lsl.b	#1,d1
@@ -6030,7 +6117,7 @@ GetPuyoField:
 	lsl.b	#3,d1
 	movea.l	off_5AFA(pc,d1.w),a2
 	move.w	off_5AFA+4(pc,d1.w),d0
-	movem.l	(sp)+,d1
+	move.l	(sp)+,d1
 	rts
 ; End of function GetPuyoField
 
@@ -6046,7 +6133,6 @@ off_5AFA:
 	dc.w $C104, 0
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 GetPuyoFieldPos:
 	clr.w	d1
@@ -6072,12 +6158,11 @@ word_5B34:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_5B54:
 	clr.w	(word_FF19A8).l
 	lea	(loc_5BCE).l,a1
 	bsr.w	FindActorSlot
-	bcc.w	loc_5B6A
+	bcc.s	loc_5B6A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -6099,7 +6184,8 @@ loc_5B6A:
 ; End of function sub_5B54
 
 ; ---------------------------------------------------------------------------
-word_5BAE:	dc.w $140, $128
+word_5BAE:
+	dc.w $140, $128
 	dc.l byte_3316
 	dc.w $120, $108
 	dc.l byte_3316
@@ -6111,29 +6197,29 @@ word_5BAE:	dc.w $140, $128
 
 loc_5BCE:
 	cmpi.b	#1,(level_mode).l
-	bne.w	loc_5BF4
+	bne.s	loc_5BF4
 	movea.l	$2E(a0),a1
 	movea.l	$2E(a1),a2
 	move.b	7(a1),d0
 	or.b	7(a2),d0
 	btst	#0,d0
-	beq.w	loc_5BF4
+	beq.s	loc_5BF4
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_5BF4:
 	bsr.w	ActorBookmark
 	bsr.w	ActorAnimate
-	bcs.w	loc_5C4A
+	bcs.s	loc_5C4A
 	move.b	(p1_ctrl_hold).l,d0
 	or.b	(p2_ctrl_hold).l,d0
 	andi.b	#$F0,d0
-	beq.w	loc_5C18
+	beq.s	loc_5C18
 	clr.w	$22(a0)
 
 loc_5C18:
 	cmpi.b	#$17,9(a0)
-	beq.w	loc_5C24
+	beq.s	loc_5C24
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -6145,7 +6231,7 @@ loc_5C24:
 	move.w	$14(a1),d0
 	add.w	$14(a2),d0
 	cmpi.w	#$25,d0
-	bcc.w	loc_5C4A
+	bcc.s	loc_5C4A
 	bsr.w	sub_5FAA
 
 loc_5C4A:
@@ -6163,9 +6249,9 @@ loc_5C5E:
 	bmi.w	loc_5E86
 	bsr.w	sub_5F6E
 	bsr.w	ActorAnimate
-	bcc.w	loc_5CC2
+	bcc.s	loc_5CC2
 	tst.w	$26(a0)
-	beq.w	loc_5CA0
+	beq.s	loc_5CA0
 	subq.w	#1,$26(a0)
 	move.l	$2E(a0),d0
 	move.l	d0,$32(a0)
@@ -6191,7 +6277,7 @@ loc_5CC2:
 	move.b	d0,$36(a0)
 	cmpi.b	#$40,d0
 	bcs.w	locret_5D02
-	bne.w	loc_5CF0
+	bne.s	loc_5CF0
 	bset	#0,7(a0)
 	move.w	#$20,$28(a0)
 	bra.w	locret_5D02
@@ -6207,7 +6293,8 @@ loc_5CF0:
 locret_5D02:
 	rts
 ; ---------------------------------------------------------------------------
-unk_5D04:	dc.b $FF
+unk_5D04:
+	dc.b $FF
 	dc.b $FE
 	dc.b   0
 	dc.b   2
@@ -6220,7 +6307,7 @@ unk_5D04:	dc.b $FF
 loc_5D0C:
 	lea	(loc_5D64).l,a1
 	bsr.w	FindActorSlot
-	bcc.w	loc_5D24
+	bcc.s	loc_5D24
 	clr.w	(word_FF19A8).l
 	bra.w	loc_5C5E
 ; ---------------------------------------------------------------------------
@@ -6229,7 +6316,7 @@ loc_5D24:
 	move.l	a0,$2E(a1)
 	bsr.w	ActorBookmark
 	tst.b	(word_FF19A8+1).l
-	beq.w	loc_5D38
+	beq.s	loc_5D38
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -6237,7 +6324,7 @@ loc_5D38:
 	andi.b	#$7F,6(a0)
 	bsr.w	ActorBookmark
 	tst.b	(word_FF19A8+1).l
-	bne.w	loc_5D4E
+	bne.s	loc_5D4E
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -6254,7 +6341,7 @@ loc_5D64:
 	bsr.w	ActorBookmark
 	movea.l	$2E(a0),a1
 	bsr.w	ActorAnimate
-	bcs.w	loc_5D84
+	bcs.s	loc_5D84
 	move.b	9(a0),9(a1)
 	rts
 ; ---------------------------------------------------------------------------
@@ -6273,7 +6360,7 @@ loc_5D84:
 	bsr.w	ActorBookmark
 	movea.l	$2E(a0),a1
 	bsr.w	sub_3810
-	bcs.w	loc_5DDC
+	bcs.s	loc_5DDC
 	move.w	$A(a0),$A(a1)
 	move.w	$E(a0),$E(a1)
 	rts
@@ -6283,7 +6370,7 @@ loc_5DDC:
 	clr.b	(word_FF19A8+1).l
 	bsr.w	ActorBookmark
 	tst.b	(word_FF19A8+1).l
-	bne.w	loc_5DF2
+	bne.s	loc_5DF2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -6303,7 +6390,7 @@ loc_5DF2:
 	move.w	$E(a0),d0
 	move.w	d0,$E(a1)
 	cmp.w	$38(a0),d0
-	bcc.w	loc_5E44
+	bcc.s	loc_5E44
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -6317,7 +6404,10 @@ loc_5E44:
 	bsr.w	PlaySound_ChkPCM
 	bra.w	ActorDeleteSelf
 ; ---------------------------------------------------------------------------
-unk_5E6E:	dc.b   1
+; TODO: More Animation Documentation
+
+unk_5E6E:
+	dc.b   1
 	dc.b  $D
 	dc.b   1
 	dc.b $24
@@ -6328,7 +6418,9 @@ unk_5E6E:	dc.b   1
 	dc.b $FF
 	dc.b   0
 	dc.l unk_5E6E
-unk_5E7C:	dc.b   8
+
+unk_5E7C:
+	dc.b   8
 	dc.b   9
 	dc.b $12
 	dc.b  $C
@@ -6362,7 +6454,10 @@ loc_5EB6:
 	move.b	9(a0),9(a1)
 	rts
 ; ---------------------------------------------------------------------------
-unk_5ED6:	dc.b $14
+; TODO: More Animation Documentation
+
+unk_5ED6:
+	dc.b $14
 	dc.b $2B
 	dc.b $16
 	dc.b $2C
@@ -6380,11 +6475,10 @@ unk_5ED6:	dc.b $14
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_5EE8:
 	eori.b	#2,7(a0)
 	btst	#1,7(a0)
-	beq.w	loc_5EFE
+	beq.s	loc_5EFE
 	move.w	#$1E,d0
 	rts
 ; ---------------------------------------------------------------------------
@@ -6394,7 +6488,7 @@ loc_5EFE:
 	move.w	#0,d1
 	move.b	(level_mode).l,d2
 	andi.b	#3,d2
-	bne.w	loc_5F1C
+	bne.s	loc_5F1C
 	move.w	#$16,d0
 	move.w	#8,d1
 
@@ -6404,20 +6498,18 @@ loc_5F1C:
 	rts
 ; End of function sub_5EE8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_5F26:
 	cmpi.b	#4,d0
-	bcs.w	loc_5F30
+	bcs.s	loc_5F30
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_5F30:
 	move.l	#$8000,d1
 	btst	#0,d0
-	beq.w	loc_5F40
+	beq.s	loc_5F40
 	neg.l	d1
 
 loc_5F40:
@@ -6426,31 +6518,27 @@ loc_5F40:
 	rts
 ; End of function sub_5F26
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_5F4C:
 	cmpi.w	#$108,$A(a0)
-	bcc.w	loc_5F5C
+	bcc.s	loc_5F5C
 	move.w	#$108,$A(a0)
 
 loc_5F5C:
 	cmpi.w	#$139,$A(a0)
-	bcs.w	locret_5F6C
+	bcs.s	locret_5F6C
 	move.w	#$138,$A(a0)
 
 locret_5F6C:
 	rts
 ; End of function sub_5F4C
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_5F6E:
 	btst	#0,7(a0)
-	bne.w	loc_5F7A
+	bne.s	loc_5F7A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -6464,7 +6552,7 @@ loc_5F7A:
 	add.w	$20(a0),d2
 	move.w	d2,$E(a0)
 	subq.w	#1,$28(a0)
-	bmi.w	loc_5FA2
+	bmi.s	loc_5FA2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -6476,7 +6564,6 @@ loc_5FA2:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_5FAA:
 	clr.w	(time_frames).l
 	move.w	#$1F,d0
@@ -6484,7 +6571,7 @@ sub_5FAA:
 loc_5FB4:
 	lea	(sub_602C).l,a1
 	bsr.w	FindActorSlotQuick
-	bcs.w	loc_6026
+	bcs.s	loc_6026
 	move.b	#$83,6(a1)
 	move.b	#6,8(a1)
 	move.b	#$E,9(a1)
@@ -6492,7 +6579,7 @@ loc_5FB4:
 	move.w	$E(a0),$E(a1)
 	move.w	#$FFFF,$20(a1)
 	move.w	#$2000,$1C(a1)
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	lsl.b	#3,d0
 	move.b	d0,d3
 	move.w	#$C0,d0
@@ -6508,16 +6595,14 @@ loc_5FFE:
 	jsr	(Cos).l
 	move.l	d2,$16(a1)
 	move.w	#$14,$26(a1)
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 
 loc_6026:
 	dbf	d0,loc_5FB4
 	rts
 ; End of function sub_5FAA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_602C:
 	bsr.w	sub_3810
@@ -6535,7 +6620,6 @@ sub_602C:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_604E:
 	move.w	#1,(word_FF1124).l
 	move.w	#$D688,d3
@@ -6543,7 +6627,7 @@ sub_604E:
 	cmpi.b	#OPP_ROBOTNIK,(opponent).l
 	beq.s	loc_6080
 	move.w	#$6000,d0
-	bra.w	loc_6084
+	bra.s	loc_6084
 ; ---------------------------------------------------------------------------
 
 loc_6070:
@@ -6569,7 +6653,7 @@ loc_6084:
 	clr.w	(word_FF198C).l
 	lea	(sub_60F4).l,a1
 	bsr.w	FindActorSlot
-	bcs.w	locret_60F2
+	bcs.s	locret_60F2
 	move.l	a0,$2E(a1)
 	move.w	#0,$28(a1)
 	lsr.w	#5,d0
@@ -6585,9 +6669,7 @@ locret_60F2:
 	rts
 ; End of function sub_604E
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_60F4:
 	move.w	#$FFFF,$26(a0)
@@ -6600,9 +6682,9 @@ sub_60F4:
 loc_610C:
 	move.w	(word_FF198C).l,d0
 	cmp.w	$26(a0),d0
-	beq.w	loc_6144
+	beq.s	loc_6144
 	move.w	d0,$26(a0)
-	lea	(OpponentMappings).l,a1
+	lea	(OpponentAnims).l,a1
 	clr.w	d1
 	move.b	(opponent).l,d1
 	lsl.w	#2,d1
@@ -6624,7 +6706,7 @@ loc_6150:
 	movea.l	$32(a0),a2
 	move.w	(a2)+,d0
 	bge.s	loc_617E
-	lea	(OpponentMappings).l,a2
+	lea	(OpponentAnims).l,a2
 	clr.w	d0
 	move.b	(opponent).l,d0
 	lsl.w	#2,d0
@@ -6657,12 +6739,10 @@ loc_617E:
 	rts
 ; End of function sub_60F4
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_61C0:
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(opponent).l,d0
 	move.b	OpponentPalettes(pc,d0.w),d0
 	lsl.w	#5,d0
@@ -6672,12 +6752,10 @@ sub_61C0:
 	jmp	(LoadPalette).l
 ; End of function sub_61C0
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_61E0:
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(opponent).l,d0
 	move.b	OpponentPalettes(pc,d0.w),d0
 	lsl.w	#5,d0
@@ -6691,480 +6769,97 @@ sub_61E0:
 
 ; ---------------------------------------------------------------------------
 OpponentPalettes:
-	dc.b (Pal_Scratch-Palettes)>>5
-	dc.b (Pal_Frankly-Palettes)>>5
-	dc.b (Pal_Dynamight-Palettes)>>5
-	dc.b (Pal_Arms-Palettes)>>5
-	dc.b (Pal_Scratch-Palettes)>>5
-	dc.b (Pal_Grounder-Palettes)>>5
-	dc.b (Pal_DavySprocket-Palettes)>>5
-	dc.b (Pal_Coconuts-Palettes)>>5
-	dc.b (Pal_Spike-Palettes)>>5
-	dc.b (Pal_SirFfuzzyLogik-Palettes)>>5
-	dc.b (Pal_DragonBreath-Palettes)>>5
-	dc.b (Pal_Scratch-Palettes)>>5
-	dc.b (Pal_Robotnik-Palettes)>>5
-	dc.b (Pal_Scratch-Palettes)>>5
-	dc.b (Pal_Humpty-Palettes)>>5
-	dc.b (Pal_Skweel-Palettes)>>5
+	dc.b (Pal_Scratch-Palettes)>>5		; Skeleton Tea - Puyo Puyo Leftover
+	dc.b (Pal_Frankly-Palettes)>>5		; Frankly
+	dc.b (Pal_Dynamight-Palettes)>>5	; Dynamight
+	dc.b (Pal_Arms-Palettes)>>5		; Arms
+	dc.b (Pal_Scratch-Palettes)>>5		; Nasu Grave - Puyo Puyo Leftover
+	dc.b (Pal_Grounder-Palettes)>>5		; Grounder
+	dc.b (Pal_DavySprocket-Palettes)>>5	; Davy Sprocket
+	dc.b (Pal_Coconuts-Palettes)>>5		; Coconuts
+	dc.b (Pal_Spike-Palettes)>>5		; Spike
+	dc.b (Pal_SirFfuzzyLogik-Palettes)>>5	; Sir Ffuzzy-Logik
+	dc.b (Pal_DragonBreath-Palettes)>>5	; Dragon Breath
+	dc.b (Pal_Scratch-Palettes)>>5		; Scratch
+	dc.b (Pal_Robotnik-Palettes)>>5		; Dr. Robotnik
+	dc.b (Pal_Scratch-Palettes)>>5		; Mummy - Puyo Puyo Leftover
+	dc.b (Pal_Humpty-Palettes)>>5		; Humpty
+	dc.b (Pal_Skweel-Palettes)>>5		; Skweel
 OpponentArt:
-	dc.l ArtNem_Scratch
-	dc.l ArtNem_Frankly
-	dc.l ArtNem_Dynamight
-	dc.l ArtNem_Arms
-	dc.l ArtNem_Scratch
-	dc.l ArtNem_Grounder
-	dc.l ArtNem_DavySprocket
-	dc.l ArtNem_Coconuts
-	dc.l ArtNem_Spike
-	dc.l ArtNem_SirFfuzzyLogik
-	dc.l ArtNem_DragonBreath
-	dc.l ArtNem_Scratch
-	dc.l ArtNem_DrRobotnik
-	dc.l ArtNem_Scratch
-	dc.l ArtNem_Humpty
-	dc.l ArtNem_Skweel
-OpponentMappings:
-	dc.l off_6296
-	dc.l off_62D8
-	dc.l off_636E
-	dc.l off_6734
-	dc.l off_6296
-	dc.l off_63C8
-	dc.l off_64B8
-	dc.l off_6314
-	dc.l off_6422
-	dc.l off_66BC
-	dc.l off_6506
-	dc.l off_6296
-	dc.l off_65FC
-	dc.l off_6296
-	dc.l off_6572
-	dc.l off_664A
-off_6296:	dc.l word_62A6
-	dc.l word_62B4
-	dc.l word_62C2
-	dc.l word_62D0
-word_62A6:	dc.w $32
-	dc.l MapEni_Scratch_0
-	dc.w $19
-	dc.l MapEni_Scratch_1
-	dc.w $FF00
-word_62B4:	dc.w $32
-	dc.l MapEni_Scratch_2
-	dc.w $F
-	dc.l MapEni_Scratch_3
-	dc.w $FF00
-word_62C2:	dc.w $32
-	dc.l MapEni_Scratch_4
-	dc.w $F
-	dc.l MapEni_Scratch_5
-	dc.w $FF00
-word_62D0:	dc.w $32
-	dc.l MapEni_Scratch_Defeated
-	dc.w $FF00
-off_62D8:	dc.l word_62E8
-	dc.l word_62F6
-	dc.l word_62FE
-	dc.l word_630C
-word_62E8:	dc.w $14
-	dc.l MapEni_Frankly_0
-	dc.w $14
-	dc.l MapEni_Frankly_1
-	dc.w $FF00
-word_62F6:	dc.w $32
-	dc.l MapEni_Frankly_2
-	dc.w $FF00
-word_62FE:	dc.w $A
-	dc.l MapEni_Frankly_3
-	dc.w $A
-	dc.l MapEni_Frankly_4
-	dc.w $FF00
-word_630C:	dc.w $32
-	dc.l MapEni_Frankly_Defeated
-	dc.w $FF00
-off_6314:	dc.l word_6324
-	dc.l word_633E
-	dc.l word_634C
-	dc.l word_6366
-word_6324:	dc.w $46
-	dc.l MapEni_Coconuts_0
-	dc.w 8
-	dc.l MapEni_Coconuts_1
-	dc.w $C
-	dc.l MapEni_Coconuts_0
-	dc.w 8
-	dc.l MapEni_Coconuts_1
-	dc.w $FF00
-word_633E:	dc.w $32
-	dc.l MapEni_Coconuts_2
-	dc.w $1E
-	dc.l MapEni_Coconuts_3
-	dc.w $FF00
-word_634C:	dc.w 4
-	dc.l MapEni_Coconuts_4
-	dc.w 4
-	dc.l MapEni_Coconuts_5
-	dc.w 4
-	dc.l MapEni_Coconuts_6
-	dc.w 4
-	dc.l MapEni_Coconuts_5
-	dc.w $FF00
-word_6366:	dc.w $32
-	dc.l MapEni_Coconuts_Defeated
-	dc.w $FF00
-off_636E:	dc.l word_637E
-	dc.l word_638C
-	dc.l word_63AC
-	dc.l word_63C0
-word_637E:	dc.w $14
-	dc.l MapEni_Dynamight_0
-	dc.w $14
-	dc.l MapEni_Dynamight_1
-	dc.w $FF00
-word_638C:	dc.w 4
-	dc.l MapEni_Dynamight_2
-	dc.w 4
-	dc.l MapEni_Dynamight_3
-	dc.w 4
-	dc.l MapEni_Dynamight_4
-	dc.w 5
-	dc.l MapEni_Dynamight_5
-	dc.w 5
-	dc.l MapEni_Dynamight_6
-	dc.w $FF00
-word_63AC:	dc.w 4
-	dc.l MapEni_Dynamight_7
-	dc.w 4
-	dc.l MapEni_Dynamight_8
-	dc.w 4
-	dc.l MapEni_Dynamight_9
-	dc.w $FF00
-word_63C0:	dc.w $32
-	dc.l MapEni_Dynamight_Defeated
-	dc.w $FF00
-off_63C8:	dc.l word_63D8
-	dc.l word_63F2
-	dc.l word_640C
-	dc.l word_641A
-word_63D8:	dc.w $78
-	dc.l MapEni_Grounder_0
-	dc.w 4
-	dc.l MapEni_Grounder_1
-	dc.w 7
-	dc.l MapEni_Grounder_2
-	dc.w 4
-	dc.l MapEni_Grounder_1
-	dc.w $FF00
-word_63F2:	dc.w $3C
-	dc.l MapEni_Grounder_3
-	dc.w $A
-	dc.l MapEni_Grounder_4
-	dc.w $A
-	dc.l MapEni_Grounder_3
-	dc.w $A
-	dc.l MapEni_Grounder_4
-	dc.w $FF00
-word_640C:	dc.w $F
-	dc.l MapEni_Grounder_5
-	dc.w $50
-	dc.l MapEni_Grounder_6
-	dc.w $FF00
-word_641A:	dc.w $32
-	dc.l MapEni_Grounder_Defeated
-	dc.w $FF00
-off_6422:	dc.l word_6432
-	dc.l word_647C
-	dc.l word_6496
-	dc.l word_64B0
-word_6432:	dc.w $50
-	dc.l MapEni_Spike_0
-	dc.w 5
-	dc.l MapEni_Spike_1
-	dc.w 8
-	dc.l MapEni_Spike_2
-	dc.w 5
-	dc.l MapEni_Spike_1
-	dc.w $78
-	dc.l MapEni_Spike_0
-	dc.w 4
-	dc.l MapEni_Spike_1
-	dc.w 6
-	dc.l MapEni_Spike_2
-	dc.w 4
-	dc.l MapEni_Spike_1
-	dc.w 5
-	dc.l MapEni_Spike_0
-	dc.w 4
-	dc.l MapEni_Spike_1
-	dc.w 6
-	dc.l MapEni_Spike_2
-	dc.w 4
-	dc.l MapEni_Spike_1
-	dc.w $FF00
-word_647C:	dc.w $64
-	dc.l MapEni_Spike_3
-	dc.w $C
-	dc.l MapEni_Spike_4
-	dc.w $C
-	dc.l MapEni_Spike_3
-	dc.w $C
-	dc.l MapEni_Spike_4
-	dc.w $FF00
-word_6496:	dc.w $5A
-	dc.l MapEni_Spike_5
-	dc.w $A
-	dc.l MapEni_Spike_6
-	dc.w 6
-	dc.l MapEni_Spike_5
-	dc.w $A
-	dc.l MapEni_Spike_6
-	dc.w $FF00
-word_64B0:	dc.w $32
-	dc.l MapEni_Spike_Defeated
-	dc.w $FF00
-off_64B8:	dc.l word_64C8
-	dc.l word_64E2
-	dc.l word_64F0
-	dc.l word_64FE
-word_64C8:	dc.w $78
-	dc.l MapEni_DavySprocket_0
-	dc.w 8
-	dc.l MapEni_DavySprocket_1
-	dc.w 8
-	dc.l MapEni_DavySprocket_0
-	dc.w 8
-	dc.l MapEni_DavySprocket_1
-	dc.w $FF00
-word_64E2:	dc.w 8
-	dc.l MapEni_DavySprocket_2
-	dc.w 8
-	dc.l MapEni_DavySprocket_3
-	dc.w $FF00
-word_64F0:	dc.w $A
-	dc.l MapEni_DavySprocket_4
-	dc.w $A
-	dc.l MapEni_DavySprocket_5
-	dc.w $FF00
-word_64FE:	dc.w $32
-	dc.l MapEni_DavySprocket_Defeated
-	dc.w $FF00
-off_6506:	dc.l word_6516
-	dc.l word_6530
-	dc.l word_653E
-	dc.l word_656A
-word_6516:	dc.w $5A
-	dc.l MapEni_DragonBreath_0
-	dc.w 8
-	dc.l MapEni_DragonBreath_1
-	dc.w 5
-	dc.l MapEni_DragonBreath_2
-	dc.w 8
-	dc.l MapEni_DragonBreath_1
-	dc.w $FF00
-word_6530:	dc.w $46
-	dc.l MapEni_DragonBreath_3
-	dc.w $14
-	dc.l MapEni_DragonBreath_4
-	dc.w $FF00
-word_653E:	dc.w $3C
-	dc.l MapEni_DragonBreath_5
-	dc.w 5
-	dc.l MapEni_DragonBreath_6
-	dc.w 5
-	dc.l MapEni_DragonBreath_7
-	dc.w 5
-	dc.l MapEni_DragonBreath_6
-	dc.w 5
-	dc.l MapEni_DragonBreath_7
-	dc.w 5
-	dc.l MapEni_DragonBreath_6
-	dc.w 5
-	dc.l MapEni_DragonBreath_7
-	dc.w $FF00
-word_656A:	dc.w $32
-	dc.l MapEni_DragonBreath_Defeated
-	dc.w $FF00
-off_6572:	dc.l word_6582
-	dc.l word_6590
-	dc.l word_65DA
-	dc.l word_65F4
-word_6582:	dc.w $3C
-	dc.l MapEni_Humpty_0
-	dc.w $14
-	dc.l MapEni_Humpty_1
-	dc.w $FF00
-word_6590:	dc.w $78
-	dc.l MapEni_Humpty_2
-	dc.w 5
-	dc.l MapEni_Humpty_3
-	dc.w 3
-	dc.l MapEni_Humpty_4
-	dc.w 5
-	dc.l MapEni_Humpty_3
-	dc.w 6
-	dc.l MapEni_Humpty_2
-	dc.w 7
-	dc.l MapEni_Humpty_5
-	dc.w 6
-	dc.l MapEni_Humpty_2
-	dc.w 5
-	dc.l MapEni_Humpty_3
-	dc.w 3
-	dc.l MapEni_Humpty_4
-	dc.w 5
-	dc.l MapEni_Humpty_3
-	dc.w 5
-	dc.l MapEni_Humpty_2
-	dc.w 5
-	dc.l MapEni_Humpty_5
-	dc.w $FF00
-word_65DA:	dc.w 9
-	dc.l MapEni_Humpty_6
-	dc.w 8
-	dc.l MapEni_Humpty_7
-	dc.w 7
-	dc.l MapEni_Humpty_8
-	dc.w 7
-	dc.l MapEni_Humpty_7
-	dc.w $FF00
-word_65F4:	dc.w $32
-	dc.l MapEni_Humpty_Defeated
-	dc.w $FF00
-off_65FC:	dc.l word_660C
-	dc.l word_6626
-	dc.l word_6634
-	dc.l word_6642
-word_660C:	dc.w $50
-	dc.l MapEni_DrRobotnik_0
-	dc.w 5
-	dc.l MapEni_DrRobotnik_1
-	dc.w 5
-	dc.l MapEni_DrRobotnik_2
-	dc.w 5
-	dc.l MapEni_DrRobotnik_1
-	dc.w $FF00
-word_6626:	dc.w 8
-	dc.l MapEni_DrRobotnik_3
-	dc.w 8
-	dc.l MapEni_DrRobotnik_4
-	dc.w $FF00
-word_6634:	dc.w 5
-	dc.l MapEni_DrRobotnik_5
-	dc.w 5
-	dc.l MapEni_DrRobotnik_6
-	dc.w $FF00
-word_6642:	dc.w $32
-	dc.l MapEni_DrRobotnik_Defeated
-	dc.w $FF00
-off_664A:	dc.l word_665A
-	dc.l word_6674
-	dc.l word_668E
-	dc.l word_66B4
-word_665A:	dc.w $3A
-	dc.l MapEni_Skweel_0
-	dc.w 5
-	dc.l MapEni_Skweel_1
-	dc.w 5
-	dc.l MapEni_Skweel_2
-	dc.w 5
-	dc.l MapEni_Skweel_1
-	dc.w $FF00
-word_6674:	dc.w 9
-	dc.l MapEni_Skweel_3
-	dc.w 8
-	dc.l MapEni_Skweel_4
-	dc.w 9
-	dc.l MapEni_Skweel_3
-	dc.w 8
-	dc.l MapEni_Skweel_5
-	dc.w $FF00
-word_668E:	dc.w 5
-	dc.l MapEni_Skweel_6
-	dc.w 5
-	dc.l MapEni_Skweel_7
-	dc.w 5
-	dc.l MapEni_Skweel_8
-	dc.w 6
-	dc.l MapEni_Skweel_9
-	dc.w 7
-	dc.l MapEni_Skweel_10
-	dc.w 5
-	dc.l MapEni_Skweel_11
-	dc.w $FF00
-word_66B4:	dc.w $32
-	dc.l MapEni_Skweel_Defeated
-	dc.w $FF00
-off_66BC:	dc.l word_66CC
-	dc.l word_66E6
-	dc.l word_6700
-	dc.l word_671A
-word_66CC:	dc.w 7
-	dc.l MapEni_SirFfuzzyLogik_0
-	dc.w 7
-	dc.l MapEni_SirFfuzzyLogik_1
-	dc.w 7
-	dc.l MapEni_SirFfuzzyLogik_2
-	dc.w 7
-	dc.l MapEni_SirFfuzzyLogik_1
-	dc.w $FF00
-word_66E6:	dc.w 9
-	dc.l MapEni_SirFfuzzyLogik_3
-	dc.w 9
-	dc.l MapEni_SirFfuzzyLogik_4
-	dc.w 9
-	dc.l MapEni_SirFfuzzyLogik_5
-	dc.w 9
-	dc.l MapEni_SirFfuzzyLogik_4
-	dc.w $FF00
-word_6700:	dc.w 5
-	dc.l MapEni_SirFfuzzyLogik_6
-	dc.w 5
-	dc.l MapEni_SirFfuzzyLogik_7
-	dc.w 5
-	dc.l MapEni_SirFfuzzyLogik_8
-	dc.w 5
-	dc.l MapEni_SirFfuzzyLogik_7
-	dc.w $FF00
-word_671A:	dc.w 8
-	dc.l MapEni_SirFfuzzyLogik_Defeated_0
-	dc.w 8
-	dc.l MapEni_SirFfuzzyLogik_Defeated_1
-	dc.w 8
-	dc.l MapEni_SirFfuzzyLogik_Defeated_2
-	dc.w 8
-	dc.l MapEni_SirFfuzzyLogik_Defeated_1
-	dc.w $FF00
-off_6734:	dc.l word_6744
-	dc.l word_675E
-	dc.l word_6778
-	dc.l word_6786
-word_6744:	dc.w $28
-	dc.l MapEni_Arms_0
-	dc.w 4
-	dc.l MapEni_Arms_1
-	dc.w 8
-	dc.l MapEni_Arms_2
-	dc.w 4
-	dc.l MapEni_Arms_1
-	dc.w $FF00
-word_675E:	dc.w 8
-	dc.l MapEni_Arms_3
-	dc.w 4
-	dc.l MapEni_Arms_4
-	dc.w 8
-	dc.l MapEni_Arms_5
-	dc.w 4
-	dc.l MapEni_Arms_4
-	dc.w $FF00
-word_6778:	dc.w 8
-	dc.l MapEni_Arms_6
-	dc.w 8
-	dc.l MapEni_Arms_7
-	dc.w $FF00
-word_6786:	dc.w $32
-	dc.l MapEni_Arms_Defeated
-	dc.w $FF00
+	dc.l ArtNem_Scratch		; Skeleton Tea - Puyo Puyo Leftover
+	dc.l ArtNem_Frankly		; Frankly
+	dc.l ArtNem_Dynamight		; Dynamight
+	dc.l ArtNem_Arms		; Arms
+	dc.l ArtNem_Scratch		; Nasu Grave - Puyo Puyo Leftover
+	dc.l ArtNem_Grounder		; Grounder
+	dc.l ArtNem_DavySprocket	; Davy Sprocket
+	dc.l ArtNem_Coconuts		; Coconuts
+	dc.l ArtNem_Spike		; Spike
+	dc.l ArtNem_SirFfuzzyLogik	; Sir Ffuzzy-Logik
+	dc.l ArtNem_DragonBreath	; Dragon Breath
+	dc.l ArtNem_Scratch		; Scratch
+	dc.l ArtNem_DrRobotnik		; Dr. Robotnik
+	dc.l ArtNem_Scratch		; Mummy - Puyo Puyo Leftover
+	dc.l ArtNem_Humpty		; Humpty
+	dc.l ArtNem_Skweel		; Skweel
+
+OpponentAnims:
+	dc.l Scratch_Anims		; Skeleton Tea - Puyo Puyo Leftover
+	dc.l Frankly_Anims		; Frankly
+	dc.l Dynamight_Anims		; Dynamight
+	dc.l Arms_Anims			; Arms
+	dc.l Scratch_Anims		; Nasu Grave - Puyo Puyo Leftover
+	dc.l Grounder_Anims		; Grounder
+	dc.l Davy_Anims			; Davy Sprocket
+	dc.l Coconuts_Anims		; Coconuts
+	dc.l Spike_Anims		; Spike
+	dc.l SirFfuzzy_Anims		; Sir Ffuzzy-Logik
+	dc.l DragonBreath_Anims		; Dragon Breath
+	dc.l Scratch_Anims		; Scratch
+	dc.l Robotnik_Anims		; Dr. Robotnik
+	dc.l Scratch_Anims		; Mummy - Puyo Puyo Leftover
+	dc.l Humpty_Anims		; Humpty
+	dc.l Skweel_Anims		; Skweel
+
+	include	"resource/anim/Enemy/Arms.asm"
+	even
+
+	include	"resource/anim/Enemy/Frankly.asm"
+	even
+
+	include	"resource/anim/Enemy/Humpty.asm"
+	even
+
+	include	"resource/anim/Enemy/Coconuts.asm"
+	even
+
+	include	"resource/anim/Enemy/Davy Sprocket.asm"
+	even
+
+	include	"resource/anim/Enemy/Skweel.asm"
+	even
+
+	include	"resource/anim/Enemy/Dynamight.asm"
+	even
+
+	include	"resource/anim/Enemy/Grounder.asm"
+	even
+
+	include	"resource/anim/Enemy/Spike.asm"
+	even
+
+	include	"resource/anim/Enemy/Sir Ffuzzy-Logik.asm"
+	even
+
+	include	"resource/anim/Enemy/Dragon Breath.asm"
+	even
+
+	include	"resource/anim/Enemy/Scratch.asm"
+	even
+
+	include	"resource/anim/Enemy/Dr Robotnik.asm"
+	even
+
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -7172,43 +6867,44 @@ word_6786:	dc.w $32
 sub_678E:
 	move.b	(level_mode).l,d0
 	andi.b	#3,d0
-	beq.w	loc_679E
+	beq.s	loc_679E
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_679E:
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(opponent).l,d0
 	lsl.w	#2,d0
-	movea.l	off_67AE(pc,d0.w),a1
+	movea.l	Opp_AnimSpec(pc,d0.w),a1
 	jmp	(a1)
 ; End of function sub_678E
 
 ; ---------------------------------------------------------------------------
-off_67AE:
-	dc.l locret_67EE
-	dc.l loc_67F0 ; Frankly's Lightning Bolts
-	dc.l locret_67EE
-	dc.l loc_6F22 ; Arms Flashing Body
-	dc.l locret_67EE
-	dc.l locret_67EE
-	dc.l locret_67EE
-	dc.l loc_6946 ; Coconut's Flashing Light
-	dc.l locret_67EE
-	dc.l loc_6D80 ; Sir Fuzzy's Flashing Eyes
-	dc.l locret_67EE
-	dc.l locret_67EE
-	dc.l locret_67EE
-	dc.l locret_67EE
-	dc.l loc_6AAE ; Humpty's Electric Wave
-	dc.l locret_67EE
+Opp_AnimSpec:
+	dc.l AnimSpec_Null
+	dc.l AnimSpec_Frankly	; Frankly's Lightning Bolts
+	dc.l AnimSpec_Null
+	dc.l AnimSpec_Arms	; Arms Flashing Body
+	dc.l AnimSpec_Null
+	dc.l AnimSpec_Null
+	dc.l AnimSpec_Null
+	dc.l AnimSpec_Coconuts	; Coconut's Flashing Light
+	dc.l AnimSpec_Null
+	dc.l AnimSpec_SirFfuzzy	; Sir Fuzzy's Flashing Eyes
+	dc.l AnimSpec_Null
+	dc.l AnimSpec_Null
+	dc.l AnimSpec_Null
+	dc.l AnimSpec_Null
+	dc.l AnimSpec_Humpty	; Humpty's Electric Wave
+	dc.l AnimSpec_Null
+
 ; ---------------------------------------------------------------------------
 
-locret_67EE:
+AnimSpec_Null:
 	rts
 ; ---------------------------------------------------------------------------
 
-loc_67F0:
+AnimSpec_Frankly:
 	move.l	a0,-(sp)
 	move.w	#$1E00,d0
 	lea	(ArtNem_Frankly_Lightning).l,a0
@@ -7298,7 +6994,8 @@ loc_68B4:
 locret_6900:
 	rts
 ; ---------------------------------------------------------------------------
-unk_6902:	dc.b $18
+unk_6902:
+	dc.b $18
 	dc.b $30
 	dc.b   2
 	dc.b $17
@@ -7306,7 +7003,9 @@ unk_6902:	dc.b $18
 	dc.b   5
 	dc.b $14
 	dc.b $1A
-unk_690A:	dc.b   1
+
+unk_690A:
+	dc.b   1
 	dc.b   1
 	dc.b   0
 	dc.b $E2
@@ -7368,7 +7067,7 @@ unk_690A:	dc.b   1
 	dc.b $32
 ; ---------------------------------------------------------------------------
 
-loc_6946:
+AnimSpec_Coconuts:
 	lea	(loc_6954).l,a1
 	jsr	(FindActorSlot).l
 	rts
@@ -7393,7 +7092,8 @@ loc_697E:
 	movea.l	off_6986(pc,d0.w),a1
 	jmp	(a1)
 ; ---------------------------------------------------------------------------
-off_6986:	dc.l loc_69FE
+off_6986:
+	dc.l loc_69FE
 	dc.l loc_69CE
 	dc.l loc_6996
 	dc.l loc_6A44
@@ -7403,7 +7103,7 @@ loc_6996:
 	tst.b	(byte_FF1121).l
 	bne.s	locret_69B0
 	addq.b	#1,$26(a0)
-	clr.l	d0
+	moveq	#0,d0
 	move.b	$26(a0),d0
 	move.b	d0,d1
 	andi.b	#3,d1
@@ -7416,7 +7116,7 @@ locret_69B0:
 loc_69B2:
 	andi.b	#$1C,d0
 	cmpi.b	#$18,d0
-	bne.w	loc_69C6
+	bne.s	loc_69C6
 	move.b	#0,d0
 	move.b	d0,$26(a0)
 
@@ -7474,9 +7174,11 @@ loc_6A28:
 loc_6A44:
 	jmp	(sub_61C0).l
 ; ---------------------------------------------------------------------------
-word_6A4A:	dc.w $8E
+word_6A4A:
+	dc.w $8E
 	dc.w $6CE
-word_6A4E:	dc.w $8CE
+word_6A4E:
+	dc.w $8CE
 	dc.w $EEE
 	dc.w $46A
 	dc.w $68C
@@ -7488,7 +7190,8 @@ word_6A4E:	dc.w $8CE
 	dc.w 8
 	dc.w 2
 	dc.w 2
-word_6A66:	dc.w $24
+word_6A66:
+	dc.w $24
 	dc.w $24
 	dc.w $24
 	dc.w $24
@@ -7526,7 +7229,7 @@ word_6A66:	dc.w $24
 	dc.w $48
 ; ---------------------------------------------------------------------------
 
-loc_6AAE:
+AnimSpec_Humpty:
 	lea	(loc_6AFE).l,a1
 	jsr	(FindActorSlot).l
 	bcs.s	locret_6AFC
@@ -7562,7 +7265,8 @@ loc_6B0C:
 	movea.l	off_6B26(pc,d0.w),a1
 	jmp	(a1)
 ; ---------------------------------------------------------------------------
-off_6B26:	dc.l loc_6B36
+off_6B26:
+	dc.l loc_6B36
 	dc.l loc_6B90
 	dc.l loc_6B74
 	dc.l loc_6B90
@@ -7605,7 +7309,8 @@ loc_6BA2:
 	movea.l	off_6BAA(pc,d0.w),a1
 	jmp	(a1)
 ; ---------------------------------------------------------------------------
-off_6BAA:	dc.l loc_6BBC
+off_6BAA:
+	dc.l loc_6BBC
 	dc.l loc_6CC2
 	dc.l loc_6C9E
 	dc.l locret_6BBA
@@ -7633,7 +7338,7 @@ loc_6BCE:
 
 loc_6BEC:
 	tst.b	$28(a0)
-	beq.w	loc_6C18
+	beq.s	loc_6C18
 	tst.w	(word_FF1124).l
 	beq.s	loc_6C0A
 	cmpi.w	#$AC,$A(a0)
@@ -7704,7 +7409,10 @@ loc_6C9E:
 	jsr	(ActorAnimate).l
 	rts
 ; ---------------------------------------------------------------------------
-unk_6CAC:	dc.b $78
+; TODO: Document Animation Code
+
+unk_6CAC:
+	dc.b $78
 	dc.b   5
 	dc.b   5
 	dc.b   6
@@ -7784,7 +7492,8 @@ loc_6D5C:
 	add.w	d0,$E(a0)
 	rts
 ; ---------------------------------------------------------------------------
-byte_6D6E:	dc.b 0
+byte_6D6E:
+	dc.b   0
 	dc.b   2
 	dc.b $FF
 	dc.b $FE
@@ -7804,7 +7513,7 @@ byte_6D6E:	dc.b 0
 	dc.b $11
 ; ---------------------------------------------------------------------------
 
-loc_6D80:
+AnimSpec_SirFfuzzy:
 	lea	(loc_6DCE).l,a1
 	jsr	(FindActorSlot).l
 	bcs.s	locret_6DCC
@@ -7925,7 +7634,8 @@ loc_6EC6:
 	lea	((palette_buffer+$60)).l,a2
 	jmp	(LoadPalette).l
 ; ---------------------------------------------------------------------------
-unk_6EE2:	dc.b $11
+unk_6EE2:
+	dc.b $11
 	dc.b   8
 	dc.b  $A
 	dc.b  $C
@@ -7957,41 +7667,29 @@ unk_6EE2:	dc.b $11
 	dc.b   5
 	dc.b   5
 	dc.b   5
-unk_6F02:	dc.b   2
-	dc.b $AC
-	dc.b   4
-	dc.b $EE
-unk_6F06:	dc.b   0
-	dc.b $8A
-	dc.b   0
-	dc.b $CC
-	dc.b   0
-	dc.b $68
-	dc.b   0
-	dc.b $AA
-	dc.b   0
-	dc.b $46
-	dc.b   0
-	dc.b $88
-	dc.b   0
-	dc.b $24
-	dc.b   0
-	dc.b $66
-	dc.b   0
-	dc.b $46
-	dc.b   0
-	dc.b $88
-	dc.b   0
-	dc.b $68
-	dc.b   0
-	dc.b $AA
-	dc.b   0
-	dc.b $8A
-	dc.b   0
-	dc.b $CC
+
+unk_6F02:	; Palette Cycling for Sir Ffuzzy
+	dc.w $2AC
+	dc.w $4EE
+
+unk_6F06:
+	dc.w $8A
+	dc.w $CC
+	dc.w $68
+	dc.w $AA
+	dc.w $46
+	dc.w $88
+	dc.w $24
+	dc.w $66
+	dc.w $46
+	dc.w $88
+	dc.w $68
+	dc.w $AA
+	dc.w $8A
+	dc.w $CC
 ; ---------------------------------------------------------------------------
 
-loc_6F22:
+AnimSpec_Arms:
 	lea	(loc_6F38).l,a1
 	jsr	(FindActorSlot).l
 	bcs.s	locret_6F36
@@ -8071,44 +7769,30 @@ loc_6FDC:
 	lea	((palette_buffer+$60)).l,a2
 	jmp	(LoadPalette).l
 ; ---------------------------------------------------------------------------
-unk_6FF2:	dc.b   0
-	dc.b $46
-	dc.b   0
-	dc.b $48
-	dc.b   2
-	dc.b $6A
-	dc.b   4
-	dc.b $8C
-	dc.b   6
-	dc.b $AE
-	dc.b   8
-	dc.b $CE
-	dc.b  $A
-	dc.b $EE
-	dc.b  $E
-	dc.b $EE
-	dc.b  $A
-	dc.b $EE
-	dc.b   8
-	dc.b $CE
-	dc.b   6
-	dc.b $AE
-	dc.b   4
-	dc.b $8C
-	dc.b   2
-	dc.b $6A
-	dc.b   0
-	dc.b $48
-unk_700E:	dc.b  $E
-	dc.b $EE
-	dc.b   8
-	dc.b $CE
-	dc.b   4
-	dc.b $8C
-	dc.b   0
-	dc.b $46
-unk_7016:	dc.b   0
-	dc.b $EE
+unk_6FF2:	; Palette cycling for Arms
+	dc.w $46
+	dc.w $48
+	dc.w $26A
+	dc.w $48C
+	dc.w $6AE
+	dc.w $8CE
+	dc.w $AEE
+	dc.w $EEE
+	dc.w $AEE
+	dc.w $8CE
+	dc.w $6AE
+	dc.w $48C
+	dc.w $26A
+	dc.w $48
+
+unk_700E:
+	dc.w $EEE
+	dc.w $8CE
+	dc.w $48C
+	dc.w $46
+
+unk_7016:
+	dc.w $EE
 
 ; ---------------------------------------------------------------------------
 
@@ -8129,7 +7813,7 @@ sub_7078:
 loc_7092:
 	lea	(sub_7104).l,a1
 	bsr.w	FindActorSlotQuick
-	bcs.w	loc_70FE
+	bcs.s	loc_70FE
 	move.b	#$F,6(a1)
 	move.b	#$25,8(a1)
 	move.b	d1,9(a1)
@@ -8165,7 +7849,7 @@ sub_7104:
 	jsr	(ActorBookmark_SetDelay).l
 	jsr	(ActorBookmark).l
 	tst.w	$26(a0)
-	beq.w	loc_7122
+	beq.s	loc_7122
 	subq.w	#1,$26(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -8176,7 +7860,7 @@ loc_7122:
 	bsr.w	ActorBookmark
 	bsr.w	sub_3810
 	subq.w	#1,$26(a0)
-	beq.w	loc_7140
+	beq.s	loc_7140
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -8196,7 +7880,7 @@ loc_7152:
 loc_7162:
 	lea	(loc_7270).l,a1
 	bsr.w	FindActorSlotQuick
-	bcs.w	loc_71BA
+	bcs.s	loc_71BA
 	move.b	#$87,6(a1)
 	move.b	8(a0),8(a1)
 	move.b	9(a0),9(a1)
@@ -8221,11 +7905,14 @@ loc_71BA:
 ; End of function sub_7104
 
 ; ---------------------------------------------------------------------------
-off_71CC:	dc.l unk_71DC
+off_71CC:
+	dc.l unk_71DC
 	dc.l unk_71E4
 	dc.l unk_71EC
 	dc.l unk_71F4
-unk_71DC:	dc.b   8
+
+unk_71DC:
+	dc.b   8
 	dc.b   0
 	dc.b $20
 	dc.b   4
@@ -8233,7 +7920,9 @@ unk_71DC:	dc.b   8
 	dc.b   8
 	dc.b $FE
 	dc.b   0
-unk_71E4:	dc.b   8
+
+unk_71E4:
+	dc.b   8
 	dc.b   1
 	dc.b $20
 	dc.b   5
@@ -8241,7 +7930,9 @@ unk_71E4:	dc.b   8
 	dc.b   9
 	dc.b $FE
 	dc.b   0
-unk_71EC:	dc.b   8
+
+unk_71EC:
+	dc.b   8
 	dc.b   2
 	dc.b $20
 	dc.b   6
@@ -8249,7 +7940,9 @@ unk_71EC:	dc.b   8
 	dc.b  $A
 	dc.b $FE
 	dc.b   0
-unk_71F4:	dc.b   8
+
+unk_71F4:
+	dc.b   8
 	dc.b   3
 	dc.b $20
 	dc.b   7
@@ -8263,7 +7956,7 @@ loc_71FC:
 	lea	(word_725A).l,a2
 	move.w	#$A0,d1
 	tst.b	$2A(a0)
-	bne.w	loc_7212
+	bne.s	loc_7212
 	move.w	#$160,d1
 
 loc_7212:
@@ -8272,15 +7965,15 @@ loc_7212:
 loc_7216:
 	lea	(loc_7262).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcs.w	loc_7254
+	bcs.s	loc_7254
 	move.b	#$25,8(a1)
 	move.b	d0,9(a1)
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	jsr	(Random).l
 	andi.w	#$3F,d0
 	add.w	d1,d0
 	move.w	d0,$A(a1)
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	move.w	d0,d2
 	lsl.w	#4,d2
 	move.w	d2,$26(a1)
@@ -8290,7 +7983,8 @@ loc_7254:
 	dbf	d0,loc_7216
 	rts
 ; ---------------------------------------------------------------------------
-word_725A:	dc.w $A0
+word_725A:
+	dc.w $A0
 	dc.w $B8
 	dc.w $B0
 	dc.w $A8
@@ -8343,7 +8037,7 @@ loc_72A4:
 	swap	d0
 	jsr	(QueuePlaneCmd).l
 	subq.w	#1,$26(a0)
-	beq.w	loc_72CA
+	beq.s	loc_72CA
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -8356,12 +8050,11 @@ loc_72CA:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_72E0:
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	lea	(ArtPuyo_VSWinLose).l,a0
 	move.w	#$4000,d0
-	
+
 	if PuyoCompression=0
 	jsr	(PuyoDec).l
 	else
@@ -8369,7 +8062,7 @@ sub_72E0:
 	jsr	(NemDec).l
 	ENABLE_INTS
 	endc
-	
+
 	lea	(ArtNem_AllRightOhNo).l,a0
 	move.w	#$2000,d0
 	DISABLE_INTS
@@ -8379,7 +8072,8 @@ sub_72E0:
 	adda.l	#(Pal_VsOhNo-Palettes),a2
 	move.b	#3,d0
 	jsr	(LoadPalette).l
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
+
 	lea	(loc_75CE).l,a1
 	bsr.w	FindActorSlot
 	bcs.w	locret_7482
@@ -8459,7 +8153,8 @@ locret_7482:
 ; End of function sub_72E0
 
 ; ---------------------------------------------------------------------------
-byte_7484:	dc.b $2C
+byte_7484:
+	dc.b $2C
 	dc.b 4
 	dc.b $52
 	dc.b 2
@@ -8472,7 +8167,6 @@ byte_7484:	dc.b $2C
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_7498:
 	move.w	#$1F,d0
 	lea	(off_757E).l,a2
@@ -8480,7 +8174,7 @@ sub_7498:
 loc_74A2:
 	lea	(sub_7522).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcs.w	loc_751C
+	bcs.s	loc_751C
 	move.l	a0,$2E(a1)
 	move.b	8(a0),8(a1)
 	move.w	$A(a0),$1E(a1)
@@ -8506,7 +8200,7 @@ loc_74A2:
 	move.l	(a2,d1.w),$32(a1)
 	move.b	#1,$12(a1)
 	cmpi.b	#$10,d0
-	bcc.w	loc_751C
+	bcc.s	loc_751C
 	move.b	#$FF,$12(a1)
 
 loc_751C:
@@ -8544,12 +8238,17 @@ sub_7522:
 ; End of function sub_7522
 
 ; ---------------------------------------------------------------------------
-off_757E:	dc.l unk_7592
+; TO-DO: Document Animation Table
+
+off_757E:
+	dc.l unk_7592
 	dc.l unk_759E
 	dc.l unk_75AA
 	dc.l unk_75B6
 	dc.l unk_75C2
-unk_7592:	dc.b   4
+
+unk_7592:
+	dc.b   4
 	dc.b   3
 	dc.b   4
 	dc.b   4
@@ -8558,7 +8257,9 @@ unk_7592:	dc.b   4
 	dc.b $FF
 	dc.b   0
 	dc.l unk_7592
-unk_759E:	dc.b   4
+
+unk_759E:
+	dc.b   4
 	dc.b   8
 	dc.b   4
 	dc.b   7
@@ -8567,7 +8268,9 @@ unk_759E:	dc.b   4
 	dc.b $FF
 	dc.b   0
 	dc.l unk_759E
-unk_75AA:	dc.b   4
+
+unk_75AA:
+	dc.b   4
 	dc.b   9
 	dc.b   4
 	dc.b  $A
@@ -8576,7 +8279,9 @@ unk_75AA:	dc.b   4
 	dc.b $FF
 	dc.b   0
 	dc.l unk_75AA
-unk_75B6:	dc.b   4
+
+unk_75B6:
+	dc.b   4
 	dc.b  $E
 	dc.b   4
 	dc.b  $D
@@ -8585,7 +8290,9 @@ unk_75B6:	dc.b   4
 	dc.b $FF
 	dc.b   0
 	dc.l unk_75B6
-unk_75C2:	dc.b   4
+
+unk_75C2:
+	dc.b   4
 	dc.b  $F
 	dc.b   4
 	dc.b $10
@@ -8607,7 +8314,7 @@ loc_75CE:
 	btst	#2,7(a1)
 	beq.w	ActorDeleteSelf
 	btst	#1,7(a1)
-	beq.w	loc_7620
+	beq.s	loc_7620
 	move.b	$36(a0),d0
 	ori.b	#$80,d0
 	move.w	#$1000,d1
@@ -8643,7 +8350,10 @@ loc_7654:
 	move.w	d0,$E(a0)
 	jmp	(ActorAnimate).l
 ; ---------------------------------------------------------------------------
-byte_767E:	dc.b $3C
+; TODO: Document Animation Code
+
+byte_767E:
+	dc.b $3C
 	dc.b $12
 	dc.b   8
 	dc.b $13
@@ -8660,7 +8370,9 @@ byte_767E:	dc.b $3C
 	dc.b $FF
 	dc.b   0
 	dc.l byte_767E
-unk_7692:	dc.b $1E
+
+unk_7692:
+	dc.b $1E
 	dc.b $19
 	dc.b   7
 	dc.b $1A
@@ -8739,9 +8451,9 @@ loc_7720:
 sub_772C:
 	movea.l	$2E(a0),a1
 	btst	#2,7(a1)
-	beq.w	loc_7746
+	beq.s	loc_7746
 	btst	#1,7(a1)
-	beq.w	loc_7746
+	beq.s	loc_7746
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -8770,7 +8482,7 @@ loc_777C:
 	bsr.w	ActorBookmark
 	bsr.s	sub_772C
 	tst.w	$26(a0)
-	beq.w	loc_77A2
+	beq.s	loc_77A2
 	jsr	(sub_3810).l
 	jsr	(ActorAnimate).l
 	subq.w	#1,$26(a0)
@@ -8779,7 +8491,7 @@ loc_777C:
 
 loc_77A2:
 	tst.w	$28(a0)
-	beq.w	loc_77BA
+	beq.s	loc_77BA
 	subq.w	#1,$28(a0)
 	move.l	$12(a0),d0
 	neg.l	d0
@@ -8801,7 +8513,7 @@ loc_77DC:
 	bsr.w	ActorBookmark
 	bsr.w	sub_772C
 	cmpi.w	#$90,$E(a0)
-	bcs.w	loc_77F4
+	bcs.s	loc_77F4
 	subq.w	#1,$E(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -8816,7 +8528,7 @@ loc_77F4:
 	jsr	(sub_3810).l
 	jsr	(ActorAnimate).l
 	cmpi.w	#$D0,$E(a0)
-	bcc.w	loc_782A
+	bcc.s	loc_782A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -8826,7 +8538,10 @@ loc_782A:
 ; End of function sub_7752
 
 ; ---------------------------------------------------------------------------
-unk_7832:	dc.b $1E
+; TODO: Document Animation Code
+
+unk_7832:
+	dc.b $1E
 	dc.b   1
 	dc.b  $A
 	dc.b $17
@@ -8873,7 +8588,10 @@ loc_7882:
 locret_78A2:
 	rts
 ; ---------------------------------------------------------------------------
-unk_78A4:	dc.b   4
+; TODO: Document Animation Code
+
+unk_78A4:
+	dc.b   4
 	dc.b $1E
 	dc.b   5
 	dc.b $1F
@@ -8883,7 +8601,9 @@ unk_78A4:	dc.b   4
 	dc.b $21
 	dc.b $FE
 	dc.b   0
-unk_78AE:	dc.b   4
+
+unk_78AE:
+	dc.b   4
 	dc.b $22
 	dc.b   5
 	dc.b $23
@@ -8896,11 +8616,10 @@ unk_78AE:	dc.b   4
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_78B8:
 	lea	(loc_78E8).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_78CA
+	bcc.s	loc_78CA
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -8922,7 +8641,7 @@ loc_78E8:
 	move.w	d0,$26(a0)
 	bsr.w	ActorBookmark
 	tst.w	$26(a0)
-	beq.w	loc_790C
+	beq.s	loc_790C
 	subq.w	#1,$26(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -8937,7 +8656,6 @@ loc_790C:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_7926:
 	bsr.w	GetPuyoField
 	adda.l	#pVisiblePuyos,a2
@@ -8945,10 +8663,10 @@ sub_7926:
 
 loc_7934:
 	move.b	(a2,d0.w),d1
-	beq.w	loc_794E
+	beq.s	loc_794E
 	andi.b	#$70,d1
 	cmpi.b	#$60,d1
-	beq.w	loc_794E
+	beq.s	loc_794E
 	andi.b	#$F3,(a2,d0.w)
 
 loc_794E:
@@ -8960,7 +8678,7 @@ loc_794E:
 	clr.w	d3
 	lea	(loc_833E).l,a1
 	bsr.w	FindActorSlot
-	bcs.w	loc_7982
+	bcs.s	loc_7982
 	addq.w	#1,d3
 	move.l	a0,$2E(a1)
 	move.l	#unk_837A,$32(a1)
@@ -8979,7 +8697,7 @@ loc_7982:
 loc_79A4:
 	lea	(loc_8386).l,a1
 	bsr.w	FindActorSlot
-	bcs.w	loc_79E6
+	bcs.s	loc_79E6
 	bsr.w	sub_8250
 	addq.w	#1,d3
 	move.l	a0,$2E(a1)
@@ -9006,7 +8724,7 @@ loc_79E6:
 
 loc_79FC:
 	cmpi.b	#1,(level_mode).l
-	bcc.w	loc_7A12
+	bcc.s	loc_7A12
 	jsr	(StopSound).l
 	bsr.w	ActorBookmark
 
@@ -9015,7 +8733,7 @@ loc_7A12:
 	bsr.w	sub_7926
 	bsr.w	ActorBookmark
 	tst.w	$26(a0)
-	beq.w	loc_7A28
+	beq.s	loc_7A28
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -9041,11 +8759,14 @@ loc_7A4E:
 	movea.l	off_7A6C(pc,d0.w),a2
 	jmp	(a2)
 ; ---------------------------------------------------------------------------
-off_7A6C:	dc.l loc_7D78
+off_7A6C:
+	dc.l loc_7D78
 	dc.l loc_7F70
 	dc.l loc_80EE
 	dc.l loc_80EE
-unk_7A7C:	dc.b   0
+
+unk_7A7C:
+	dc.b   0
 	dc.b $20
 	dc.b   0
 	dc.b $14
@@ -9072,7 +8793,6 @@ unk_7A7C:	dc.b   0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_7A94:
 	clr.w	d0
 	move.b	(level_mode).l,d0
@@ -9082,7 +8802,8 @@ sub_7A94:
 ; End of function sub_7A94
 
 ; ---------------------------------------------------------------------------
-off_7AA4:	dc.l loc_7ACE
+off_7AA4:
+	dc.l loc_7ACE
 	dc.l loc_7C50
 	dc.l loc_7CAC
 	dc.l loc_7CAC
@@ -9112,10 +8833,10 @@ loc_7ACE:
 	clr.l	(dword_FF195C).l
 	clr.w	(dword_FF1960).l
 	tst.b	$2A(a0)
-	bne.w	loc_7B2C
+	bne.s	loc_7B2C
 	movea.l	$2E(a0),a1
 	bsr.w	ActorDeleteOther
-	bsr.w	sub_7C14
+	bsr.w	PlayerLose_ChkRobotnik
 	move.b	#SFX_LOSE,d0
 	jmp	(PlaySound_ChkPCM).l
 ; ---------------------------------------------------------------------------
@@ -9124,7 +8845,7 @@ loc_7B2C:
 	jsr	(sub_DF74).l
 	move.w	(time_total_secs).l,d0
 	cmpi.w	#$3E8,d0
-	bcs.w	loc_7B44
+	bcs.s	loc_7B44
 	move.w	#$3E7,d0
 
 loc_7B44:
@@ -9136,21 +8857,21 @@ loc_7B44:
 	move.l	$A(a1),(dword_FF195C).l
 	add.l	d0,(dword_FF195C).l
 	cmpi.l	#$5F5E100,(dword_FF195C).l
-	bcs.w	loc_7B80
+	bcs.s	loc_7B80
 	move.l	#$5F5E0FF,(dword_FF195C).l
 
 loc_7B80:
 	move.w	$16(a1),(dword_FF1960).l
 	cmpi.b	#$F,(level).l
-	beq.w	loc_7BB6
+	beq.s	loc_7BB6
 	cmpi.b	#2,(level).l
-	beq.w	loc_7BB6
+	beq.s	loc_7BB6
 
 loc_7BA0:
 	bsr.w	ActorDeleteOther
 	bsr.w	sub_7292
 	bsr.w	sub_7078
-	bsr.w	sub_7BD8
+	bsr.w	PlayerWin_ChkRobotnik
 	jmp	(PlayLevelWinMusic).l
 ; ---------------------------------------------------------------------------
 
@@ -9165,54 +8886,52 @@ loc_7BB6:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_7BD8:
+PlayerWin_ChkRobotnik:
 	move.b	(opponent).l,d0
 	cmpi.b	#OPP_ROBOTNIK,d0
-	bne.s	locret_7C12
-	lea	(loc_7BF0).l,a1
+	bne.s	PlayerWin_NotRobotnik
+	lea	(Play_RobonikLoseVoice).l,a1
 	jmp	(FindActorSlotQuick).l
 ; ---------------------------------------------------------------------------
 
-loc_7BF0:
+Play_RobonikLoseVoice:
 	move.w	#$10,$26(a0)
 	jsr	(ActorBookmark).l
 	subq.w	#1,$26(a0)
-	bpl.s	locret_7C12
+	bpl.s	PlayerWin_NotRobotnik
 	move.b	#VOI_ROBOTNIK_LOSE,d0
 	jsr	(PlaySound_ChkPCM).l
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
 
-locret_7C12:
+PlayerWin_NotRobotnik:
 	rts
-; End of function sub_7BD8
+; End of function PlayerWin_ChkRobotnik
 
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_7C14:
+PlayerLose_ChkRobotnik:
 	move.b	(opponent).l,d0
 	cmpi.b	#OPP_ROBOTNIK,d0
-	bne.s	locret_7C4E
-	lea	(loc_7C2C).l,a1
+	bne.s	PlayerLose_NotRobotnik
+	lea	(Play_RobonikWinVoice).l,a1
 	jmp	(FindActorSlotQuick).l
 ; ---------------------------------------------------------------------------
 
-loc_7C2C:
+Play_RobonikWinVoice:
 	move.w	#$20,$26(a0)
 	jsr	(ActorBookmark).l
 	subq.w	#1,$26(a0)
-	bpl.s	locret_7C4E
+	bpl.s	PlayerLose_NotRobotnik
 	move.b	#SFX_ROBOTNIK_LAUGH,d0
 	jsr	(PlaySound_ChkPCM).l
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
 
-locret_7C4E:
+PlayerLose_NotRobotnik:
 	rts
-; End of function sub_7C14
+; End of function PlayerLose_ChkRobotnik
 
 ; ---------------------------------------------------------------------------
 
@@ -9233,7 +8952,7 @@ loc_7C50:
 	lea	(byte_FF0128).l,a1
 	addq.b	#1,(a1,d0.w)
 	cmpi.b	#$64,(a1,d0.w)
-	bcs.w	loc_7CA8
+	bcs.s	loc_7CA8
 	clr.w	(a1)
 	move.b	#1,(a1,d0.w)
 
@@ -9253,7 +8972,6 @@ loc_7CAC:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_7CD2:
 	nop
 	nop
@@ -9268,9 +8986,7 @@ sub_7CD2:
 	jmp	(PlaySound_ChkPCM).l
 ; End of function sub_7CD2
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_7CF6:
 	clr.w	d0
@@ -9279,7 +8995,7 @@ sub_7CF6:
 	mulu.w	#$A,d0
 	addi.w	#$6E,d0
 	sub.w	$16(a0),d0
-	bcc.w	loc_7D12
+	bcc.s	loc_7D12
 	clr.w	d0
 
 loc_7D12:
@@ -9291,15 +9007,15 @@ loc_7D12:
 ; ---------------------------------------------------------------------------
 
 loc_7D1A:
-	clr.l	d0
+	moveq	#0,d0
 	move.w	$12(a0),d0
-	bne.w	loc_7D26
+	bne.s	loc_7D26
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_7D26:
 	cmp.w	$28(a0),d0
-	bcs.w	loc_7D32
+	bcs.s	loc_7D32
 	move.w	$28(a0),d0
 
 loc_7D32:
@@ -9307,7 +9023,7 @@ loc_7D32:
 	jsr	(sub_9C4A).l
 	move.b	$27(a0),d0
 	andi.b	#3,d0
-	bne.w	loc_7D52
+	bne.s	loc_7D52
 	move.b	#SFX_5F,d0
 	jsr	(PlaySound_ChkPCM).l
 
@@ -9318,7 +9034,6 @@ loc_7D52:
 	jmp	(QueuePlaneCmd).l
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_7D62:
 	moveq	#0,d0
@@ -9343,7 +9058,7 @@ loc_7D78:
 	jsr	(ActorBookmark_SetDelay).l
 	jsr	(ActorBookmark).l
 	tst.w	$12(a0)
-	beq.w	loc_7E30
+	beq.s	loc_7E30
 	move.w	#$9900,d0
 	swap	d0
 	move.w	$12(a0),d0
@@ -9352,7 +9067,7 @@ loc_7D78:
 	jsr	(PlaySound_ChkPCM).l
 	move.w	$12(a0),d0
 	lsr.w	#7,d0
-	bne.w	loc_7DDA
+	bne.s	loc_7DDA
 	move.w	#1,d0
 
 loc_7DDA:
@@ -9363,16 +9078,16 @@ loc_7DDA:
 	jsr	(ActorBookmark).l
 	bsr.w	sub_56C0
 	andi.b	#$F0,d0
-	bne.w	loc_7E14
+	bne.s	loc_7E14
 	subq.w	#1,$26(a0)
-	beq.w	loc_7E14
+	beq.s	loc_7E14
 	cmpi.w	#$780,$26(a0)
 	bcs.w	loc_7D1A
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_7E14:
-	clr.l	d0
+	moveq	#0,d0
 	move.w	$12(a0),d0
 	jsr	(sub_9C4A).l
 	move.l	#$99000000,d0
@@ -9429,13 +9144,13 @@ loc_7EC2:
 	jsr	(ActorBookmark_Ctrl).l
 	move.b	(level_mode).l,(high_score_table_id).l
 	bsr.w	sub_C438
-	bcc.w	loc_7EF2
+	bcc.s	loc_7EF2
 	bsr.w	sub_BFA6
 
 loc_7EF2:
 	bsr.w	ActorBookmark
 	btst	#1,7(a0)
-	beq.w	loc_7F02
+	beq.s	loc_7F02
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -9450,7 +9165,6 @@ loc_7F02:
 	bra.w	ActorDeleteSelf
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_7F24:
 	lea	(sub_7F5A).l,a1
@@ -9467,9 +9181,7 @@ locret_7F58:
 	rts
 ; End of function sub_7F24
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_7F5A:
 	jsr	(ActorAnimate).l
@@ -9477,7 +9189,10 @@ sub_7F5A:
 ; End of function sub_7F5A
 
 ; ---------------------------------------------------------------------------
-unk_7F62:	dc.b  $C
+; TODO: Document Animation Code
+
+unk_7F62:
+	dc.b  $C
 	dc.b  $E
 	dc.b  $A
 	dc.b $35
@@ -9534,25 +9249,25 @@ loc_7F70:
 	bsr.w	ActorBookmark
 	bsr.w	sub_56C0
 	btst	#7,d0
-	beq.w	loc_8044
+	beq.s	loc_8044
 	jsr	(CheckCoinInserted).l
-	bcs.w	loc_8044
+	bcs.s	loc_8044
 	bra.w	loc_80B8
 ; ---------------------------------------------------------------------------
 
 loc_8044:
 	tst.w	$28(a0)
-	beq.w	loc_8084
+	beq.s	loc_8084
 	subq.w	#1,$28(a0)
 	andi.b	#$70,d0
-	beq.w	loc_805E
+	beq.s	loc_805E
 	andi.b	#$C0,$29(a0)
 
 loc_805E:
 	bsr.w	sub_7282
 	move.w	#$8008,d0
 	jsr	(CheckCoinInserted).l
-	bcs.w	loc_8074
+	bcs.s	loc_8074
 	move.w	#$8009,d0
 
 loc_8074:
@@ -9600,13 +9315,13 @@ loc_80EE:
 	jsr	(ActorBookmark).l
 	move.b	#1,(high_score_table_id).l
 	bsr.w	sub_C438
-	bcc.w	loc_811C
+	bcc.s	loc_811C
 	bsr.w	sub_BFA6
 
 loc_811C:
 	bsr.w	ActorBookmark
 	btst	#1,7(a0)
-	beq.w	loc_812C
+	beq.s	loc_812C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -9624,15 +9339,15 @@ loc_813C:
 	beq.w	loc_81FC
 	bsr.w	sub_56C0
 	btst	#7,d0
-	beq.w	loc_816E
+	beq.s	loc_816E
 	jsr	(CheckCoinInserted).l
-	bcs.w	loc_816E
+	bcs.s	loc_816E
 	bra.w	loc_81AE
 ; ---------------------------------------------------------------------------
 
 loc_816E:
 	subq.w	#1,$26(a0)
-	bcc.w	loc_8188
+	bcc.s	loc_8188
 	move.w	#0,$26(a0)
 	move.b	$2A(a0),d0
 	addq.b	#1,d0
@@ -9642,7 +9357,7 @@ loc_8188:
 	bsr.w	sub_7282
 	move.w	#$8017,d0
 	jsr	(CheckCoinInserted).l
-	bcc.w	loc_819E
+	bcc.s	loc_819E
 	move.b	#7,d0
 
 loc_819E:
@@ -9705,9 +9420,7 @@ loc_823E:
 	rts
 ; End of function sub_8210
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_8250:
 	movem.l	d0-d2,-(sp)
@@ -9717,10 +9430,10 @@ sub_8250:
 
 loc_825C:
 	move.b	(a2,d1.w),d2
-	beq.w	loc_8270
+	beq.s	loc_8270
 	andi.b	#$70,d2
 	cmpi.b	#$60,d2
-	bne.w	loc_8286
+	bne.s	loc_8286
 
 loc_8270:
 	addi.w	#$C,d1
@@ -9737,7 +9450,8 @@ loc_8286:
 ; End of function sub_8250
 
 ; ---------------------------------------------------------------------------
-unk_8292:	dc.b   0
+unk_8292:
+	dc.b   0
 	dc.b $10
 	dc.b $30
 	dc.b $40
@@ -9745,7 +9459,6 @@ unk_8292:	dc.b   0
 	dc.b $20
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_8298:
 	lea	(sub_82E0).l,a1
@@ -9767,9 +9480,7 @@ locret_82DE:
 	rts
 ; End of function sub_8298
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_82E0:
 	movem.l	$2E(a0),a1
@@ -9778,7 +9489,7 @@ sub_82E0:
 	bsr.w	ActorAnimate
 	move.w	$20(a0),d0
 	cmp.w	$E(a0),d0
-	bcs.w	loc_8302
+	bcs.s	loc_8302
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -9788,7 +9499,10 @@ loc_8302:
 ; End of function sub_82E0
 
 ; ---------------------------------------------------------------------------
-unk_8308:	dc.b $40
+; TODO: Document Animation Code
+
+unk_8308:
+	dc.b $40
 	dc.b   0
 	dc.b   1
 	dc.b   1
@@ -9843,10 +9557,10 @@ unk_8308:	dc.b $40
 
 loc_833E:
 	bsr.w	ActorAnimate
-	bcs.w	loc_836E
+	bcs.s	loc_836E
 	move.b	9(a0),d0
 	cmp.b	8(a0),d0
-	bne.w	loc_8354
+	bne.s	loc_8354
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -9865,7 +9579,10 @@ loc_836E:
 	subq.w	#1,$26(a1)
 	bra.w	ActorDeleteSelf
 ; ---------------------------------------------------------------------------
-unk_837A:	dc.b   6
+; TODO: Document Animation Code
+
+unk_837A:
+	dc.b   6
 	dc.b   0
 	dc.b   5
 	dc.b   1
@@ -9886,7 +9603,7 @@ loc_8386:
 	move.l	d0,$E(a0)
 	swap	d0
 	cmpi.w	#$D0,d0
-	bcc.w	loc_83BA
+	bcc.s	loc_83BA
 	bsr.w	sub_3810
 	move.w	$E(a0),d0
 	lea	(vscroll_buffer).l,a2
@@ -9898,7 +9615,7 @@ loc_8386:
 
 loc_83BA:
 	bsr.w	sub_83D2
-	bcc.w	loc_83C6
+	bcc.s	loc_83C6
 	bsr.w	sub_83F6
 
 loc_83C6:
@@ -9921,7 +9638,8 @@ sub_83D2:
 ; End of function sub_83D2
 
 ; ---------------------------------------------------------------------------
-unk_83EC:	dc.b   0
+unk_83EC:
+	dc.b   0
 	dc.b $FF
 	dc.b $FF
 	dc.b $FF
@@ -9945,7 +9663,7 @@ loc_8402:
 loc_8406:
 	lea	(loc_8490).l,a1
 	bsr.w	FindActorSlotQuick
-	bcc.w	loc_8416
+	bcc.s	loc_8416
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -9966,7 +9684,7 @@ loc_8416:
 	movea.l	a1,a2
 	lea	(loc_84D6).l,a1
 	bsr.w	FindActorSlotQuick
-	bcc.w	loc_8466
+	bcc.s	loc_8466
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -9981,7 +9699,8 @@ loc_8466:
 ; End of function sub_83F6
 
 ; ---------------------------------------------------------------------------
-unk_848C:	dc.b   8
+unk_848C:
+	dc.b   8
 	dc.b   4
 	dc.b   5
 	dc.b   6
@@ -9989,7 +9708,7 @@ unk_848C:	dc.b   8
 
 loc_8490:
 	subq.w	#1,$26(a0)
-	beq.w	loc_849A
+	beq.s	loc_849A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -9997,7 +9716,7 @@ loc_849A:
 	move.b	#$85,6(a0)
 	bsr.w	ActorBookmark
 	bsr.w	sub_3810
-	bcs.w	loc_84CA
+	bcs.s	loc_84CA
 	move.b	$36(a0),d0
 	move.w	#$1000,d1
 	jsr	(Sin).l
@@ -10023,7 +9742,10 @@ loc_84D6:
 	move.w	$E(a1),$E(a0)
 	rts
 ; ---------------------------------------------------------------------------
-unk_84F4:	dc.b   3
+; TODO: Document Animation Code
+
+unk_84F4:
+	dc.b   3
 	dc.b $11
 	dc.b   1
 	dc.b $12
@@ -10132,7 +9854,8 @@ UpdateSound:
 ; End of function UpdateSound
 
 ; ---------------------------------------------------------------------------
-unk_8660:	dc.b   0
+unk_8660:
+	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -10472,14 +10195,14 @@ FadeSound:
 ; --------------------------------------------------------------
 
 StopSound:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 
 	move.b	#SFX_STOP,d0
 	jsr	PlaySound
 	move.b	#BGM_STOP,d0
 	jsr	PlaySound
 
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	rts
 
 ; --------------------------------------------------------------
@@ -10613,20 +10336,20 @@ sub_88A8:
 	adda.l	#pUnk2,a2
 	adda.l	#pUnk3,a3
 	cmpi.w	#$36,8(a2)
-	bcc.w	loc_890E
+	bcc.s	loc_890E
 	move.w	#(PUYO_FIELD_COLS-1)*2,d0
 	clr.b	d1
 
 loc_88F4:
 	cmpi.b	#3,(a3,d0.w)
-	bcc.w	loc_8900
+	bcc.s	loc_8900
 	addq.b	#1,d1
 
 loc_8900:
 	subq.w	#2,d0
 	bcc.s	loc_88F4
 	cmpi.b	#2,d1
-	bcc.w	loc_890E
+	bcc.s	loc_890E
 
 locret_890C:
 	rts
@@ -10634,7 +10357,7 @@ locret_890C:
 
 loc_890E:
 	tst.b	7(a1)
-	bne.w	loc_8924
+	bne.s	loc_8924
 	jsr	(Random).l
 	andi.b	#1,d0
 	move.b	d0,7(a1)
@@ -10643,7 +10366,7 @@ loc_8924:
 	move.b	#$19,d0
 	addi.b	#$41,7(a1)
 	btst	#0,7(a1)
-	beq.w	loc_893C
+	beq.s	loc_893C
 	move.b	#$1A,d0
 
 loc_893C:
@@ -10659,10 +10382,10 @@ loc_893C:
 
 sub_894A:
 	movea.l	$2E(a0),a1
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	movea.l	a1,a0
 	jsr	(sub_9C4A).l
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	rts
 ; End of function sub_894A
 
@@ -10686,7 +10409,10 @@ loc_8960:
 	rts
 ; END OF FUNCTION CHUNK	FOR sub_4E24
 ; ---------------------------------------------------------------------------
-unk_89AE:	dc.b   4
+; TODO: Document Animation Code
+
+unk_89AE:
+	dc.b   4
 	dc.b   0
 	dc.b   5
 	dc.b   1
@@ -10697,7 +10423,9 @@ unk_89AE:	dc.b   4
 	dc.b $FF
 	dc.b   0
 	dc.l unk_89AE
-unk_89BC:	dc.b   4
+
+unk_89BC:
+	dc.b   4
 	dc.b   3
 	dc.b   5
 	dc.b   4
@@ -10708,7 +10436,9 @@ unk_89BC:	dc.b   4
 	dc.b $FF
 	dc.b   0
 	dc.l unk_89BC
-unk_89CA:	dc.b   4
+
+unk_89CA:
+	dc.b   4
 	dc.b   6
 	dc.b   5
 	dc.b   7
@@ -10725,14 +10455,14 @@ loc_89D8:
 	bsr.w	sub_543C
 	move.b	#$80,6(a0)
 	tst.b	(word_FF19A8).l
-	bne.w	loc_8A1E
+	bne.s	loc_8A1E
 	move.b	$2A(a0),d0
 	ori.b	#$80,d0
 	move.b	d0,(word_FF19A8).l
 	move.b	#$FF,(word_FF19A8+1).l
 	bsr.w	ActorBookmark
 	tst.b	(word_FF19A8+1).l
-	beq.w	loc_8A12
+	beq.s	loc_8A12
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -10748,13 +10478,13 @@ loc_8A1E:
 	beq.w	loc_4F3A
 	bsr.w	ActorAnimate
 	cmpi.w	#3,$1C(a0)
-	bcc.w	loc_8A44
+	bcc.s	loc_8A44
 	move.b	#$45,9(a0)
 
 loc_8A44:
 	bsr.w	sub_5060
 	bsr.w	sub_50DA
-	bcs.w	loc_8A54
+	bcs.s	loc_8A54
 	bra.w	sub_543C
 ; ---------------------------------------------------------------------------
 
@@ -10774,7 +10504,7 @@ loc_8A54:
 	move.b	(a2,d0.w),d1
 	andi.b	#$F0,d1
 	cmpi.b	#$E0,d1
-	bcs.w	loc_8A94
+	bcs.s	loc_8A94
 	move.b	#$80,d1
 
 loc_8A94:
@@ -10786,7 +10516,7 @@ loc_8A9E:
 	bsr.w	ActorBookmark
 	move.b	$29(a0),d0
 	andi.b	#3,d0
-	bne.w	loc_8ABC
+	bne.s	loc_8ABC
 	move.b	#SFX_4B,d0
 	bsr.w	PlaySound_ChkPCM
 
@@ -10797,7 +10527,7 @@ loc_8ABC:
 	move.w	$16(a0),d0
 	add.w	d0,$E(a0)
 	subq.w	#1,$28(a0)
-	beq.w	loc_8ADA
+	beq.s	loc_8ADA
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -10821,7 +10551,7 @@ loc_8ADA:
 	move.w	$A(a0),$1E(a0)
 	move.w	#0,$20(a0)
 	tst.b	$2A(a0)
-	beq.w	loc_8B44
+	beq.s	loc_8B44
 	move.w	#$FFFE,$12(a0)
 
 loc_8B44:
@@ -10831,7 +10561,10 @@ loc_8B44:
 	bcs.w	loc_8BE8
 	rts
 ; ---------------------------------------------------------------------------
-unk_8B56:	dc.b   1
+; TODO: Document Animation Code
+
+unk_8B56:
+	dc.b   1
 	dc.b  $D
 	dc.b   1
 	dc.b $24
@@ -10849,7 +10582,7 @@ loc_8B64:
 	move.w	#$FFFF,$12(a0)
 	move.l	#unk_8BDC,$32(a0)
 	tst.b	$2A(a0)
-	beq.w	loc_8B8E
+	beq.s	loc_8B8E
 	move.w	#1,$12(a0)
 	move.l	#unk_8BD0,$32(a0)
 
@@ -10861,7 +10594,7 @@ loc_8B8E:
 	bsr.w	ActorBookmark
 	bsr.w	ActorAnimate
 	cmpi.b	#$43,9(a0)
-	bcc.w	loc_8BB6
+	bcc.s	loc_8BB6
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -10871,10 +10604,13 @@ loc_8BB6:
 	move.w	$A(a0),d0
 	subi.w	#$78,d0
 	cmpi.w	#$150,d0
-	bcc.w	loc_8BE8
+	bcc.s	loc_8BE8
 	rts
 ; ---------------------------------------------------------------------------
-unk_8BD0:	dc.b   8
+; TODO: Document Animation Code
+
+unk_8BD0:
+	dc.b   8
 	dc.b $37
 	dc.b   8
 	dc.b $38
@@ -10883,7 +10619,9 @@ unk_8BD0:	dc.b   8
 	dc.b $FF
 	dc.b   0
 	dc.l unk_8BD0
-unk_8BDC:	dc.b   8
+
+unk_8BDC:
+	dc.b   8
 	dc.b $3B
 	dc.b   8
 	dc.b $3C
@@ -10912,13 +10650,13 @@ sub_8C06:
 	bsr.w	Random
 	andi.w	#1,d0
 	bsr.w	sub_8C5C
-	bcs.w	loc_8C28
+	bcs.s	loc_8C28
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_8C28:
 	cmpi.w	#$D,$1C(a0)
-	bcc.w	loc_8C56
+	bcc.s	loc_8C56
 	addq.w	#1,$1C(a0)
 	addi.w	#$C,$26(a0)
 	move.w	#0,$12(a0)
@@ -10969,7 +10707,8 @@ sub_8C5C:
 	ori	#1,sr
 	rts
 ; ---------------------------------------------------------------------------
-unk_8CAE:	dc.b $FF
+unk_8CAE:
+	dc.b $FF
 	dc.b $FF
 	dc.b   0
 	dc.b   0
@@ -11018,15 +10757,15 @@ loc_8D18:
 	beq.w	loc_4F3A
 	bsr.w	ActorAnimate
 	cmpi.w	#3,$1C(a0)
-	bcc.w	loc_8D54
+	bcc.s	loc_8D54
 	cmpi.b	#3,9(a0)
-	bcc.w	loc_8D54
+	bcc.s	loc_8D54
 	addq.b	#3,9(a0)
 
 loc_8D54:
 	bsr.w	sub_5060
 	bsr.w	sub_50DA
-	bcs.w	loc_8D6A
+	bcs.s	loc_8D6A
 	bsr.w	sub_543C
 	addq.w	#8,$A(a0)
 	rts
@@ -11035,11 +10774,11 @@ loc_8D54:
 loc_8D6A:
 	bsr.w	ActorBookmark
 	bsr.w	ActorAnimate
-	bcs.w	loc_8D90
+	bcs.s	loc_8D90
 	cmpi.w	#3,$1C(a0)
-	bcc.w	locret_8D8E
+	bcc.s	locret_8D8E
 	cmpi.b	#3,9(a0)
-	bcc.w	locret_8D8E
+	bcc.s	locret_8D8E
 	addq.b	#3,9(a0)
 
 locret_8D8E:
@@ -11056,7 +10795,7 @@ loc_8D90:
 	clr.w	$E(a2,d0.w)
 	move.b	#0,9(a0)
 	cmpi.w	#PUYO_FIELD_ROWS-1,$1C(a0)
-	bcs.w	loc_8DC8
+	bcs.s	loc_8DC8
 	move.l	#$2EE0,d0
 	bsr.w	sub_894A
 	bra.w	loc_8E40
@@ -11078,13 +10817,13 @@ loc_8DC8:
 	bsr.w	ActorBookmark
 	bsr.w	sub_3810
 	cmpi.w	#6,$16(a0)
-	bcs.w	loc_8E14
+	bcs.s	loc_8E14
 	move.l	#$60000,$16(a0)
 
 loc_8E14:
 	bsr.w	sub_8EA4
 	cmpi.w	#$148,$E(a0)
-	bcc.w	loc_8E24
+	bcc.s	loc_8E24
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -11103,7 +10842,7 @@ loc_8E40:
 	move.w	#$FFFF,$20(a0)
 	move.w	#$8000,$14(a0)
 	tst.b	$2A(a0)
-	bne.w	loc_8E6C
+	bne.s	loc_8E6C
 	neg.l	$12(a0)
 
 loc_8E6C:
@@ -11111,7 +10850,7 @@ loc_8E6C:
 	bsr.w	ActorAnimate
 	bsr.w	sub_3810
 	cmpi.w	#$170,$E(a0)
-	bcc.w	loc_8E84
+	bcc.s	loc_8E84
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -11120,7 +10859,10 @@ loc_8E84:
 	bclr	#0,7(a1)
 	bra.w	ActorDeleteSelf
 ; ---------------------------------------------------------------------------
-unk_8E92:	dc.b   2
+; TODO: Document Animation Code
+
+unk_8E92:
+	dc.b   2
 	dc.b   1
 	dc.b   1
 	dc.b   0
@@ -11141,13 +10883,12 @@ unk_8E92:	dc.b   2
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_8EA4:
 	move.w	$E(a0),d0
 	sub.w	$36(a0),d0
 	lsr.w	#4,d0
 	cmp.w	$1E(a0),d0
-	bne.w	loc_8EB8
+	bne.s	loc_8EB8
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -11155,9 +10896,9 @@ loc_8EB8:
 	move.w	d0,$1E(a0)
 	bsr.w	GetPuyoField
 	move.w	$26(a0),d0
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	bsr.w	sub_8EF6
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	move.w	#$FF,(a2,d0.w)
 	move.w	#$FF,2(a2,d0.w)
 	addi.w	#$C,$26(a0)
@@ -11168,13 +10909,11 @@ loc_8EB8:
 	bra.w	PlaySound_ChkPCM
 ; End of function sub_8EA4
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_8EF6:
 	move.w	#1,d1
-	clr.l	d5
+	moveq	#0,d5
 	clr.w	d6
 	movea.l	$2E(a0),a1
 	move.b	$2B(a1),d6
@@ -11187,13 +10926,13 @@ loc_8F0C:
 	lsr.b	#4,d2
 	andi.b	#7,d2
 	cmpi.b	#6,d2
-	beq.w	loc_8F76
+	beq.s	loc_8F76
 	move.w	#1,d4
 
 loc_8F26:
 	lea	(loc_8F92).l,a1
 	bsr.w	FindActorSlotQuick
-	bcs.w	loc_8F70
+	bcs.s	loc_8F70
 	move.b	0(a0),0(a1)
 	move.b	#$83,6(a1)
 	move.b	d2,8(a1)
@@ -11220,7 +10959,10 @@ loc_8F76:
 ; End of function sub_8EF6
 
 ; ---------------------------------------------------------------------------
-unk_8F84:	dc.b   3
+; TODO: Document Animation Code
+
+unk_8F84:
+	dc.b   3
 	dc.b   4
 	dc.b   1
 	dc.b   5
@@ -11235,7 +10977,7 @@ unk_8F84:	dc.b   3
 
 loc_8F92:
 	tst.w	$26(a0)
-	bne.w	loc_8FCA
+	bne.s	loc_8FCA
 	tst.w	$28(a0)
 	beq.w	ActorDeleteSelf
 	subq.w	#1,$28(a0)
@@ -11243,11 +10985,11 @@ loc_8F92:
 	addq.w	#1,d1
 	lsl.w	#1,d1
 	move.w	d1,$26(a0)
-	bsr.w	Random
+	jsr	(Random).w
 	move.w	#$200,d1
-	bsr.w	Sin
+	jsr	(Sin).w
 	move.l	d2,$12(a0)
-	bsr.w	Cos
+	jsr	(Cos).w
 	move.l	d2,$16(a0)
 
 loc_8FCA:
@@ -11257,7 +10999,6 @@ loc_8FCA:
 	bra.w	ActorAnimate
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_8FDA:
 	bsr.w	GetPuyoField
@@ -11270,7 +11011,7 @@ sub_8FDA:
 loc_8FF0:
 	lea	(loc_9066).l,a1
 	bsr.w	FindActorSlot
-	bcs.w	loc_9020
+	bcs.s	loc_9020
 	move.b	0(a0),0(a1)
 	move.b	#$80,$36(a1)
 	move.w	d1,$26(a1)
@@ -11289,7 +11030,8 @@ loc_9020:
 ; End of function sub_8FDA
 
 ; ---------------------------------------------------------------------------
-unk_902A:	dc.b   1
+unk_902A:
+	dc.b   1
 	dc.b   0
 	dc.b   1
 	dc.b   0
@@ -11355,7 +11097,7 @@ loc_9066:
 	move.b	$36(a0),d0
 	ori.b	#$80,d0
 	move.w	$38(a0),d1
-	bsr.w	Sin
+	jsr	(Sin).w
 	swap	d2
 	lea	(vscroll_buffer).l,a1
 	move.w	$26(a0),d0
@@ -11374,7 +11116,7 @@ loc_9066:
 
 loc_90B0:
 	subq.w	#1,$26(a0)
-	bcs.w	loc_90BA
+	bcs.s	loc_90BA
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -11386,19 +11128,19 @@ loc_90BA:
 
 CheckPause:
 	include "src/subroutines/check pause/check pause.asm"
-	
+
 PausePuyoField:
 	include "src/subroutines/check pause/pause field.asm"
-	
+
 UnpausePuyoField:
 	include "src/subroutines/check pause/unpause field.asm"
-	
+
 GetSavedPuyoField:
 	include "src/subroutines/check pause/load saved field.asm"
-	
+
 ActPause:
 	include "src/actors/pause.asm"
-	
+
 ; =============== S U B	R O U T	I N E =======================================
 
 
@@ -11406,7 +11148,7 @@ sub_9308:
 	move.b	#4,(level).l
 	move.b	#OPP_ARMS,(opponent).l
 	move.b	(game_matches).l,d0
-	bne.w	loc_9324
+	bne.s	loc_9324
 	addq.b	#1,d0
 
 loc_9324:
@@ -11418,19 +11160,18 @@ loc_9324:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_9332:
 	cmpi.b	#2,(level_mode).l
-	bne.w	locret_9374
+	bne.s	locret_9374
 	tst.w	$16(a0)
-	beq.w	locret_9374
+	beq.s	locret_9374
 	bsr.w	GetPuyoField
 	adda.l	#pUnk2,a2
 	tst.w	8(a2)
-	bne.w	locret_9374
+	bne.s	locret_9374
 	move.b	#SFX_PUYO_POP_1,d0
 	bsr.w	PlaySound_ChkPCM
-	clr.l	d0
+	moveq	#0,d0
 	move.b	$2B(a0),d0
 	addq.b	#1,d0
 	mulu.w	#$1F4,d0
@@ -11464,7 +11205,7 @@ sub_9376:
 
 
 sub_93B4:
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(byte_FF0128).l,d0
 	divu.w	#$14,d0
 	move.w	#$C61E,d5
@@ -11474,7 +11215,7 @@ sub_93B4:
 	move.w	#$282,d4
 	move.w	#$C91E,d5
 	bsr.w	sub_9406
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(byte_FF0129).l,d0
 	divu.w	#$14,d0
 	move.w	#$C628,d5
@@ -11505,7 +11246,7 @@ loc_9412:
 	ENABLE_INTS
 	addq.b	#1,d2
 	cmpi.b	#5,d2
-	bcs.w	loc_9438
+	bcs.s	loc_9438
 	add.w	d4,d5
 	clr.b	d2
 
@@ -11522,7 +11263,7 @@ locret_943C:
 
 sub_943E:
 	DISABLE_INTS
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	mulu.w	#$A,d0
 	adda.w	d0,a1
 	move.w	#1,d0
@@ -11539,12 +11280,13 @@ loc_9462:
 	dbf	d1,loc_9462
 	dbf	d0,loc_9454
 	ENABLE_INTS
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	rts
 ; End of function sub_943E
 
 ; ---------------------------------------------------------------------------
-unk_947C:	dc.b   0
+unk_947C:
+	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -11594,7 +11336,9 @@ unk_947C:	dc.b   0
 	dc.b $FB
 	dc.b $FE
 	dc.b $FF
-unk_94AE:	dc.b   0
+
+unk_94AE:
+	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -11647,10 +11391,9 @@ unk_94AE:	dc.b   0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_94E0:
 	cmpi.b	#2,(level_mode).l
-	beq.w	loc_94EE
+	beq.s	loc_94EE
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -11665,17 +11408,16 @@ loc_94EE:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_9502:
 	cmpi.b	#2,(level_mode).l
-	beq.w	loc_9510
+	beq.s	loc_9510
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_9510:
 	lea	(sub_9572).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_9522
+	bcc.s	loc_9522
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -11684,17 +11426,17 @@ loc_9522:
 	move.w	#$8500,$E(a1)
 	move.w	#$C620,$A(a1)
 	tst.b	$2A(a0)
-	beq.w	loc_9548
+	beq.s	loc_9548
 	move.w	#$A500,$E(a1)
 	move.w	#$C62C,$A(a1)
 
 loc_9548:
-	clr.l	d0
+	moveq	#0,d0
 	move.b	$2B(a0),d0
 	addq.b	#1,d0
 	divu.w	#$A,d0
 	tst.b	d0
-	beq.w	loc_955E
+	beq.s	loc_955E
 	addq.b	#1,d0
 	lsl.b	#1,d0
 
@@ -11711,20 +11453,19 @@ loc_955E:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_9572:
 	lea	(dword_95AC).l,a1
 	tst.w	$26(a0)
-	beq.w	loc_9590
+	beq.s	loc_9590
 	btst	#2,$27(a0)
-	bne.w	loc_9590
+	bne.s	loc_9590
 	lea	(dword_95A8).l,a1
 
 loc_9590:
 	bsr.w	sub_9728
 	subq.w	#1,$26(a0)
-	beq.w	loc_95A2
-	bcs.w	loc_95A2
+	beq.s	loc_95A2
+	bcs.s	loc_95A2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -11738,11 +11479,10 @@ dword_95AC:	dc.l $10000
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_95B0:
 	lea	(loc_95FE).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_95C2
+	bcc.s	loc_95C2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -11757,7 +11497,7 @@ loc_95C2:
 ; ---------------------------------------------------------------------------
 	lea	(loc_95FE).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_95E6
+	bcc.s	loc_95E6
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -11773,19 +11513,19 @@ loc_95E6:
 loc_95FE:
 	movea.l	$2E(a0),a1
 	move.w	$28(a1),d0
-	beq.w	loc_964C
+	beq.s	loc_964C
 	andi.b	#$3F,d0
-	beq.w	loc_9614
+	beq.s	loc_9614
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_9614:
-	clr.l	d0
+	moveq	#0,d0
 	move.w	$28(a1),d0
 	lsr.w	#6,d0
 	divu.w	#$A,d0
 	tst.b	d0
-	beq.w	loc_962A
+	beq.s	loc_962A
 	addq.b	#1,d0
 	lsl.b	#1,d0
 
@@ -11806,7 +11546,8 @@ loc_964C:
 	bsr.w	sub_9728
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
-byte_965C:	dc.b 0
+byte_965C:
+	dc.b   0
 	dc.b   5
 	dc.b $3C
 	dc.b $26
@@ -11814,7 +11555,9 @@ byte_965C:	dc.b 0
 	dc.b $1E
 	dc.b $FE
 	dc.b $FF
-byte_9664:	dc.b 0
+
+byte_9664:
+	dc.b   0
 	dc.b   5
 	dc.b   0
 	dc.b   0
@@ -11833,7 +11576,7 @@ byte_9664:	dc.b 0
 ; ---------------------------------------------------------------------------
 	lea	(loc_96C4).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_9686
+	bcc.s	loc_9686
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -11841,17 +11584,17 @@ loc_9686:
 	move.w	d1,$12(a1)
 	move.w	d6,$E(a1)
 	move.w	d5,$A(a1)
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(level).l,d0
 	cmpi.b	#3,d0
-	bcs.w	loc_96A4
+	bcs.s	loc_96A4
 	subq.b	#3,d0
 
 loc_96A4:
 	addq.b	#1,d0
 	divu.w	#$A,d0
 	tst.b	d0
-	beq.w	loc_96B4
+	beq.s	loc_96B4
 	addq.b	#1,d0
 	lsl.b	#1,d0
 
@@ -11866,10 +11609,10 @@ loc_96B4:
 
 loc_96C4:
 	cmpi.b	#$F,(level).l
-	beq.w	loc_96F2
+	beq.s	loc_96F2
 	lea	(byte_9706).l,a1
 	cmpi.b	#3,(level).l
-	bcc.w	loc_96E8
+	bcc.s	loc_96E8
 	lea	(byte_9710).l,a1
 
 loc_96E8:
@@ -11883,7 +11626,8 @@ loc_96F2:
 	bsr.w	sub_9728
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
-byte_9706:	dc.b 0
+byte_9706:
+	dc.b   0
 	dc.b   7
 	dc.b $3A
 	dc.b $3C
@@ -11893,7 +11637,9 @@ byte_9706:	dc.b 0
 	dc.b   0
 	dc.b $FE
 	dc.b $FF
-byte_9710:	dc.b 0
+
+byte_9710:
+	dc.b   0
 	dc.b   7
 	dc.b $2C
 	dc.b $1E
@@ -11903,7 +11649,9 @@ byte_9710:	dc.b 0
 	dc.b $30
 	dc.b   0
 	dc.b $FF
-byte_971A:	dc.b 0
+
+byte_971A:
+	dc.b   0
 	dc.b  $B
 	dc.b $20
 	dc.b $26
@@ -11920,30 +11668,29 @@ byte_971A:	dc.b 0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_9728:
 	move.w	(a1)+,d0
 	move.w	$A(a0),d5
 	move.w	$E(a0),d6
 	clr.b	d1
 	tst.b	7(a0)
-	beq.w	loc_9740
+	beq.s	loc_9740
 	move.b	#$6A,d1
 
 loc_9740:
 	move.b	(a1)+,d6
 	cmpi.b	#$FF,d6
-	bne.w	loc_974E
+	bne.s	loc_974E
 	move.b	$F(a0),d6
 
 loc_974E:
 	cmpi.b	#$FE,d6
-	bne.w	loc_975A
+	bne.s	loc_975A
 	move.b	$17(a0),d6
 
 loc_975A:
 	tst.b	d6
-	beq.w	loc_9762
+	beq.s	loc_9762
 	add.b	d1,d6
 
 loc_9762:
@@ -11966,12 +11713,12 @@ loc_9762:
 
 
 sub_9794:
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(byte_FF0128).l,d0
 	move.w	#$C320,d5
 	move.w	#$A500,d6
 	bsr.w	sub_97C8
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(byte_FF0129).l,d0
 	move.w	#$C32C,d5
 	move.w	#$A500,d6
@@ -11987,7 +11734,7 @@ sub_9794:
 sub_97C8:
 	divu.w	#$A,d0
 	tst.b	d0
-	beq.w	loc_97D4
+	beq.s	loc_97D4
 	addq.b	#1,d0
 
 loc_97D4:
@@ -11997,9 +11744,7 @@ loc_97D4:
 	swap	d0
 ; End of function sub_97C8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_97E2:
 	move.b	d0,d6
@@ -12021,7 +11766,6 @@ sub_97E2:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_9814:
 	btst	#1,(level_mode).l
 	bne.w	locret_98B2
@@ -12031,7 +11775,7 @@ sub_9814:
 	eori.b	#1,d0
 	tst.b	(a1,d0.w)
 	bne.w	locret_98B2
-	clr.l	d0
+	moveq	#0,d0
 	move.w	$14(a0),d0
 	move.b	$2A(a0),d4
 	eori.b	#1,d4
@@ -12048,7 +11792,7 @@ loc_9858:
 	bne.w	locret_98B2
 	lea	(byte_FF19B0).l,a2
 	tst.b	d4
-	beq.w	loc_9874
+	beq.s	loc_9874
 	lea	(byte_FF19B1).l,a2
 
 loc_9874:
@@ -12058,7 +11802,7 @@ loc_9874:
 	move.w	#$10,d3
 	move.b	(swap_controls).l,d5
 	eor.b	d5,d4
-	beq.w	loc_989A
+	beq.s	loc_989A
 	move.w	#$C0,d1
 	move.w	#$E0,d2
 	move.w	#$FFF0,d3
@@ -12079,18 +11823,17 @@ locret_98B2:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_98B4:
 	tst.w	d0
 	beq.w	locret_98F0
 	lea	(sub_9962).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcs.w	loc_98E6
+	bcs.s	loc_98E6
 	bsr.w	sub_992E
 	subq.w	#1,d0
 	move.b	#5,9(a1)
 	cmpi.w	#4,d0
-	bcs.w	loc_98E6
+	bcs.s	loc_98E6
 	move.b	#6,9(a1)
 	subq.w	#4,d0
 
@@ -12104,9 +11847,7 @@ locret_98F0:
 	rts
 ; End of function sub_98B4
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_98F2:
 	subq.b	#1,d0
@@ -12127,7 +11868,8 @@ locret_9922:
 ; End of function sub_98F2
 
 ; ---------------------------------------------------------------------------
-unk_9924:	dc.b   0
+unk_9924:
+	dc.b   0
 	dc.b   4
 	dc.b $FF
 	dc.b $F8
@@ -12140,13 +11882,12 @@ unk_9924:	dc.b   0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_992E:
 	move.b	#$A2,6(a1)
 	move.b	#2,8(a1)
 	move.w	d1,$A(a1)
 	move.w	#$88,$E(a1)
-	clr.l	d5
+	moveq	#0,d5
 	move.w	d2,d5
 	sub.w	d1,d5
 	swap	d5
@@ -12158,13 +11899,11 @@ sub_992E:
 	rts
 ; End of function sub_992E
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_9962:
 	tst.w	$26(a0)
-	beq.w	loc_9974
+	beq.s	loc_9974
 	jsr	(sub_3810).l
 	subq.w	#1,$26(a0)
 
@@ -12172,7 +11911,7 @@ loc_9974:
 	movea.l	$32(a0),a1
 	move.b	$28(a0),d0
 	cmp.b	(a1),d0
-	bne.w	loc_9984
+	bne.s	loc_9984
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -12180,13 +11919,11 @@ loc_9984:
 	jmp	(ActorDeleteSelf).l
 ; End of function sub_9962
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_998A:
 	btst	#1,(level_mode).l
-	beq.w	loc_9998
+	beq.s	loc_9998
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -12199,22 +11936,20 @@ loc_9998:
 	rts
 ; End of function sub_998A
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_99AA:
 	lea	(unk_99F8).l,a1
 	move.w	(time_seconds).l,d0
 	move.w	(time_minutes).l,d1
-	beq.w	loc_99CE
+	beq.s	loc_99CE
 	cmpi.b	#1,(level_mode).l
-	bne.w	loc_99CE
+	bne.s	loc_99CE
 	subq.w	#1,d1
 
 loc_99CE:
 	cmpi.w	#9,d1
-	bcs.w	loc_99DA
+	bcs.s	loc_99DA
 	move.w	#8,d1
 
 loc_99DA:
@@ -12222,14 +11957,14 @@ loc_99DA:
 	lsl.w	#2,d1
 	or.w	d1,d0
 	lsl.w	#1,d0
-	
+
 	; In the arcade version of Puyo Puyo, garbage drops would get
 	; more intense as time went on in a stage. This was dummied
 	; out in the Mega Drive version.
 	;move.w	(a1,d0.w),d1
 	move.w	#$46,d1
 
-	clr.l	d0
+	moveq	#0,d0
 	move.w	$10(a0),d0
 	divu.w	d1,d0
 	movea.l	$2E(a0),a1
@@ -12238,81 +11973,45 @@ loc_99DA:
 ; End of function sub_99AA
 
 ; ---------------------------------------------------------------------------
-unk_99F8:	dc.b   0
-	dc.b $46
-	dc.b   0
-	dc.b $46
-	dc.b   0
-	dc.b $46
-	dc.b   0
-	dc.b $46
-	dc.b   0
-	dc.b $46
-	dc.b   0
-	dc.b $46
-	dc.b   0
-	dc.b $2F
-	dc.b   0
-	dc.b $23
-	dc.b   0
-	dc.b $1C
-	dc.b   0
-	dc.b $17
-	dc.b   0
-	dc.b $14
-	dc.b   0
-	dc.b $12
-	dc.b   0
-	dc.b $10
-	dc.b   0
-	dc.b  $E
-	dc.b   0
-	dc.b  $D
-	dc.b   0
-	dc.b  $C
-	dc.b   0
-	dc.b  $B
-	dc.b   0
-	dc.b  $A
-	dc.b   0
-	dc.b   9
-	dc.b   0
-	dc.b   9
-	dc.b   0
-	dc.b   8
-	dc.b   0
-	dc.b   7
-	dc.b   0
-	dc.b   6
-	dc.b   0
-	dc.b   5
-	dc.b   0
-	dc.b   4
-	dc.b   0
-	dc.b   4
-	dc.b   0
-	dc.b   3
-	dc.b   0
-	dc.b   3
-	dc.b   0
-	dc.b   2
-	dc.b   0
-	dc.b   2
-	dc.b   0
-	dc.b   1
-	dc.b   0
-	dc.b   1
-	dc.b   0
-	dc.b   1
-	dc.b   0
-	dc.b   1
-	dc.b   0
-	dc.b   1
-	dc.b   0
-	dc.b   1
+unk_99F8:
+	dc.w $46
+	dc.w $46
+	dc.w $46
+	dc.w $46
+	dc.w $46
+	dc.w $46
+	dc.w $2F
+	dc.w $23
+	dc.w $1C
+	dc.w $17
+	dc.w $14
+	dc.w $12
+	dc.w $10
+	dc.w  $E
+	dc.w  $D
+	dc.w  $C
+	dc.w  $B
+	dc.w  $A
+	dc.w   9
+	dc.w   9
+	dc.w   8
+	dc.w   7
+	dc.w   6
+	dc.w   5
+	dc.w   4
+	dc.w   4
+	dc.w   3
+	dc.w   3
+	dc.w   2
+	dc.w   2
+	dc.w   1
+	dc.w   1
+	dc.w   1
+	dc.w   1
+	dc.w   1
+	dc.w   1
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_9A40:
 	move.l	a0,d0
@@ -12324,9 +12023,7 @@ sub_9A40:
 	jmp	(QueuePlaneCmd).l
 ; End of function sub_9A40
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_9A56:
 	bsr.w	GetPuyoField
@@ -12335,10 +12032,10 @@ sub_9A56:
 	bsr.w	sub_94E0
 	clr.w	d0
 	btst	#1,(level_mode).l
-	beq.w	loc_9A86
+	beq.s	loc_9A86
 	move.b	$2B(a0),d0
 	cmpi.b	#$62,d0
-	bcs.w	loc_9A86
+	bcs.s	loc_9A86
 	move.b	#$63,d0
 
 loc_9A86:
@@ -12348,7 +12045,7 @@ loc_9A86:
 	move.w	d0,$12(a0)
 	swap	d0
 	tst.w	d0
-	beq.w	loc_9AA0
+	beq.s	loc_9AA0
 	move.w	#$FFFF,$12(a0)
 
 loc_9AA0:
@@ -12364,9 +12061,7 @@ locret_9AC0:
 	rts
 ; End of function sub_9A56
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_9AC2:
 	clr.w	d0
@@ -12382,7 +12077,8 @@ loc_9AD2:
 ; End of function sub_9AC2
 
 ; ---------------------------------------------------------------------------
-unk_9ADC:	dc.b   0
+unk_9ADC:
+	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   8
@@ -12402,7 +12098,6 @@ unk_9ADC:	dc.b   0
 	dc.b   0
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_9AEE:
 	move.w	$26(a0),d0
@@ -12434,7 +12129,8 @@ loc_9B18:
 ; End of function sub_9AEE
 
 ; ---------------------------------------------------------------------------
-unk_9B26:	dc.b   0
+unk_9B26:
+	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -12450,7 +12146,6 @@ unk_9B26:	dc.b   0
 	dc.b $30
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_9B34:
 	move.w	$26(a0),d0
@@ -12478,7 +12173,8 @@ loc_9B5E:
 ; End of function sub_9B34
 
 ; ---------------------------------------------------------------------------
-unk_9B66:	dc.b   0
+unk_9B66:
+	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -12505,7 +12201,6 @@ unk_9B66:	dc.b   0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_9B7E:
 	move.w	$26(a0),d0
 	subq.w	#1,d0
@@ -12520,7 +12215,7 @@ loc_9B8A:
 	dbf	d0,loc_9B8A
 	add.w	d2,$16(a0)
 	cmpi.w	#$2710,$16(a0)
-	bcs.w	loc_9BAA
+	bcs.s	loc_9BAA
 	move.w	#$270F,$16(a0)
 
 loc_9BAA:
@@ -12532,24 +12227,20 @@ locret_9BB8:
 	rts
 ; End of function sub_9B7E
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_9BBA:
-	clr.l	d0
+	moveq	#0,d0
 	move.w	aField12(a0),d0
 	move.w	aField1E(a0),d1
-	beq.w	loc_9BCA
+	beq.s	loc_9BCA
 	mulu.w	d1,d0
 
 loc_9BCA:
 	bra.w	sub_9C64
 ; End of function sub_9BBA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_9BCE:
 	clr.w	d0
@@ -12561,7 +12252,8 @@ sub_9BCE:
 ; End of function sub_9BCE
 
 ; ---------------------------------------------------------------------------
-off_9BE2:	dc.l locret_9BF2
+off_9BE2:
+	dc.l locret_9BF2
 	dc.l loc_9BF4
 	dc.l loc_9C0E
 	dc.l loc_9C0E
@@ -12578,7 +12270,8 @@ loc_9BF4:
 	move.w	unk_9C04(pc,d0.w),$14(a0)
 	rts
 ; ---------------------------------------------------------------------------
-unk_9C04:	dc.b   0
+unk_9C04:
+	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -12602,8 +12295,11 @@ loc_9C0E:
 	bra.w	sub_9C4A
 ; ---------------------------------------------------------------------------
 dword_9C32:	dc.l 0
+
 word_9C36:	dc.w $FFFF
-word_9C38:	dc.w 0
+
+word_9C38:
+	dc.w 0
 	dc.l $9C40
 	dc.w $28
 	dc.w 0
@@ -12613,45 +12309,40 @@ word_9C38:	dc.w 0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_9C4A:
 	bsr.w	sub_9C64
 ; End of function sub_9C4A
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_9C4E:
 	move.l	a0,d0
 	swap	d0
 	move.b	$2A(a0),d0
-	addi.b	#-$7F,d0
+	addi.b	#$81,d0
 	rol.w	#8,d0
 	swap	d0
 	jmp	(QueuePlaneCmd).l
 ; End of function sub_9C4E
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_9C64:
 	add.l	d0,aY(a0)
 	tst.w	aY(a0)
-	beq.w	loc_9C7C
+	beq.s	loc_9C7C
 	move.w	#0,aY(a0)
 	move.w	#$FFFF,$10(a0)
 
 loc_9C7C:
 	move.l	aX(a0),d1
 	add.l	d0,d1
-	bcc.w	loc_9C8C
+	bcc.s	loc_9C8C
 	move.l	#$5F5E0FF,d1
 
 loc_9C8C:
 	cmpi.l	#$5F5E100,d1
-	bcs.w	loc_9C9C
+	bcs.s	loc_9C9C
 	move.l	#$5F5E0FF,d1
 
 loc_9C9C:
@@ -12659,14 +12350,12 @@ loc_9C9C:
 	rts
 ; End of function sub_9C64
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_9CA2:
 	move.w	$18(a0),d0
 	cmp.w	$1C(a0),d0
-	bcc.w	loc_9CB0
+	bcc.s	loc_9CB0
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -12675,14 +12364,14 @@ loc_9CB0:
 	addq.b	#1,8(a0)
 	move.b	8(a0),d0
 	andi.b	#7,d0
-	bne.w	loc_9CF0
+	bne.s	loc_9CF0
 	move.b	(level_mode).l,d0
 	andi.b	#3,d0
-	beq.w	loc_9CF8
+	beq.s	loc_9CF8
 	move.b	#SFX_RESULT_BONUS,d0
 	bsr.w	PlaySound_ChkPCM
 	cmpi.b	#$62,$2B(a0)
-	bcc.w	loc_9CF4
+	bcc.s	loc_9CF4
 	addq.b	#1,$2B(a0)
 	move.w	#$80,d1
 	bsr.w	sub_9502
@@ -12698,9 +12387,9 @@ loc_9CF4:
 loc_9CF8:
 	move.b	(level_mode).l,d0
 	andi.b	#3,d0
-	beq.w	loc_9D12
+	beq.s	loc_9D12
 	cmpi.b	#1,d0
-	beq.w	loc_9D42
+	beq.s	loc_9D42
 	bra.w	loc_9D78
 ; ---------------------------------------------------------------------------
 
@@ -12708,16 +12397,16 @@ loc_9D12:
 	clr.w	d0
 	move.b	8(a0),d0
 	sub.b	(byte_FF0104).l,d0
-	bcc.w	loc_9D24
+	bcc.s	loc_9D24
 	clr.b	d0
 
 loc_9D24:
-	movem.l	a1,-(sp)
+	move.l	a1,-(sp)
 	lea	(unk_9DC4).l,a1
 	lsl.w	#2,d0
 	move.w	(a1,d0.w),$1A(a0)
 	move.w	2(a1,d0.w),$1C(a0)
-	movem.l	(sp)+,a1
+	move.l	(sp)+,a1
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -12747,7 +12436,7 @@ loc_9D78:
 	clr.w	d1
 	move.b	$2B(a0),d1
 	cmpi.b	#$D,d1
-	bcs.w	loc_9D98
+	bcs.s	loc_9D98
 	move.b	#$C,d1
 
 loc_9D98:
@@ -12761,7 +12450,8 @@ loc_9D98:
 ; End of function sub_9CA2
 
 ; ---------------------------------------------------------------------------
-unk_9DB6:	dc.b $48
+unk_9DB6:
+	dc.b $48
 	dc.b $50
 	dc.b   0
 	dc.b   8
@@ -12775,7 +12465,9 @@ unk_9DB6:	dc.b $48
 	dc.b $38
 	dc.b $40
 	dc.b   0
-unk_9DC4:	dc.b   4
+
+unk_9DC4:
+	dc.b   4
 	dc.b   0
 	dc.b   0
 	dc.b $20
@@ -12871,7 +12563,9 @@ unk_9DC4:	dc.b   4
 	dc.b   0
 	dc.b $FF
 	dc.b $FF
-unk_9E24:	dc.b $10
+
+unk_9E24:
+	dc.b $10
 	dc.b   0
 	dc.b   0
 	dc.b $20
@@ -12959,7 +12653,9 @@ unk_9E24:	dc.b $10
 	dc.b   0
 	dc.b $FF
 	dc.b $FF
-unk_9E7C:	dc.b $10
+
+unk_9E7C:
+	dc.b $10
 	dc.b   0
 	dc.b   0
 	dc.b   4
@@ -13311,92 +13007,58 @@ unk_9E7C:	dc.b $10
 	dc.b   0
 	dc.b   0
 	dc.b   4
+
 ArtNem_GroupedStars:
 	incbin	"resource/artnem/VS/Grouped Stars.nem"
 	even
-off_A15E:	dc.l loc_A748
-	dc.l loc_A58A
-	dc.l loc_A540
-	dc.l loc_A442
-	dc.l sub_A2C8
-	dc.l sub_A7AE
-	dc.l sub_A1C2
-	dc.l sub_A1EA
-	dc.l sub_A18A
-	dc.l sub_A4B4
-	dc.l sub_A846
+
+Intro_SpecAnim:	; Special Animation flags for intro cutscnes
+	dc.l SpecIntro_CoconutHead		; Coconut's head flashing
+	dc.l SpecIntro_GrounderMove		; Grounder moving around in circles
+	dc.l SpecIntro_SkweelMove		; Skweel moving left and right
+	dc.l SpecIntro_SpawnRobotsOpen		; Spawn Scratch & Grounder in game intro
+	dc.l SpecIntro_RobotnikShip		; Spawn Robotnik in his ship
+	dc.l SpecIntro_SirFfuzzyEyes		; Sir Ffuzzy-Logik's flashing eyes
+	dc.l SpecIntro_VanishGrounder		; Grounder vanishing in game intro
+	dc.l SpecIntro_VanishScratch		; Scratch vanishing in the intro
+	dc.l SpecIntro_RobotnikLaugh		; Dr. Robotnik laughing
+	dc.l SpecIntro_SpawnRobotsRobotnik	; Spawn Scratch & Grounder in Robotnik Intro
+	dc.l SpecIntro_SirFFuzzyWind		; Leaves blowing in Sir Ffuzzy-Logik's stage
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_A18A:
-	move.l	#unk_A19A,aAnim(a0)
+SpecIntro_RobotnikLaugh:
+	move.l	#Anim_RobotnikLaugh,aAnim(a0)
 	move.b	#0,$22(a0)
 	rts
-; End of function sub_A18A
+; End of function SpecIntro_RobotnikLaugh
 
 ; ---------------------------------------------------------------------------
-unk_A19A:	dc.b   9
-	dc.b $15
-	dc.b   9
-	dc.b $16
-	dc.b   9
-	dc.b $17
-	dc.b   9
-	dc.b $15
-	dc.b   9
-	dc.b $16
-	dc.b   9
-	dc.b $17
-	dc.b   9
-	dc.b $15
-	dc.b   9
-	dc.b $16
-	dc.b   9
-	dc.b $17
-	dc.b   9
-	dc.b $16
-	dc.b   9
-	dc.b $17
-	dc.b   9
-	dc.b $16
-	dc.b   9
-	dc.b $17
-	dc.b   9
-	dc.b $16
-	dc.b   9
-	dc.b $17
-	dc.b   9
-	dc.b $16
-	dc.b   9
-	dc.b $17
-	dc.b $FF
-	dc.b   0
-	dc.l unk_A19A
+
+	include	"resource/anim/Intro/Opening Cutscene.asm"
+	even
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_A1C2:
+SpecIntro_VanishGrounder:
 	move.b	#VOI_VANISH,d0
 	jsr	(PlaySound_ChkPCM).l
 	lea	(loc_A212).l,a1
 	bsr.w	FindActorSlot
 	bcc.s	loc_A1DA
 	rts
+
 ; ---------------------------------------------------------------------------
 
 loc_A1DA:
 	move.w	#$62,$26(a1)
 	move.l	#misc_buffer_2,$32(a1)
 	rts
-; End of function sub_A1C2
-
+; End of function SpecIntro_VanishGrounder
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_A1EA:
+SpecIntro_VanishScratch:
 	move.b	#VOI_VANISH,d0
 	jsr	(PlaySound_ChkPCM).l
 	lea	(loc_A25C).l,a1
@@ -13409,7 +13071,7 @@ loc_A202:
 	move.w	#$62,$26(a1)
 	move.l	#misc_buffer_1,$32(a1)
 	rts
-; End of function sub_A1EA
+; End of function SpecIntro_VanishScratch
 
 ; ---------------------------------------------------------------------------
 
@@ -13456,7 +13118,6 @@ loc_A26C:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_A2A6:
 	move.w	$26(a0),d0
 	movea.l	$32(a0),a1
@@ -13475,16 +13136,14 @@ loc_A2BA:
 	rts
 ; End of function sub_A2A6
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_A2C8:
+SpecIntro_RobotnikShip:
 	move.b	#VOI_EGGMOBILE,d0
 	jsr	(PlaySound_ChkPCM).l
 	lea	(sub_A316).l,a1
 	bsr.w	FindActorSlot
-	bcc.w	loc_A2E2
+	bcc.s	loc_A2E2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -13498,11 +13157,9 @@ loc_A2E2:
 	move.b	#$2B,8(a1)
 	move.b	#$1E,9(a1)
 	rts
-; End of function sub_A2C8
-
+; End of function SpecIntro_RobotnikShip
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_A316:
 	move.w	#$C,d0
@@ -13573,9 +13230,7 @@ locret_A402:
 	rts
 ; End of function sub_A316
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_A404:
 	jsr	(sub_3810).l
@@ -13599,7 +13254,7 @@ loc_A430:
 
 ; ---------------------------------------------------------------------------
 
-loc_A442:
+SpecIntro_SpawnRobotsOpen:
 	lea	(JmpTo_ActorAnimate).l,a1
 	bsr.w	FindActorSlot
 	bcs.w	locret_A4B2
@@ -13609,7 +13264,7 @@ loc_A442:
 	move.b	#$28,8(a1)
 	move.b	#0,9(a1)
 	move.b	#$80,6(a1)
-	move.l	#byte_A52C,$32(a1)
+	move.l	#Anim_OpeningScratch,$32(a1)
 	lea	(JmpTo_ActorAnimate).l,a1
 	bsr.w	FindActorSlot
 	bcs.w	locret_A4B2
@@ -13618,7 +13273,7 @@ loc_A442:
 	move.w	#$118,$E(a1)
 	move.b	#$28,8(a1)
 	move.b	#2,9(a1)
-	move.l	#unk_A536,$32(a1)
+	move.l	#Anim_OpeningGrounder,$32(a1)
 	move.b	#$80,6(a1)
 
 locret_A4B2:
@@ -13626,8 +13281,7 @@ locret_A4B2:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_A4B4:
+SpecIntro_SpawnRobotsRobotnik:
 	lea	(JmpTo_ActorAnimate).l,a1
 	bsr.w	FindActorSlot
 	bcs.w	locret_A524
@@ -13637,7 +13291,7 @@ sub_A4B4:
 	move.b	#$28,8(a1)
 	move.b	#0,9(a1)
 	move.b	#$80,6(a1)
-	move.l	#byte_A52C,$32(a1)
+	move.l	#Anim_OpeningScratch,$32(a1)
 	lea	(JmpTo_ActorAnimate).l,a1
 	bsr.w	FindActorSlot
 	bcs.w	locret_A524
@@ -13646,13 +13300,12 @@ sub_A4B4:
 	move.w	#$40,$E(a1)
 	move.b	#$28,8(a1)
 	move.b	#2,9(a1)
-	move.l	#unk_A536,$32(a1)
+	move.l	#Anim_OpeningGrounder,$32(a1)
 	move.b	#$80,6(a1)
 
 locret_A524:
 	rts
-; End of function sub_A4B4
-
+; End of function SpecIntro_SpawnRobotsRobotnik
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -13663,23 +13316,8 @@ JmpTo_ActorAnimate:
 ; End of function JmpTo_ActorAnimate
 
 ; ---------------------------------------------------------------------------
-byte_A52C:	dc.b $C
-	dc.b   0
-	dc.b $18
-	dc.b   1
-	dc.b $FF
-	dc.b   0
-	dc.l byte_A52C
-unk_A536:	dc.b $2D
-	dc.b   2
-	dc.b  $F
-	dc.b   3
-	dc.b $FF
-	dc.b   0
-	dc.l unk_A536
-; ---------------------------------------------------------------------------
 
-loc_A540:
+SpecIntro_SkweelMove:
 	lea	(loc_A560).l,a1
 	bsr.w	FindActorSlot
 	bcs.w	locret_A55E
@@ -13705,10 +13343,10 @@ loc_A560:
 	rts
 ; ---------------------------------------------------------------------------
 
-loc_A58A:
+SpecIntro_GrounderMove:
 	lea	(loc_A5F6).l,a1
 	bsr.w	FindActorSlot
-	bcs.w	loc_A5F0
+	bcs.s	loc_A5F0
 	move.l	a0,$2E(a1)
 	move.w	$A(a0),$1E(a1)
 	move.w	$E(a0),$20(a1)
@@ -13718,7 +13356,7 @@ loc_A58A:
 loc_A5AC:
 	lea	(loc_A692).l,a1
 	bsr.w	FindActorSlot
-	bcs.w	loc_A5F0
+	bcs.s	loc_A5F0
 	move.l	a0,$2E(a1)
 	move.l	a2,$32(a1)
 	move.w	$A(a0),$1E(a1)
@@ -13742,7 +13380,7 @@ loc_A5F6:
 	tst.b	7(a1)
 	beq.w	ActorDeleteSelf
 	cmpi.b	#$80,$36(a0)
-	bne.w	loc_A642
+	bne.s	loc_A642
 	tst.b	$28(a0)
 	beq.s	loc_A63A
 	tst.b	(word_FF1990+1).l
@@ -13789,7 +13427,8 @@ loc_A642:
 	move.b	d0,9(a1)
 	rts
 ; ---------------------------------------------------------------------------
-unk_A68A:	dc.b   0
+unk_A68A:
+	dc.b   0
 	dc.b   5
 	dc.b   4
 	dc.b   3
@@ -13833,7 +13472,8 @@ loc_A6AA:
 	movea.l	off_A700(pc,d0.w),a2
 	jmp	(a2)
 ; ---------------------------------------------------------------------------
-off_A700:	dc.l loc_A710
+off_A700:
+	dc.l loc_A710
 	dc.l loc_A718
 	dc.l loc_A710
 	dc.l loc_A730
@@ -13851,7 +13491,8 @@ loc_A718:
 	move.b	d0,9(a0)
 	rts
 ; ---------------------------------------------------------------------------
-unk_A72C:	dc.b   8
+unk_A72C:
+	dc.b   8
 	dc.b   9
 	dc.b  $A
 	dc.b   0
@@ -13864,13 +13505,14 @@ loc_A730:
 	move.b	d0,9(a0)
 	rts
 ; ---------------------------------------------------------------------------
-unk_A744:	dc.b   8
+unk_A744:
+	dc.b   8
 	dc.b   8
 	dc.b   9
 	dc.b   0
 ; ---------------------------------------------------------------------------
 
-loc_A748:
+SpecIntro_CoconutHead:
 	lea	(loc_A758).l,a1
 	bsr.w	FindActorSlot
 	move.l	a0,$2E(a1)
@@ -13907,18 +13549,15 @@ locret_A7AC:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_A7AE:
+SpecIntro_SirFfuzzyEyes:
 	lea	(sub_A7C4).l,a1
 	bsr.w	FindActorSlot
 	move.l	a0,$2E(a1)
 	move.b	#4,$26(a1)
 	rts
-; End of function sub_A7AE
-
+; End of function SpecIntro_SirFfuzzyEyes
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_A7C4:
 	movea.l	$2E(a0),a1
@@ -13949,7 +13588,8 @@ loc_A7F0:
 ; End of function sub_A7C4
 
 ; ---------------------------------------------------------------------------
-word_A810:	dc.w $68
+word_A810:
+	dc.w $68
 	dc.w $6A
 	dc.w $8A
 	dc.w $8C
@@ -13979,18 +13619,15 @@ word_A810:	dc.w $68
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_A846:
+SpecIntro_SirFFuzzyWind:
 	lea	(sub_A85C).l,a1
 	bsr.w	FindActorSlotQuick
 	move.l	a0,$2E(a1)
 	move.w	#4,$26(a1)
 	rts
-; End of function sub_A846
-
+; End of function SpecIntro_SirFFuzzyWind
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_A85C:
 	subq.w	#1,$26(a0)
@@ -13998,7 +13635,7 @@ sub_A85C:
 	lea	(sub_A8E2).l,a1
 	jsr	(FindActorSlot).l
 	bcs.s	loc_A8D0
-	move.l	#unk_A90A,$32(a1)
+	move.l	#Anim_BlowingLeaves,$32(a1)
 	move.b	#$B3,6(a1)
 	move.b	#$12,8(a1)
 	move.b	#3,9(a1)
@@ -14029,9 +13666,7 @@ locret_A8E0:
 	rts
 ; End of function sub_A85C
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_A8E2:
 	move.b	#$BF,6(a0)
@@ -14047,24 +13682,10 @@ loc_A904:
 	jmp	(ActorDeleteSelf).l
 ; End of function sub_A8E2
 
-; ---------------------------------------------------------------------------
-unk_A90A:	dc.b   7
-	dc.b   3
-	dc.b   6
-	dc.b   4
-	dc.b   5
-	dc.b   5
-	dc.b   6
-	dc.b   6
-	dc.b $FF
-	dc.b   0
-	dc.l unk_A90A
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 LoadOpponentIntro:
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(opponent).l,d0
 	cmpi.b	#OPP_ARMS,d0
 	bne.s	.ChkRobotnik
@@ -14085,7 +13706,7 @@ LoadOpponentIntro:
 ; ---------------------------------------------------------------------------
 
 .GetArtPtr:
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(opponent).l,d0
 	lsl.w	#2,d0
 	lea	(OpponentIntroArt).l,a1
@@ -14107,14 +13728,14 @@ LoadOpponentIntro:
 	move.b	#$2B,d1
 	lea	(ActRobotnikIntro).l,a1
 	bsr.w	FindActorSlot
-	bcc.w	loc_A9C0
+	bcc.s	loc_A9C0
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_A9B0:
 	lea	(ActOpponentIntro).l,a1
 	bsr.w	FindActorSlot
-	bcc.w	loc_A9C0
+	bcc.s	loc_A9C0
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -14123,53 +13744,38 @@ loc_A9C0:
 	move.b	d1,aMappings(a1)
 	move.b	#$80,aDrawFlags(a1)
 	lsl.w	#2,d0
-	move.w	word_A9E2(pc,d0.w),aX(a1)
-	move.w	word_A9E4(pc,d0.w),aY(a1)
+	move.w	IntroSpritePos(pc,d0.w),aX(a1)
+	move.w	IntroSpritePos+2(pc,d0.w),aY(a1)
 	movea.l	a1,a2
 	rts
 ; End of function LoadOpponentIntro
 
 ; ---------------------------------------------------------------------------
-word_A9E2:	dc.w $110
-word_A9E4:	dc.w $40
-	dc.w $F8
-	dc.w $28
-	dc.w $100
-	dc.w 8
-	dc.w $E8
-	dc.w $20
-	dc.w $E8
-	dc.w $40
-	dc.w $100
-	dc.w $30
-	dc.w $F0
-	dc.w $20
-	dc.w $108
-	dc.w $38
-	dc.w $100
-	dc.w $20
-	dc.w $100
-	dc.w $20
-	dc.w $F8
-	dc.w $20
-	dc.w $110
-	dc.w $20
-	dc.w $1C0
-	dc.w $FF38
-	dc.w $110
-	dc.w $20
-	dc.w $F8
-	dc.w $30
-	dc.w $100
-	dc.w $20
-	dc.w $D0
-	dc.w $20
+IntroSpritePos:
+	dc.w $110, $40			; Skeleton Tea - Puyo Leftover
+	dc.w  $F8, $28			; Frankly
+	dc.w $100,   8			; Dynamight
+	dc.w  $E8, $20			; Arms
+	dc.w  $E8, $40			; Nasu Grave - Puyo Leftover
+	dc.w $100, $30			; Grounder
+	dc.w  $F0, $20			; Davy Sprocket
+	dc.w $108, $38			; Coconuts
+	dc.w $100, $20			; Spike
+	dc.w $100, $20			; Sir Ffuzzy-Logik
+	dc.w  $F8, $20			; Dragon Breath
+	dc.w $110, $20			; Scratch
+	dc.w $1C0,-$C8			; Dr. Robotnik
+	dc.w $110, $20			; Mummy - Puyo Leftover
+	dc.w  $F8, $30			; Humpty
+	dc.w $100, $20			; Skweel
+	dc.w  $D0, $20			; Opening
+
 OpponentIntroArt:
-	dc.l ArtNem_CoconutsIntro
+	dc.l ArtNem_CoconutsIntro	; Skeleton Tea - Puyo Leftover
 	dc.l ArtNem_FranklyIntro
 	dc.l ArtNem_DynamightIntro
 	dc.l ArtNem_ArmsIntro
-	dc.l ArtNem_CoconutsIntro
+	dc.l ArtNem_CoconutsIntro	; Nasu Grave - Puyo Leftover
 	dc.l ArtNem_GrounderIntro
 	dc.l ArtNem_DavyIntro
 	dc.l ArtNem_CoconutsIntro
@@ -14177,26 +13783,25 @@ OpponentIntroArt:
 	dc.l ArtNem_SirLogikIntro
 	dc.l ArtNem_DragonIntro
 	dc.l ArtNem_ScratchIntro
-	dc.l ArtNem_CoconutsIntro
-	dc.l ArtNem_CoconutsIntro
+	dc.l ArtNem_CoconutsIntro	; Mummy - Puyo Leftover
+	dc.l ArtNem_CoconutsIntro	; Dr. Robotnik
 	dc.l ArtNem_HumptyIntro
 	dc.l ArtNem_SkweelIntro
-	dc.l ArtNem_CoconutsIntro
+	dc.l ArtNem_CoconutsIntro	; Robotnik in the Intro
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ActOpponentIntro:
 	tst.w	(vscroll_buffer).l
 	beq.w	ActOpponentIntro_Done
 	move.w	aX(a0),(word_FF1994).l
 	tst.b	(word_FF1990).l
-	beq.w	loc_AACA
+	beq.s	loc_AACA
 	clr.b	(word_FF1990).l
 	clr.w	d0
 	move.b	(word_FF1990+1).l,d0
 	bpl.w	loc_AAAA
-	lea	(off_A15E).l,a1
+	lea	(Intro_SpecAnim).l,a1
 	andi.b	#$7F,d0
 	lsl.w	#2,d0
 	movea.l	(a1,d0.w),a2
@@ -14226,21 +13831,20 @@ ActOpponentIntro_Done:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 ActRobotnikIntro:
-	lea	(off_AF44).l,a1
+	lea	(Robotnik_IntroAnims).l,a1
 	move.l	(a1),aAnim(a0)
 	jsr	(ActorBookmark).l
 	tst.w	(vscroll_buffer).l
 	beq.s	ActOpponentIntro_Done
 	move.w	aX(a0),(word_FF1994).l
 	tst.b	(word_FF1990).l
-	beq.w	loc_AB42
+	beq.s	loc_AB42
 	clr.b	(word_FF1990).l
 	clr.w	d0
 	move.b	(word_FF1990+1).l,d0
 	bpl.w	loc_AB28
-	lea	(off_A15E).l,a1
+	lea	(Intro_SpecAnim).l,a1
 	andi.b	#$7F,d0
 	lsl.w	#2,d0
 	movea.l	(a1,d0.w),a2
@@ -14250,14 +13854,14 @@ ActRobotnikIntro:
 loc_AB28:
 	clr.w	d1
 	move.b	(opponent).l,d1
-	lea	(off_AF44).l,a2
+	lea	(Robotnik_IntroAnims).l,a2
 	lsl.w	#2,d0
 	move.l	(a2,d0.w),aAnim(a0)
 	clr.w	aAnimTime(a0)
 
 loc_AB42:
 	tst.b	aAnimTime(a0)
-	beq.w	loc_AB50
+	beq.s	loc_AB50
 	subq.b	#1,aAnimTime(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -14267,7 +13871,7 @@ loc_AB50:
 	cmpi.b	#$FE,(a2)
 	beq.w	locret_ABC6
 	cmpi.b	#$FF,(a2)
-	bne.w	loc_AB68
+	bne.s	loc_AB68
 	movea.l	2(a2),a2
 
 loc_AB68:
@@ -14303,7 +13907,7 @@ locret_ABC6:
 ; End of function ActRobotnikIntro
 
 ; ---------------------------------------------------------------------------
-off_ABC8:	
+off_ABC8:
 	dc.l ArtUnc_Robotnik_0
 	dc.l ArtUnc_Robotnik_1
 	dc.l ArtUnc_Robotnik_2
@@ -14336,600 +13940,65 @@ off_ABC8:
 	dc.l ArtNem_RobotnikShip
 	dc.l ArtNem_RobotnikShip
 	dc.l ArtUnc_Robotnik_0
-	
-off_AC48:	
-	dc.l off_AC8C
-	dc.l off_ACC0
-	dc.l off_AD60
-	dc.l off_ADEC
-	dc.l off_AC8C
-	dc.l off_AEA6
-	dc.l off_AD08
-	dc.l off_AC8C
-	dc.l off_AE18
-	dc.l off_AE5C
-	dc.l off_AE4A
-	dc.l off_AEE2
-	dc.l off_AF44
-	dc.l off_AC8C
-	dc.l off_AE6E
-	dc.l off_AEC8
-	dc.l off_AF44
-	
-off_AC8C:	dc.l unk_ACB8
-	dc.l unk_ACA6
-	dc.l unk_AC98
-unk_AC98:	dc.b   6
-	dc.b   1
-	dc.b   6
-	dc.b   2
-	dc.b   6
-	dc.b   1
-	dc.b   6
-	dc.b   0
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AC98
-unk_ACA6:	dc.b   4
-	dc.b   3
-	dc.b   4
-	dc.b   4
-	dc.b   8
-	dc.b   6
-	dc.b   8
-	dc.b   5
-	dc.b   8
-	dc.b   6
-	dc.b   8
-	dc.b   5
-	dc.b   4
-	dc.b   4
-	dc.b   4
-	dc.b   3
-	dc.b $FE
-	dc.b   0
-unk_ACB8:	dc.b $18
-	dc.b   0
-	dc.b $FF
-	dc.b   0
-	dc.l unk_ACB8
-off_ACC0:	dc.l unk_ACD0
-	dc.l unk_ACE6
-	dc.l unk_ACF2
-	dc.l unk_ACFC
-unk_ACD0:	dc.b   8
-	dc.b   0
-	dc.b   8
-	dc.b   1
-	dc.b   8
-	dc.b   2
-	dc.b   8
-	dc.b   3
-	dc.b   8
-	dc.b   4
-	dc.b   8
-	dc.b   3
-	dc.b   8
-	dc.b   2
-	dc.b   8
-	dc.b   1
-	dc.b $FF
-	dc.b   0
-	dc.l unk_ACD0
-unk_ACE6:	dc.b   8
-	dc.b   0
-	dc.b   8
-	dc.b   1
-	dc.b   8
-	dc.b   2
-	dc.b   8
-	dc.b   3
-	dc.b   8
-	dc.b   4
-	dc.b $FE
-	dc.b   0
-unk_ACF2:	dc.b   6
-	dc.b   4
-	dc.b   6
-	dc.b   5
-	dc.b $FF
-	dc.b   0
-	dc.l unk_ACF2
-unk_ACFC:	dc.b   8
-	dc.b   4
-	dc.b   8
-	dc.b   3
-	dc.b   8
-	dc.b   2
-	dc.b   8
-	dc.b   1
-	dc.b   8
-	dc.b   0
-	dc.b $FE
-	dc.b   0
-off_AD08:	dc.l unk_AD20
-	dc.l unk_AD2C
-	dc.l unk_AD30
-	dc.l unk_AD38
-	dc.l unk_AD56
-	dc.l unk_AD3A
-unk_AD20:	dc.b $1E
-	dc.b   0
-unk_AD22:	dc.b   8
-	dc.b   1
-	dc.b   8
-	dc.b   0
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AD22
-unk_AD2C:	dc.b $1E
-	dc.b   0
-	dc.b $FE
-	dc.b   0
-unk_AD30:	dc.b  $F
-	dc.b   0
-	dc.b   5
-	dc.b   2
-	dc.b  $F
-	dc.b   3
-	dc.b $FE
-	dc.b   0
-unk_AD38:	dc.b   4
-	dc.b   5
-unk_AD3A:	dc.b  $A
-	dc.b   6
-	dc.b   4
-	dc.b   5
-	dc.b   4
-	dc.b   3
-	dc.b  $A
-	dc.b   4
-	dc.b   4
-	dc.b   3
-	dc.b   4
-	dc.b   5
-	dc.b  $A
-	dc.b   6
-	dc.b   4
-	dc.b   5
-	dc.b   4
-	dc.b   3
-	dc.b  $A
-	dc.b   4
-	dc.b   4
-	dc.b   3
-	dc.b   4
-	dc.b   5
-	dc.b  $F
-	dc.b   6
-	dc.b $FE
-	dc.b   0
-unk_AD56:	dc.b   8
-	dc.b   6
-	dc.b   8
-	dc.b   7
-	dc.b $FF
-	dc.b 0
-	dc.l unk_AD56
-off_AD60:	dc.l unk_AD88
-	dc.l unk_AD8C
-	dc.l unk_AD74
-	dc.l unk_ADA6
-	dc.l unk_ADD2
-unk_AD74:	dc.b   5
-	dc.b   0
-	dc.b   5
-	dc.b   1
-	dc.b   5
-	dc.b   2
-	dc.b   5
-	dc.b   3
-	dc.b   5
-	dc.b   4
-	dc.b   6
-	dc.b   5
-	dc.b   7
-	dc.b   6
-	dc.b   5
-	dc.b   7
-	dc.b   5
-	dc.b   2
-	dc.b   5
-	dc.b   1
-unk_AD88:	dc.b   8
-	dc.b   0
-	dc.b $FE
-	dc.b   0
-unk_AD8C:	dc.b   5
-	dc.b   8
-	dc.b   5
-	dc.b   9
-	dc.b   5
-	dc.b   0
-	dc.b   5
-	dc.b   8
-	dc.b   5
-	dc.b   9
-	dc.b   5
-	dc.b   0
-	dc.b $16
-	dc.b   0
-	dc.b   5
-	dc.b   8
-	dc.b   5
-	dc.b   9
-	dc.b $16
-	dc.b   0
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AD8C
-unk_ADA6:	dc.b   3
-	dc.b   0
-	dc.b   3
-	dc.b   1
-	dc.b   3
-	dc.b   2
-	dc.b   3
-	dc.b   3
-	dc.b   3
-	dc.b   4
-	dc.b   5
-	dc.b   5
-	dc.b   6
-	dc.b   6
-	dc.b   3
-	dc.b   7
-	dc.b   3
-	dc.b   2
-	dc.b   3
-	dc.b   1
-	dc.b   6
-	dc.b   0
-	dc.b   3
-	dc.b   1
-	dc.b   3
-	dc.b   2
-	dc.b   3
-	dc.b   3
-	dc.b   3
-	dc.b   4
-	dc.b   5
-	dc.b   5
-	dc.b   6
-	dc.b   6
-	dc.b   3
-	dc.b   7
-	dc.b   3
-	dc.b   2
-	dc.b   3
-	dc.b   1
-	dc.b   3
-	dc.b   0
-	dc.b $FE
-	dc.b   0
-unk_ADD2:	dc.b   5
-	dc.b   0
-	dc.b   5
-	dc.b   1
-	dc.b   5
-	dc.b   2
-	dc.b   5
-	dc.b   3
-	dc.b   5
-	dc.b   4
-	dc.b   7
-	dc.b   5
-	dc.b   8
-	dc.b   6
-	dc.b   5
-	dc.b   7
-	dc.b   5
-	dc.b   2
-	dc.b   5
-	dc.b   1
-	dc.b $FF
-	dc.b   0
-	dc.l unk_ADD2
-off_ADEC:	dc.l unk_ADF4
-	dc.l unk_AE06
-unk_ADF4:	dc.b   7
-	dc.b   0
-	dc.b   7
-	dc.b   1
-	dc.b   7
-	dc.b   2
-	dc.b   7
-	dc.b   3
-	dc.b   7
-	dc.b   4
-	dc.b   7
-	dc.b   5
-	dc.b $FF
-	dc.b   0
-	dc.l unk_ADF4
-unk_AE06:	dc.b   7
-	dc.b   0
-	dc.b   7
-	dc.b   1
-	dc.b   7
-	dc.b   2
-	dc.b   7
-	dc.b   3
-	dc.b   7
-	dc.b   4
-	dc.b   7
-	dc.b   6
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AE06
-off_AE18:	dc.l unk_AE20
-	dc.l unk_AE32
-unk_AE20:	dc.b   9
-	dc.b   0
-	dc.b   4
-	dc.b   1
-	dc.b   4
-	dc.b   2
-	dc.b  $F
-	dc.b   3
-	dc.b   9
-	dc.b   2
-	dc.b   8
-	dc.b   1
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AE20
-unk_AE32:	dc.b $28
-	dc.b   0
-	dc.b   4
-	dc.b   1
-	dc.b   4
-	dc.b   2
-	dc.b   8
-	dc.b   3
-	dc.b   7
-	dc.b   2
-	dc.b   6
-	dc.b   1
-	dc.b   4
-	dc.b   1
-	dc.b   4
-	dc.b   2
-	dc.b   8
-	dc.b   3
-	dc.b   7
-	dc.b   2
-	dc.b   6
-	dc.b   1
-	dc.b $FE
-	dc.b   0
-off_AE4A:	dc.l unk_AE4E
-unk_AE4E:	dc.b  $E
-	dc.b   0
-	dc.b  $B
-	dc.b   1
-	dc.b  $A
-	dc.b   2
-	dc.b  $C
-	dc.b   1
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AE4E
-off_AE5C:	dc.l unk_AE60
-unk_AE60:	dc.b   5
-	dc.b   0
-	dc.b   5
-	dc.b   1
-	dc.b   5
-	dc.b   2
-	dc.b   5
-	dc.b   1
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AE60
-off_AE6E:	dc.l unk_AE7A
-	dc.l unk_AE90
-	dc.l unk_AEA2
-unk_AE7A:	dc.b   9
-	dc.b   2
-	dc.b   9
-	dc.b   1
-	dc.b   9
-	dc.b   0
-	dc.b   9
-	dc.b   1
-	dc.b   9
-	dc.b   2
-	dc.b   9
-	dc.b   3
-	dc.b   9
-	dc.b   4
-	dc.b   9
-	dc.b   3
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AE7A
-unk_AE90:	dc.b  $A
-	dc.b   2
-	dc.b   5
-	dc.b   5
-	dc.b   5
-	dc.b   2
-	dc.b   5
-	dc.b   5
-	dc.b $1E
-	dc.b   2
-	dc.b   5
-	dc.b   5
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AE90
-unk_AEA2:	dc.b $1E
-	dc.b   2
-	dc.b $FE
-	dc.b   0
-off_AEA6:	dc.l unk_AEAE
-	dc.l unk_AEB6
-unk_AEAE:	dc.b   1
-	dc.b   0
-	dc.b $FE
-	dc.b   0
-	dc.l unk_AEAE
-unk_AEB6:	dc.b  $A
-	dc.b   6
-	dc.b   5
-	dc.b   7
-	dc.b   5
-	dc.b   6
-	dc.b   5
-	dc.b   7
-	dc.b $1E
-	dc.b   6
-	dc.b   5
-	dc.b   7
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AEB6
-off_AEC8:	dc.l unk_AECC
-unk_AECC:	dc.b   4
-	dc.b   0
-	dc.b   4
-	dc.b   1
-	dc.b   4
-	dc.b   2
-	dc.b   4
-	dc.b   1
-	dc.b   4
-	dc.b   0
-	dc.b   4
-	dc.b   3
-	dc.b   4
-	dc.b   4
-	dc.b   4
-	dc.b   3
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AECC
-off_AEE2:	dc.l unk_AEFE
-	dc.l unk_AF02
-	dc.l unk_AF10
-	dc.l unk_AF1A
-	dc.l unk_AF28
-	dc.l unk_AF32
-	dc.l unk_AF40
-unk_AEFE:	dc.b   4
-	dc.b   0
-	dc.b $FE
-	dc.b   0
-unk_AF02:	dc.b   5
-	dc.b   0
-	dc.b   5
-	dc.b   7
-	dc.b   5
-	dc.b   8
-	dc.b   5
-	dc.b   7
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AF02
-unk_AF10:	dc.b $1E
-	dc.b   0
-	dc.b   6
-	dc.b   1
-	dc.b   7
-	dc.b   2
-	dc.b $3C
-	dc.b   3
-	dc.b $FE
-	dc.b   0
-unk_AF1A:	dc.b   5
-	dc.b   3
-	dc.b   5
-	dc.b   9
-	dc.b   5
-	dc.b  $A
-	dc.b   5
-	dc.b   9
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AF1A
-unk_AF28:	dc.b $14
-	dc.b   3
-	dc.b   7
-	dc.b   4
-	dc.b   8
-	dc.b   5
-	dc.b $1E
-	dc.b   6
-	dc.b $FE
-	dc.b   0
-unk_AF32:	dc.b   5
-	dc.b   6
-	dc.b   5
-	dc.b  $B
-	dc.b   5
-	dc.b  $C
-	dc.b   5
-	dc.b  $B
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AF32
-unk_AF40:	dc.b $32
-	dc.b   6
-	dc.b $FE
-	dc.b   0
-off_AF44:	dc.l byte_AF50
-	dc.l unk_AF54
-	dc.l unk_AF62
-byte_AF50:	dc.b $32
-	dc.b $1C
-	dc.b $FE
-	dc.b   0
-unk_AF54:	dc.b   4
-	dc.b $13
-	dc.b   4
-	dc.b $14
-	dc.b $14
-	dc.b $19
-	dc.b  $A
-	dc.b $1A
-	dc.b $1C
-	dc.b $1B
-	dc.b $14
-	dc.b $18
-	dc.b  $A
-	dc.b $1F
-unk_AF62:	dc.b $32
-	dc.b   0
-	dc.b   7
-	dc.b   1
-	dc.b   6
-	dc.b   2
-	dc.b   7
-	dc.b   3
-	dc.b  $F
-	dc.b   4
-	dc.b $14
-	dc.b   5
-	dc.b   9
-	dc.b   6
-	dc.b $14
-	dc.b   7
-	dc.b   9
-	dc.b   6
-	dc.b $14
-	dc.b   8
-	dc.b   9
-	dc.b   9
-	dc.b  $A
-	dc.b  $A
-	dc.b   9
-	dc.b  $B
-	dc.b $32
-	dc.b  $C
-	dc.b $FF
-	dc.b   0
-	dc.l unk_AF62
+
+off_AC48:
+	dc.l Coconuts_IntroAnims	; Skeleton Tea - Puyo Leftover
+	dc.l Frankly_IntroAnims
+	dc.l Dynamight_IntroAnims
+	dc.l Arms_IntroAnims
+	dc.l Coconuts_IntroAnims	; Nasu Grave - Puyo Leftover
+	dc.l Grounder_IntroAnims
+	dc.l Davy_IntroAnims
+	dc.l Coconuts_IntroAnims
+	dc.l Spike_IntroAnims
+	dc.l SirFfuzzy_IntroAnims
+	dc.l DragonBreath_IntroAnims
+	dc.l Scratch_IntroAnims
+	dc.l Robotnik_IntroAnims
+	dc.l Coconuts_IntroAnims	; Mummy - Puyo Leftover
+	dc.l Humpty_IntroAnims
+	dc.l Skweel_IntroAnims
+	dc.l Robotnik_IntroAnims	; Opening Cutscene
+
+	include	"resource/anim/Intro/Arms.asm"
+	even
+
+	include	"resource/anim/Intro/Frankly.asm"
+	even
+
+	include	"resource/anim/Intro/Humpty.asm"
+	even
+
+	include	"resource/anim/Intro/Coconuts.asm"
+	even
+
+	include	"resource/anim/Intro/Davy Sprocket.asm"
+	even
+
+	include	"resource/anim/Intro/Skweel.asm"
+	even
+
+	include	"resource/anim/Intro/Dynamight.asm"
+	even
+
+	include	"resource/anim/Intro/Grounder.asm"
+	even
+
+	include	"resource/anim/Intro/Spike.asm"
+	even
+
+	include	"resource/anim/Intro/Sir Ffuzzy-Logik.asm"
+	even
+
+	include	"resource/anim/Intro/Dragon Breath.asm"
+	even
+
+	include	"resource/anim/Intro/Scratch.asm"
+	even
+
+	include	"resource/anim/Intro/Dr Robotnik.asm"
+	even
+
 ; ---------------------------------------------------------------------------
 
 SetupLevelTransition:
@@ -14943,7 +14012,6 @@ SetupLevelTransition:
 	rts
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ActLevelTransitionFG:
 	tst.w	(level_transition_flag).l
@@ -14975,9 +14043,7 @@ ActLevelTrans_FGStop:
 	bra.w	ActorDeleteSelf
 ; End of function ActLevelTransitionFG
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ActLevelTransitionBG:
 	tst.w	(level_transition_flag).l
@@ -15011,9 +14077,7 @@ ActLevelTrans_BGStop:
 	bra.w	ActorDeleteSelf
 ; End of function ActLevelTransitionBG
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 LoadLevelIntro:
 	lea	(ActLevelIntro).l,a1
@@ -15021,8 +14085,8 @@ LoadLevelIntro:
 	clr.w	d0
 	clr.w	d1
 	move.b	(level).l,d0
-	move.b	LairBackgroundFlags(pc,d0.w),d1
-	move.b	d1,(use_lair_background).l
+	move.b	LairAssetFlags(pc,d0.w),d1
+	move.b	d1,(use_lair_assets).l
 	move.b	d1,d2
 	lsr.b	#1,d2
 	move.b	d2,(bytecode_flag).l
@@ -15032,7 +14096,8 @@ LoadLevelIntro:
 ; End of function LoadLevelIntro
 
 ; ---------------------------------------------------------------------------
-LairBackgroundFlags:dc.b 0
+LairAssetFlags:
+	dc.b 0
 	dc.b 0
 	dc.b 0
 	dc.b 0
@@ -15050,7 +14115,9 @@ LairBackgroundFlags:dc.b 0
 	dc.b 1
 	dc.b 1
 	dc.b 0
-off_B0CE:	dc.l loc_B0F4
+
+off_B0CE:
+	dc.l loc_B0F4
 	dc.l loc_B0F4
 ; ---------------------------------------------------------------------------
 
@@ -15058,12 +14125,13 @@ loc_B0D6:
 	clr.w	d0
 	clr.w	d1
 	move.b	(level).l,d0
-	move.b	LairBackgroundFlags(pc,d0.w),d1
+	move.b	LairAssetFlags(pc,d0.w),d1
 	lsl.w	#2,d1
 	movea.l	off_B0EC(pc,d1.w),a2
 	jmp	(a2)
 ; ---------------------------------------------------------------------------
-off_B0EC:	dc.l loc_B102
+off_B0EC:
+	dc.l loc_B102
 	dc.l loc_B102
 ; ---------------------------------------------------------------------------
 
@@ -15079,7 +14147,7 @@ loc_B102:
 	lea	(Palettes).l,a2
 	adda.l	#(Pal_IntroSky1_Puyo-Palettes),a2
 	jsr	(FadeToPalette).l
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(opponent).l,d0
 	move.b	OpponentIntroPals(pc,d0.w),d0
 	lsl.w	#5,d0
@@ -15090,11 +14158,11 @@ loc_B102:
 	jmp	(FadeToPalette).l
 ; ---------------------------------------------------------------------------
 OpponentIntroPals:
-	dc.b (Pal_CoconutsIntro-Palettes)>>5
+	dc.b (Pal_CoconutsIntro-Palettes)>>5		; Skeleton Tea - Puyo Leftover
 	dc.b (Pal_FranklyIntro-Palettes)>>5
 	dc.b (Pal_DynamightIntro-Palettes)>>5
 	dc.b (Pal_ArmsIntro-Palettes)>>5
-	dc.b (Pal_CoconutsIntro-Palettes)>>5
+	dc.b (Pal_CoconutsIntro-Palettes)>>5		; Nasu Grave - Puyo Leftover
 	dc.b (Pal_GrounderIntro-Palettes)>>5
 	dc.b (Pal_DavySprocketIntro-Palettes)>>5
 	dc.b (Pal_CoconutsIntro-Palettes)>>5
@@ -15102,16 +14170,16 @@ OpponentIntroPals:
 	dc.b (Pal_SirFfuzzyLogikIntro-Palettes)>>5
 	dc.b (Pal_DragonBreathIntro-Palettes)>>5
 	dc.b (Pal_ScratchIntro-Palettes)>>5
-	dc.b (Pal_CoconutsIntro-Palettes)>>5
-	dc.b (Pal_CoconutsIntro-Palettes)>>5
+	dc.b (Pal_CoconutsIntro-Palettes)>>5		; Dr. Robotnik
+	dc.b (Pal_CoconutsIntro-Palettes)>>5		; Mummy - Puyo Leftover
 	dc.b (Pal_HumptyIntro-Palettes)>>5
 	dc.b (Pal_SkweelIntro-Palettes)>>5
-	dc.b (Pal_CoconutsIntro-Palettes)>>5
+	dc.b (Pal_CoconutsIntro-Palettes)>>5		; Opening Cutscene
 	dc.b (Pal_Black-Palettes)>>5
 ; ---------------------------------------------------------------------------
 
 loc_B152:
-	tst.b	(use_lair_background).l
+	tst.b	(use_lair_assets).l
 	bne.s	locret_B1AA
 	move.b	#0,(word_FF1126).l
 	move.w	#$8B00,d0
@@ -15138,22 +14206,23 @@ loc_B1AC:
 ; ---------------------------------------------------------------------------
 
 loc_B1B6:
-	move.w	#$A,d0
-	move.w	#3,d1
+	moveq	#$A,d0
+	moveq	#4-1,d1
 
 loc_B1BE:
 	move.l	4(a0,d0.w),d2
 	add.l	d2,(a0,d0.w)
-	addq.l	#8,d0
+	addq.w	#8,d0
 	dbf	d1,loc_B1BE
+
 	lea	(hscroll_buffer).l,a2
-	move.w	#$15C,d0
+	move.w	#(88-1)*4,d0
 	move.w	(vscroll_buffer+2).l,d1
 	subi.w	#$FF60,d1
 	cmpi.w	#$58,d1
-	bcc.w	ActorDeleteSelf
+	bhs.w	ActorDeleteSelf
 	subq.w	#1,d1
-	bcs.w	loc_B1F8
+	bcs.s	loc_B1F8
 
 loc_B1EE:
 	clr.l	(a2,d0.w)
@@ -15162,7 +14231,7 @@ loc_B1EE:
 
 loc_B1F8:
 	clr.w	d1
-	move.w	#$22,d2
+	moveq	#$22,d2
 
 loc_B1FE:
 	clr.w	d3
@@ -15172,8 +14241,8 @@ loc_B204:
 	clr.w	(a2,d0.w)
 	move.w	(a0,d2.w),2(a2,d0.w)
 	subq.w	#4,d0
-	bcs.w	locret_B21E
-	dbf	d3,loc_B204
+	dbcs	d3,loc_B204	; if lower then 0, end loop prematurely...
+	bcs.s	locret_B21E	; ...then branch
 	addq.w	#1,d1
 	subq.w	#8,d2
 	bra.s	loc_B1FE
@@ -15182,11 +14251,14 @@ loc_B204:
 locret_B21E:
 	rts
 ; ---------------------------------------------------------------------------
-unk_B220:	dc.b   7
-	dc.b   7
-	dc.b $1F
-	dc.b $FF
-unk_B224:	dc.b  $F
+unk_B220:	; 88 loops before all of them end
+	dc.b 8-1
+	dc.b 8-1
+	dc.b 32-1
+	dc.b 256-1
+
+unk_B224:
+	dc.b  $F
 	dc.b $FF
 	dc.b  $F
 	dc.b $FF
@@ -15452,12 +14524,12 @@ LoadSegaLogo:
 
 loc_B4B6:
 	move.b	#$FF,7(a0)
-	move.l	#word_B732,aAnim(a0)
+	move.l	#credit_staff_roll,aAnim(a0)
 	move.w	#$300,d0
 	jsr	(ActorBookmark_SetDelay).l
 	jsr	(ActorBookmark).l
 	tst.w	aField26(a0)
-	beq.w	loc_B4E2
+	beq.s	loc_B4E2
 	subq.w	#1,aField26(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -15465,7 +14537,7 @@ loc_B4B6:
 loc_B4E2:
 	movea.l	aAnim(a0),a1
 	move.w	(a1)+,d0
-	beq.w	loc_B500
+	beq.s	loc_B500
 	bmi.w	loc_B54E
 	add.w	d0,d0
 	move.w	d0,aField26(a0)
@@ -15494,13 +14566,14 @@ loc_B54E:
 	moveq	#0,d0
 	move.b	(difficulty).l,d0
 	lsl.w	#2,d0
-	move.l	off_B560(pc,d0.w),aAnim(a0)
+	move.l	Credit_EndMsgID(pc,d0.w),aAnim(a0)
 	rts
 ; ---------------------------------------------------------------------------
-off_B560:	dc.l word_B648
-	dc.l word_B662
-	dc.l word_B67C
-	dc.l word_B696
+Credit_EndMsgID:
+	dc.l CreditEnd_Hardest
+	dc.l CreditEnd_Hard
+	dc.l CreditEnd_Normal
+	dc.l CreditEnd_Easy
 ; ---------------------------------------------------------------------------
 
 loc_B570:
@@ -15509,16 +14582,16 @@ loc_B570:
 
 loc_B57A:
 	tst.b	(a1,d0.w)
-	beq.w	loc_B588
+	beq.s	loc_B588
 	dbf	d0,loc_B57A
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_B588:
 	move.b	#$FF,(a1,d0.w)
-	lea	(loc_B60E).l,a1
+	lea	loc_B60E(pc),a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_B5A0
+	bcc.s	loc_B5A0
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -15564,10 +14637,10 @@ loc_B5F2:
 loc_B60E:
 	movea.l	$32(a0),a1
 	tst.b	7(a1)
-	beq.w	loc_B640
+	beq.s	loc_B640
 	jsr	(sub_3810).l
 	cmpi.w	#$70,$E(a0)
-	bcs.w	loc_B62C
+	bcs.s	loc_B62C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -15582,239 +14655,15 @@ loc_B640:
 	jsr	(ActorBookmark).l
 	rts
 ; ---------------------------------------------------------------------------
-word_B648:	dc.w $10
-	dc.l word_B6B0
-	dc.w $30
-	dc.l word_B6BE
-	dc.w $C
-	dc.l word_B6E0
-	dc.w $50
-	dc.l word_B6CE
-	dc.w 0
-word_B662:	dc.w $10
-	dc.l word_B6F0
-	dc.w $28
-	dc.l word_B6FE
-	dc.w $C
-	dc.l word_B6E0
-	dc.w $50
-	dc.l word_B6CE
-	dc.w 0
-word_B67C:	dc.w $10
-	dc.l word_B6F0
-	dc.w $28
-	dc.l word_B710
-	dc.w $C
-	dc.l word_B6E0
-	dc.w $50
-	dc.l word_B6CE
-	dc.w 0
-word_B696:	dc.w $10
-	dc.l word_B6F0
-	dc.w $28
-	dc.l word_B720
-	dc.w $C
-	dc.l word_B6E0
-	dc.w $50
-	dc.l word_B6CE
-	dc.w 0
-word_B6B0:	dc.w $D8
-	dc.w 9
-	dc.b "Thank you",0
-word_B6BE:	dc.w $108
-	dc.w $C
-	dc.b "for playing."
-word_B6CE:	dc.w $E8
-	dc.w $E
-	dc.b "@ 1993 COMPILE"
-word_B6E0:	dc.w $F4
-	dc.w $B
-	dc.b "@ 1993 |}~",0
-word_B6F0:	dc.w $D0
-	dc.w 9
-	dc.b "Let",$27,"s try",0
-word_B6FE:	dc.w $100
-	dc.w $E
-	dc.b "hardest level."
-word_B710:	dc.w $118
-	dc.w $B
-	dc.b "hard level.",0
-word_B720:	dc.w $108
-	dc.w $D
-	dc.b "normal level.",0
-word_B732:	dc.w $F0
-	dc.l word_B806
-	dc.w $40
-	dc.l word_B9BC
-	dc.w $20
-	dc.l word_B9CA
-	dc.w $20
-	dc.l word_B9D8
-	dc.w $60
-	dc.l word_B9EA
-	dc.w $40
-	dc.l word_B81C
-	dc.w $20
-	dc.l word_B8AC
-	dc.w $20
-	dc.l word_B8BE
-	dc.w $80
-	dc.l word_B9FA
-	dc.w $50
-	dc.l word_B838
-	dc.w $28
-	dc.l word_B8D6
-	dc.w $28
-	dc.l word_B8E8
-	dc.w $28
-	dc.l word_B8FC
-	dc.w $28
-	dc.l word_B90E
-	dc.w $80
-	dc.l word_BA0A
-	dc.w $50
-	dc.l word_B84E
-	dc.w $20
-	dc.l word_B91E
-	dc.w $20
-	dc.l word_B932
-	dc.w 8
-	dc.l word_BA20
-	dc.w $80
-	dc.l word_BA2E
-	dc.w $40
-	dc.l word_B85E
-	dc.w 8
-	dc.l word_B954
-	dc.w $18
-	dc.l word_B8A2
-	dc.w $60
-	dc.l word_B942
-	dc.w $40
-	dc.l word_B878
-	dc.w $80
-	dc.l word_B968
-	dc.w $60
-	dc.l word_B88E
-	dc.w $40
-	dc.l word_B810
-	dc.w $60
-	dc.l word_B97C
-	dc.w $40
-	dc.l word_B82A
-	dc.w $20
-	dc.l word_B97C
-	dc.w $20
-	dc.l word_B98A
-	dc.w $60
-	dc.l word_B99A
-	dc.w $40
-	dc.l word_B86E
-	dc.w $80
-	dc.l word_B9A9+1
-	dc.w $8000
-word_B806:	dc.w $A8
-	dc.w 5
-	dc.b "STAFF",0
-word_B810:	dc.w $A8
-	dc.w 8
-	dc.b "PRODUCER"
-word_B81C:	dc.w $A8
-	dc.w 9
-	dc.b "DIRECTORS",0
-word_B82A:	dc.w $A8
-	dc.w 9
-	dc.b "DESIGNERS",0
-word_B838:	dc.w $A8
-	dc.w $11
-	dc.b "GRAPHIC DESIGNERS",0
-word_B84E:	dc.w $A8
-	dc.w $B
-	dc.b "PROGRAMMERS",0
-word_B85E:	dc.w $A8
-	dc.w $C
-	dc.b "MUSIC AND FX"
-word_B86E:	dc.w $A8
-	dc.w 5
-	dc.b "SOUND",0
-word_B878:	dc.w $A8
-	dc.w $11
-	dc.b "SPECIAL THANKS TO",0
-word_B88E:	dc.w $A8
-	dc.w $F
-	dc.b "SEGA OF AMERICA",0
-word_B8A2:	dc.w $170
-	dc.w 6
-	dc.b "-CUBE-"
-word_B8AC:	dc.w $110
-	dc.w $D
-	dc.b "Tetsuo Shinyu",0
-word_B8BE:	dc.w $110
-	dc.w $13
-	dc.b "Takayuki Yanagihori",0
-word_B8D6:	dc.w $110
-	dc.w $D
-	dc.b "Takaya Segawa",0
-word_B8E8:	dc.w $110
-	dc.w $F
-	dc.b "Saori Yamaguchi",0
-word_B8FC:	dc.w $110
-	dc.w $E
-	dc.b "Hideaki Moriya"
-word_B90E:	dc.w $110
-	dc.w $C
-	dc.b "Keisuke Saka"
-word_B91E:	dc.w $110
-	dc.w $F
-	dc.b "Manabu Ishihara",0
-word_B932:	dc.w $110
-	dc.w $C
-	dc.b "Tsukasa Aoki"
-word_B942:	dc.w $110
-	dc.w $E
-	dc.b "Masayuki Nagao"
-word_B954:	dc.w $110
-	dc.w $10
-	dc.b "Masanori Hikichi"
-word_B968:	dc.w $110
-	dc.w $10
-	dc.b "Shinobu Yokoyama"
-word_B97C:	dc.w $110
-	dc.w $A
-	dc.b "Max Taylor"
-word_B98A:	dc.w $110
-	dc.w $C
-	dc.b "Brian Ransom"
-word_B99A:	dc.w $110
-	dc.w $B
-	dc.b "Dave Albert"
-word_B9A9:	dc.w 1
-	dc.w $1000
-	dc.b $E,"David Javelosa"
-word_B9BC:	dc.w $A8
-	dc.w 9
-	dc.b "PRODUCERS",0
-word_B9CA:	dc.w $110
-	dc.w $A
-	dc.b "Yoji Ishii"
-word_B9D8:	dc.w $110
-	dc.w $E
-	dc.b "Noriyoshi Ohba"
-word_B9EA:	dc.w $110
-	dc.w $B
-	dc.b "Moo Niitani",0
-word_B9FA:	dc.w $110
-	dc.w $C
-	dc.b "M. Tsukamoto"
-word_BA0A:	dc.w $110
-	dc.w $12
-	dc.b "COMPILE'S DESIGNER"
-word_BA20:	dc.w $110
-	dc.w 9
-	dc.b "COMPILE'S",0
-word_BA2E:	dc.w $138
-	dc.w $A
-	dc.b "PROGRAMMER"
+
+	include "resource/anim/Credits/Credits End.asm"
+	even
+
+; ---------------------------------------------------------------------------
+
+	include "resource/anim/Credits/Staff Roll.asm"
+	even
+
 ; ---------------------------------------------------------------------------
 
 loc_BA3C:
@@ -15826,7 +14675,7 @@ loc_BA3C:
 	jsr	(FadeToPal_StepCount).l
 	lea	(sub_BADA).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_BA6C
+	bcc.s	loc_BA6C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -15881,10 +14730,6 @@ sub_BAC8:
 
 
 sub_BADA:
-
-; FUNCTION CHUNK AT 0000BB62 SIZE 0000009A BYTES
-; FUNCTION CHUNK AT 0000BDFE SIZE 00000130 BYTES
-
 	move.w	#$100,d4
 	move.w	#$D61C,d5
 	move.w	#$8500,d6
@@ -15897,24 +14742,24 @@ sub_BADA:
 	jsr	(GetCtrlData).l
 	move.b	d0,d1
 	andi.b	#$F0,d0
-	bne.w	loc_BB62
+	bne.s	loc_BB62
 	btst	#0,d1
-	bne.w	loc_BB26
+	bne.s	loc_BB26
 	btst	#1,d1
-	bne.w	loc_BB36
+	bne.s	loc_BB36
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_BB26:
 	tst.w	$26(a0)
-	beq.w	loc_BB4C
+	beq.s	loc_BB4C
 	subq.w	#1,$26(a0)
 	bra.w	loc_BB44
 ; ---------------------------------------------------------------------------
 
 loc_BB36:
 	cmpi.w	#3,$26(a0)
-	bcc.w	loc_BB4C
+	bcc.s	loc_BB4C
 	addq.w	#1,$26(a0)
 
 loc_BB44:
@@ -15925,9 +14770,7 @@ loc_BB4C:
 	bra.w	sub_BAB2
 ; End of function sub_BADA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_BB50:
 	move.w	$26(a0),d0
@@ -15942,7 +14785,7 @@ sub_BB50:
 
 loc_BB62:
 	bsr.w	sub_BCC2
-	bcc.w	loc_BB7A
+	bcc.s	loc_BB7A
 	jsr	(nullsub_3).l
 	move.b	#SFX_67,d0
 	jmp	(PlaySound_ChkPCM).l
@@ -15964,7 +14807,7 @@ loc_BB7A:
 	andi.b	#$80,d0
 	move.b	d0,6(a0)
 	subq.w	#1,$28(a0)
-	beq.w	loc_BBCA
+	beq.s	loc_BBCA
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -15975,7 +14818,7 @@ loc_BBCA:
 	move.b	d1,(bytecode_flag).l
 	beq.w	loc_BDFE
 	cmpi.b	#3,d1
-	beq.w	loc_BBF0
+	beq.s	loc_BBF0
 	clr.b	(swap_controls).l
 
 loc_BBF0:
@@ -15983,13 +14826,17 @@ loc_BBF0:
 	jmp	(ActorDeleteSelf).l
 ; END OF FUNCTION CHUNK	FOR sub_BADA
 ; ---------------------------------------------------------------------------
-LevelModes:	dc.b 0
+LevelModes:
+	dc.b 0
 	dc.b 1
 	dc.b 2
 	dc.b 3
 	dc.b 4
 	dc.b 0
-byte_BC02:	dc.b 4
+
+; TODO: Document Animation Code
+byte_BC02:
+	dc.b   4
 	dc.b $3E
 	dc.b   4
 	dc.b $3F
@@ -16079,7 +14926,6 @@ byte_BC02:	dc.b 4
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 nullsub_3:
 	rts
 ; End of function nullsub_3
@@ -16096,7 +14942,6 @@ nullsub_3:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_BC82:
 	addq.w	#1,d0
 	cmpi.w	#$15,d0
@@ -16111,60 +14956,39 @@ loc_BC8C:
 ; End of function sub_BC82
 
 ; ---------------------------------------------------------------------------
-unk_BC96:	dc.b  $E
-	dc.b $E0
-	dc.b  $C
-	dc.b $E2
-	dc.b  $A
-	dc.b $E4
-	dc.b   8
-	dc.b $E6
-	dc.b   6
-	dc.b $E8
-	dc.b   4
-	dc.b $EA
-	dc.b   2
-	dc.b $EC
-	dc.b   0
-	dc.b $EE
-	dc.b   2
-	dc.b $CE
-	dc.b   4
-	dc.b $AE
-	dc.b   6
-	dc.b $8E
-	dc.b   8
-	dc.b $6E
-	dc.b  $A
-	dc.b $4E
-	dc.b  $C
-	dc.b $2E
-	dc.b  $E
-	dc.b  $E
-	dc.b  $E
-	dc.b $2C
-	dc.b  $E
-	dc.b $4A
-	dc.b  $E
-	dc.b $68
-	dc.b  $E
-	dc.b $86
-	dc.b  $E
-	dc.b $A4
-	dc.b  $E
-	dc.b $C2
-	dc.b $FF
-	dc.b $FF
+unk_BC96:	; Unused Palette Cycling
+	dc.w  $EE0
+	dc.w  $CE2
+	dc.w  $AE4
+	dc.w  $8E6
+	dc.w  $6E8
+	dc.w  $4EA
+	dc.w  $2EC
+	dc.w   $EE
+	dc.w  $2CE
+	dc.w  $4AE
+	dc.w  $68E
+	dc.w  $86E
+	dc.w  $A4E
+	dc.w  $C2E
+	dc.w  $E0E
+	dc.w  $E2C
+	dc.w  $E4A
+	dc.w  $E68
+	dc.w  $E86
+	dc.w  $EA4
+	dc.w  $EC2
+	dc.w $FFFF
 
 ; =============== S U B	R O U T	I N E =======================================
 
 
 sub_BCC2:
 	cmpi.w	#1,$26(a0)
-	bne.w	loc_BCDC
+	bne.s	loc_BCDC
 	bsr.w	sub_BCE2
 	tst.b	d0
-	beq.w	loc_BCDC
+	beq.s	loc_BCDC
 	ori	#1,sr
 	rts
 ; ---------------------------------------------------------------------------
@@ -16174,9 +14998,7 @@ loc_BCDC:
 	rts
 ; End of function sub_BCC2
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_BCE2:
 	DISABLE_INTS
@@ -16203,24 +15025,20 @@ loc_BD0C:
 	rts
 ; End of function sub_BCE2
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_BD24:
 	lea	PORT_A_DATA,a1
 	bsr.w	sub_BD44
 	lea	PORT_B_DATA,a1
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	bsr.w	sub_BD44
-	movem.l	(sp)+,d1
+	move.l	(sp)+,d1
 	or.b	d1,d0
 	rts
 ; End of function sub_BD24
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_BD44:
 	move.b	#0,(a1)
@@ -16240,18 +15058,18 @@ sub_BD44:
 
 loc_BD6A:
 	lsl.b	#1,d1
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	andi.b	#$C0,d0
-	beq.w	loc_BD7C
+	beq.s	loc_BD7C
 	ori.b	#1,d1
 
 loc_BD7C:
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	lsl.b	#2,d0
 	dbf	d2,loc_BD6A
 	move.b	#0,d0
 	cmpi.b	#$D,d1
-	beq.w	locret_BD96
+	beq.s	locret_BD96
 	move.b	#$FF,d0
 
 locret_BD96:
@@ -16261,7 +15079,7 @@ locret_BD96:
 ; ---------------------------------------------------------------------------
 
 loc_BD98:
-	lea	(loc_BDA4).l,a1
+	lea	loc_BDA4(pc),a1
 	jmp	(FindActorSlot).l
 ; ---------------------------------------------------------------------------
 
@@ -16269,7 +15087,7 @@ loc_BDA4:
 	addq.w	#1,$26(a0)
 	move.w	$26(a0),d1
 	lea	((hscroll_buffer+2)).l,a1
-	lea	(word_BDF4).l,a2
+	lea	word_BDF4(pc),a2
 
 loc_BDB8:
 	move.w	(a2)+,d0
@@ -16306,7 +15124,8 @@ loc_BDDA:
 ; End of function sub_BDCA
 
 ; ---------------------------------------------------------------------------
-word_BDF4:	dc.w $28
+word_BDF4:
+	dc.w $28
 	dc.w $18
 	dc.w $18
 	dc.w $20
@@ -16330,7 +15149,7 @@ loc_BE2E:
 	dbf	d0,loc_BE2E
 	subq.w	#8,$A(a0)
 	subq.w	#1,$26(a0)
-	beq.w	loc_BE44
+	beq.s	loc_BE44
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -16339,12 +15158,12 @@ loc_BE44:
 	jsr	(ActorAnimate).l
 	jsr	(GetCtrlData).l
 	andi.b	#$F0,d0
-	bne.w	loc_BEB4
+	bne.s	loc_BEB4
 	jsr	(GetCtrlData).l
 	btst	#0,d0
-	bne.w	loc_BE76
+	bne.s	loc_BE76
 	btst	#1,d0
-	bne.w	loc_BE8E
+	bne.s	loc_BE8E
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -16385,14 +15204,14 @@ loc_BEB4:
 	andi.b	#$80,d0
 	move.b	d0,6(a0)
 	subq.w	#1,$28(a0)
-	beq.w	loc_BEEA
+	beq.s	loc_BEEA
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_BEEA:
 	move.b	#1,(byte_FF0114).l 
 	move.b	(com_level).l,(difficulty).l
-	move.b	#3,(level).l ; Which Stage to start on in Story.
+	move.b	#3,(level).l			; Which Stage to start on in Story.
 	bsr.w	sub_DF74
 	bsr.w	ClearOpponentDefeats
 	move.w	$26(a0),d0
@@ -16405,7 +15224,6 @@ loc_BEEA:
 ; END OF FUNCTION CHUNK	FOR sub_BADA
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ClearOpponentDefeats:
 	lea	(opponents_defeated).l,a2
@@ -16434,7 +15252,7 @@ locret_BF68:
 loc_BF6A:
 	movea.l	$2E(a0),a1
 	tst.w	$26(a1)
-	beq.w	loc_BF7E
+	beq.s	loc_BF7E
 	move.b	#0,6(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -16453,11 +15271,10 @@ loc_BF7E:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_BFA6:
 	lea	(loc_C00A).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_BFB8
+	bcc.s	loc_BFB8
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -16483,7 +15300,9 @@ loc_BFB8:
 
 ; ---------------------------------------------------------------------------
 word_BFFA:	dc.w $CC0A
-word_BFFC:	dc.w $8500
+
+word_BFFC:
+	dc.w $8500
 	dc.w $CC3A
 	dc.w $A500
 	dc.w $CC3A
@@ -16520,13 +15339,13 @@ loc_C050:
 	addq.b	#1,$26(a0)
 	bsr.w	sub_56C0
 	btst	#2,d0
-	bne.w	loc_C0E2
+	bne.s	loc_C0E2
 	andi.b	#$70,d0
-	bne.w	loc_C0CA
+	bne.s	loc_C0CA
 	btst	#1,d1
-	bne.w	loc_C090
+	bne.s	loc_C090
 	btst	#0,d1
-	bne.w	loc_C0AC
+	bne.s	loc_C0AC
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -16534,7 +15353,7 @@ loc_C090:
 	move.w	$E(a0),d0
 	addq.b	#1,$12(a0,d0.w)
 	cmpi.b	#$1B,$12(a0,d0.w)
-	bcs.w	loc_C0BE
+	bcs.s	loc_C0BE
 	move.b	#0,$12(a0,d0.w)
 	bra.w	loc_C0BE
 ; ---------------------------------------------------------------------------
@@ -16556,13 +15375,13 @@ loc_C0CA:
 	move.b	#SFX_MENU_SELECT,d0
 	bsr.w	PlaySound_ChkPCM
 	cmpi.w	#3,$E(a0)
-	bcc.w	loc_C0F8
+	bcc.s	loc_C0F8
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_C0E2:
 	tst.w	$E(a0)
-	bne.w	loc_C0EC
+	bne.s	loc_C0EC
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -16580,7 +15399,7 @@ loc_C0F8:
 loc_C104:
 	move.l	6(a1),d1
 	cmp.l	$A(a2),d1
-	beq.w	loc_C126
+	beq.s	loc_C126
 	adda.l	#$10,a1
 	addq.w	#1,$A(a0)
 	cmpi.w	#5,$A(a0)
@@ -16602,13 +15421,16 @@ loc_C12A:
 	bclr	#1,7(a1)
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
-unk_C156:	dc.b $12
+unk_C156:
+	dc.b $12
 	dc.b   1
 	dc.b  $E
 	dc.b  $B
 	dc.b   0
 	dc.b $FF
-unk_C15C:	dc.b $19
+
+unk_C15C:
+	dc.b $19
 	dc.b  $F
 	dc.b $15
 	dc.b $12
@@ -16623,20 +15445,19 @@ unk_C15C:	dc.b $19
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_C168:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	bsr.w	GetPuyoField
 	move.w	d0,d5
 	addi.w	#$888,d5
-	movem.l	(sp)+,d2
+	move.l	(sp)+,d2
 	clr.w	d1
 
 loc_C17C:
 	move.b	$12(a0,d1.w),d0
 	bsr.w	sub_C1A8
 	btst	#0,d2
-	beq.w	loc_C18E
+	beq.s	loc_C18E
 	clr.b	d0
 
 loc_C18E:
@@ -16650,18 +15471,16 @@ loc_C18E:
 	rts
 ; End of function sub_C168
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C1A8:
 	cmp.w	$E(a0),d1
-	bcc.w	loc_C1B2
+	bcc.s	loc_C1B2
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_C1B2:
-	beq.w	loc_C1BC
+	beq.s	loc_C1BC
 	move.b	#$1C,d0
 	rts
 ; ---------------------------------------------------------------------------
@@ -16676,16 +15495,14 @@ loc_C1BC:
 	rts
 ; End of function sub_C1A8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C1D0:
 	move.b	(a1)+,d0
-	bmi.w	locret_C1E6
-	movem.l	d5,-(sp)
+	bmi.s	locret_C1E6
+	move.l	d5,-(sp)
 	bsr.w	sub_C1E8
-	movem.l	(sp)+,d5
+	move.l	(sp)+,d5
 	addq.w	#2,d5
 	bra.s	sub_C1D0
 ; ---------------------------------------------------------------------------
@@ -16694,18 +15511,16 @@ locret_C1E6:
 	rts
 ; End of function sub_C1D0
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C1E8:
 	move.w	#$C500,d1
 	move.w	d1,d2
 	tst.b	d0
-	beq.w	loc_C204
+	beq.s	loc_C204
 	addi.b	#$3F,d0
 	cmpi.b	#$5F,d0
-	bcs.w	loc_C204
+	bcs.s	loc_C204
 	subi.b	#$29,d0
 
 loc_C204:
@@ -16714,7 +15529,7 @@ loc_C204:
 	move.b	d0,d2
 	addq.b	#1,d2
 	cmpi.b	#$B6,d1
-	bne.w	loc_C226
+	bne.s	loc_C226
 	move.b	d1,d2
 	clr.b	d1
 	move.b	(frame_count+1).l,d0
@@ -16733,14 +15548,12 @@ loc_C226:
 	rts
 ; End of function sub_C1E8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C24C:
 	lea	(sub_C28A).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_C25E
+	bcc.s	loc_C25E
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -16749,18 +15562,16 @@ loc_C25E:
 	move.b	#$FF,7(a0)
 	move.w	d0,$A(a1)
 	move.w	#$780,$28(a1)
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	movea.l	a1,a0
 	move.w	#$100,d4
 	move.w	#$C80C,d5
 	move.w	#$C500,d6
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	rts
 ; End of function sub_C24C
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C28A:
 	move.b	#$FF,7(a0)
@@ -16775,7 +15586,7 @@ loc_C2A2:
 	move.l	#unk_C3DC,$32(a0)
 	jsr	(ActorBookmark).l
 	jsr	(ActorAnimate).l
-	bcs.w	loc_C2BE
+	bcs.s	loc_C2BE
 	bra.w	sub_C3F0
 ; ---------------------------------------------------------------------------
 
@@ -16787,13 +15598,13 @@ loc_C2BE:
 	btst	#2,d0
 	bne.w	loc_C374
 	andi.b	#$70,d0
-	bne.w	loc_C350
+	bne.s	loc_C350
 	move.b	(byte_FF110C).l,d0
 	or.b	(byte_FF1112).l,d0
 	btst	#1,d0
-	bne.w	loc_C316
+	bne.s	loc_C316
 	btst	#0,d0
-	bne.w	loc_C332
+	bne.s	loc_C332
 	move.b	$26(a0),d0
 	lsl.b	#1,d0
 	andi.b	#$20,d0
@@ -16806,7 +15617,7 @@ loc_C316:
 	move.w	$E(a0),d0
 	addq.b	#1,$12(a0,d0.w)
 	cmpi.b	#$1C,$12(a0,d0.w)
-	bcs.w	loc_C344
+	bcs.s	loc_C344
 	move.b	#0,$12(a0,d0.w)
 	bra.w	loc_C344
 ; ---------------------------------------------------------------------------
@@ -16830,13 +15641,13 @@ loc_C350:
 	move.b	#SFX_MENU_SELECT,d0
 	bsr.w	PlaySound_ChkPCM
 	cmpi.w	#3,$E(a0)
-	bcc.w	loc_C3AA
+	bcc.s	loc_C3AA
 	bra.w	loc_C2A2
 ; ---------------------------------------------------------------------------
 
 loc_C374:
 	tst.w	$E(a0)
-	bne.w	loc_C37E
+	bne.s	loc_C37E
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -16844,7 +15655,7 @@ loc_C37E:
 	move.l	#unk_C3E6,$32(a0)
 	jsr	(ActorBookmark).l
 	jsr	(ActorAnimate).l
-	bcs.w	loc_C39A
+	bcs.s	loc_C39A
 	bra.w	sub_C3F0
 ; ---------------------------------------------------------------------------
 
@@ -16870,7 +15681,10 @@ loc_C3AA:
 ; End of function sub_C28A
 
 ; ---------------------------------------------------------------------------
-unk_C3DC:	dc.b   0
+; TODO: Document Animation Code
+
+unk_C3DC:
+	dc.b   0
 	dc.b   0
 	dc.b   3
 	dc.b $1F
@@ -16880,7 +15694,9 @@ unk_C3DC:	dc.b   0
 	dc.b $80
 	dc.b $FE
 	dc.b   0
-unk_C3E6:	dc.b   0
+
+unk_C3E6:
+	dc.b   0
 	dc.b $80
 	dc.b   3
 	dc.b $A0
@@ -16892,7 +15708,6 @@ unk_C3E6:	dc.b   0
 	dc.b   0
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C3F0:
 	move.w	$A(a0),d0
@@ -16914,9 +15729,7 @@ loc_C416:
 	bra.w	sub_C800
 ; End of function sub_C3F0
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C420:
 	clr.w	d0
@@ -16930,13 +15743,11 @@ loc_C422:
 	jmp	(sub_23536).l
 ; End of function sub_C420
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C438:
 	cmpi.b	#4,(high_score_table_id).l
-	bcs.w	loc_C44A
+	bcs.s	loc_C44A
 	andi	#$FFFE,sr
 	rts
 ; ---------------------------------------------------------------------------
@@ -16950,7 +15761,7 @@ loc_C44A:
 loc_C454:
 	move.l	6(a1),d1
 	cmp.l	$A(a0),d1
-	bcs.w	loc_C474
+	bcs.s	loc_C474
 	adda.l	#$10,a1
 	addq.w	#1,d0
 	cmpi.w	#5,d0
@@ -16963,7 +15774,7 @@ loc_C474:
 	movem.l	d0/a1,-(sp)
 	move.w	#3,d1
 	sub.w	d0,d1
-	bcs.w	loc_C49E
+	bcs.s	loc_C49E
 	movea.l	a2,a1
 	adda.l	#$40,a1
 	adda.l	#$50,a2
@@ -16985,9 +15796,7 @@ loc_C49E:
 	rts
 ; End of function sub_C438
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C4BA:
 	move.w	$A(a0),d0
@@ -16998,7 +15807,7 @@ sub_C4BA:
 loc_C4CA:
 	lea	(loc_C506).l,a1
 	jsr	(FindActorSlot).l
-	bcs.w	loc_C4F8
+	bcs.s	loc_C4F8
 	move.b	#3,8(a1)
 	move.l	#unk_C536,$32(a1)
 	move.l	a0,$2E(a1)
@@ -17019,7 +15828,7 @@ loc_C4F8:
 loc_C506:
 	movea.l	$2E(a0),a1
 	tst.b	7(a1)
-	bne.w	loc_C518
+	bne.s	loc_C518
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
 
@@ -17027,13 +15836,16 @@ loc_C518:
 	move.b	#$80,6(a0)
 	move.w	$E(a1),d0
 	cmp.w	$1E(a0),d0
-	bcs.w	loc_C530
+	bcs.s	loc_C530
 	move.b	#0,6(a0)
 
 loc_C530:
 	jmp	(ActorAnimate).l
 ; ---------------------------------------------------------------------------
-unk_C536:	dc.b $F0
+; TODO: Document Animation Code
+
+unk_C536:
+	dc.b $F0
 	dc.b   0
 	dc.b   1
 	dc.b   2
@@ -17061,33 +15873,30 @@ loc_C54C:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_C55E:
 	move.w	#4,d0
 
 loc_C562:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	bsr.w	GetHighScoreEntry
 	move.b	0(a1),$A(a0,d0.w)
-	bpl.w	loc_C57A
+	bpl.s	loc_C57A
 	move.b	#$FF,$F(a0)
 
 loc_C57A:
 	bsr.w	sub_C7B2
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	dbf	d0,loc_C562
 	rts
 ; End of function sub_C55E
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_C588:
-	move.w	#4,d0
+	moveq	#4,d0
 
 loc_C58C:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	bsr.w	GetHighScoreEntry
 	move.l	6(a1),d2
 	jsr	(sub_1B350).l
@@ -17095,29 +15904,27 @@ loc_C58C:
 	move.w	#7,d3
 	lea	(byte_FF1982).l,a1
 	bsr.w	loc_C5EE
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	dbf	d0,loc_C58C
 	rts
 ; End of function sub_C588
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_C5BA:
-	move.w	#4,d0
+	moveq	#4,d0
 
 loc_C5BE:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	bsr.w	GetHighScoreEntry
-	clr.l	d2
+	moveq	#0,d2
 	move.w	$A(a1),d2
 	jsr	(sub_1B350).l
 	addi.w	#$30,d5
 	move.w	#4,d3
 	lea	((byte_FF1982+3)).l,a1
 	bsr.w	loc_C5EE
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	dbf	d0,loc_C5BE
 	rts
 ; End of function sub_C5BA
@@ -17131,7 +15938,7 @@ loc_C5EE:
 loc_C5F4:
 	move.w	#$A500,d0
 	move.b	(a1)+,d0
-	beq.w	loc_C602
+	beq.s	loc_C602
 	move.b	#1,d1
 
 loc_C602:
@@ -17149,7 +15956,6 @@ loc_C602:
 	rts
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 GetHighScoreEntry:
 	movem.l	d1-d2,-(sp)
@@ -17185,7 +15991,7 @@ loc_C66A:
 	move.w	$26(a0),d1
 	bsr.w	sub_C778
 	subq.w	#4,$26(a0)
-	bcs.w	loc_C6D0
+	bcs.s	loc_C6D0
 	tst.b	$F(a0)
 	bne.w	locret_C6CE
 	move.b	(p1_ctrl_press).l,d0
@@ -17205,17 +16011,17 @@ loc_C6D0:
 	move.b	#SFX_67,d0
 	jsr	(PlaySound_ChkPCM).l
 	tst.b	(bytecode_disabled).l
-	beq.w	loc_C700
-	move.w	#4,d0
+	beq.s	loc_C700
+	moveq	#4,d0
 
 loc_C6E8:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	tst.b	$A(a0,d0.w)
-	bpl.w	loc_C6F8
+	bpl.s	loc_C6F8
 	bsr.w	sub_C24C
 
 loc_C6F8:
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	dbf	d0,loc_C6E8
 
 loc_C700:
@@ -17223,16 +16029,16 @@ loc_C700:
 	jsr	(ActorBookmark_SetDelay).l
 	jsr	(ActorBookmark_Ctrl).l
 	tst.b	7(a0)
-	beq.w	loc_C71A
+	beq.s	loc_C71A
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_C71A:
 	tst.b	(byte_FF1973).l
-	beq.w	loc_C764
+	beq.s	loc_C764
 	addq.b	#1,(high_score_table_id).l
 	cmpi.b	#2,(high_score_table_id).l
-	beq.w	loc_C764
+	beq.s	loc_C764
 	move.w	#$140,d1
 	move.w	d1,$26(a0)
 	jsr	(ActorBookmark).l
@@ -17240,7 +16046,7 @@ loc_C71A:
 	subi.w	#$140,d1
 	bsr.w	sub_C778
 	subq.w	#4,$26(a0)
-	beq.w	loc_C75A
+	beq.s	loc_C75A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -17251,14 +16057,13 @@ loc_C75A:
 
 loc_C764:
 	tst.b	$2A(a0)
-	bne.w	loc_C772
+	bne.s	loc_C772
 	clr.b	(bytecode_disabled).l
 
 loc_C772:
 	jmp	(ActorDeleteSelf).l
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C778:
 	lea	((hscroll_buffer+$140)).l,a1
@@ -17272,9 +16077,12 @@ loc_C782:
 ; End of function sub_C778
 
 ; ---------------------------------------------------------------------------
-off_C78E:	dc.l unk_C796
+off_C78E:
+	dc.l unk_C796
 	dc.l unk_C7A4
-unk_C796:	dc.b $13
+
+unk_C796:
+	dc.b $13
 	dc.b   3
 	dc.b   5
 	dc.b  $E
@@ -17288,7 +16096,9 @@ unk_C796:	dc.b $13
 	dc.b   4
 	dc.b   5
 	dc.b $FF
-unk_C7A4:	dc.b   5
+
+unk_C7A4:
+	dc.b   5
 	dc.b $18
 	dc.b   5
 	dc.b $12
@@ -17305,13 +16115,12 @@ unk_C7A4:	dc.b   5
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_C7B2:
 	move.b	(a1)+,d0
-	bmi.w	locret_C7C8
-	movem.l	d5,-(sp)
+	bmi.s	locret_C7C8
+	move.l	d5,-(sp)
 	bsr.w	sub_C800
-	movem.l	(sp)+,d5
+	move.l	(sp)+,d5
 	addq.w	#4,d5
 	bra.s	sub_C7B2
 ; ---------------------------------------------------------------------------
@@ -17320,9 +16129,7 @@ locret_C7C8:
 	rts
 ; End of function sub_C7B2
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C7CA:
 	moveq	#0,d0
@@ -17335,9 +16142,9 @@ sub_C7CA:
 loc_C7E2:
 	move.b	(a1)+,d0
 	bmi.s	locret_C7F6
-	movem.l	d5,-(sp)
+	move.l	d5,-(sp)
 	bsr.w	sub_C7F8
-	movem.l	(sp)+,d5
+	move.l	(sp)+,d5
 	addq.w	#4,d5
 	bra.s	loc_C7E2
 ; ---------------------------------------------------------------------------
@@ -17349,28 +16156,25 @@ locret_C7F6:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_C7F8:
 	move.w	#$A400,d1
 	bra.w	loc_C804
 ; End of function sub_C7F8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C800:
 	move.w	#$C400,d1
 
 loc_C804:
-	movem.l	d1,-(sp)
+	move.l	d1,-(sp)
 	move.b	d0,d1
 	andi.b	#$F,d0
 	lsl.b	#1,d0
 	andi.b	#$30,d1
 	lsl.w	#2,d1
 	or.b	d1,d0
-	movem.l	(sp)+,d1
+	move.l	(sp)+,d1
 	move.b	d0,d1
 	DISABLE_INTS
 	jsr	(SetVRAMWrite).l
@@ -17387,9 +16191,7 @@ loc_C804:
 	rts
 ; End of function sub_C800
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C858:
 	lea	(byte_FF143E).l,a1
@@ -17460,7 +16262,6 @@ unk_C948:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_C968:
 	move.w	$26(a0),d0
 	asl.w	#5,d0
@@ -17468,9 +16269,7 @@ sub_C968:
 	rts
 ; End of function sub_C968
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_C972:
 	clr.l	(hscroll_buffer).l
@@ -17525,7 +16324,7 @@ loc_CA3C:
 	dbf	d1,loc_CA3C
 	lea	(loc_CCDE).l,a1
 	jsr	(FindActorSlot).l
-	bcs.w	loc_CAE2
+	bcs.s	loc_CAE2
 	move.b	#$31,8(a1)
 	move.b	#$16,9(a1)
 	move.b	#$80,6(a1)
@@ -17535,7 +16334,7 @@ loc_CA3C:
 	move.l	#unk_CD24,$32(a1)
 	lea	(loc_CCCA).l,a1
 	jsr	(FindActorSlot).l
-	bcs.w	loc_CAE2
+	bcs.s	loc_CAE2
 	move.b	#$31,8(a1)
 	move.b	#$16,9(a1)
 	bsr.w	sub_CD08
@@ -17556,12 +16355,11 @@ loc_CAE2:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_CAFC:
 	movea.l	$2E(a0),a1
 	movea.l	$32(a1),a2
 	cmpi.b	#$FE,(a2)
-	beq.w	loc_CB0E
+	beq.s	loc_CB0E
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -17687,7 +16485,8 @@ loc_CC74:
 	clr.b	(bytecode_flag).l
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
-byte_CC86:	dc.b 0
+byte_CC86:
+	dc.b   0
 	dc.b   1
 	dc.b   0
 	dc.b   0
@@ -17749,7 +16548,7 @@ loc_CCDE:
 	jsr	(ActorAnimate).l
 	movea.l	$32(a0),a2
 	cmpi.b	#$FE,(a2)
-	beq.w	loc_CCF2
+	beq.s	loc_CCF2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -17761,7 +16560,6 @@ loc_CCF2:
 	rts
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_CD08:
 	jsr	(Random).l
@@ -17775,7 +16573,10 @@ sub_CD08:
 ; End of function sub_CD08
 
 ; ---------------------------------------------------------------------------
-unk_CD24:	dc.b   5
+; TOTO: Document Animation code
+
+unk_CD24:
+	dc.b   5
 	dc.b $16
 	dc.b   5
 	dc.b $17
@@ -17789,7 +16590,9 @@ unk_CD24:	dc.b   5
 	dc.b $1B
 	dc.b $FE
 	dc.b   0
-unk_CD32:	dc.b   0
+
+unk_CD32:
+	dc.b   0
 	dc.b $90
 	dc.b   1
 	dc.b $30
@@ -17829,7 +16632,9 @@ unk_CD32:	dc.b   0
 	dc.b   1
 	dc.b   0
 	dc.l unk_CE22
-unk_CD72:	dc.b   5
+
+unk_CD72:
+	dc.b   5
 	dc.b   0
 	dc.b   5
 	dc.b   1
@@ -17860,7 +16665,9 @@ unk_CD72:	dc.b   5
 	dc.b $FF
 	dc.b   0
 	dc.l unk_CD72
-unk_CD94:	dc.b $32
+
+unk_CD94:
+	dc.b $32
 	dc.b   0
 	dc.b   5
 	dc.b   1
@@ -17891,7 +16698,9 @@ unk_CD94:	dc.b $32
 	dc.b $FF
 	dc.b   0
 	dc.l unk_CD94
-unk_CDB6:	dc.b $32
+
+unk_CDB6:
+	dc.b $32
 	dc.b   4
 	dc.b   8
 	dc.b   5
@@ -17910,7 +16719,9 @@ unk_CDB6:	dc.b $32
 	dc.b $FF
 	dc.b   0
 	dc.l unk_CDB6
-unk_CDCC:	dc.b   5
+
+unk_CDCC:
+	dc.b   5
 	dc.b   4
 	dc.b   8
 	dc.b   5
@@ -17929,7 +16740,9 @@ unk_CDCC:	dc.b   5
 	dc.b $FF
 	dc.b   0
 	dc.l unk_CDCC
-unk_CDE2:	dc.b $1E
+
+unk_CDE2:
+	dc.b $1E
 	dc.b  $A
 	dc.b   8
 	dc.b  $B
@@ -17946,7 +16759,9 @@ unk_CDE2:	dc.b $1E
 	dc.b $FF
 	dc.b   0
 	dc.l unk_CDE2
-unk_CDF6:	dc.b   5
+
+unk_CDF6:
+	dc.b   5
 	dc.b  $A
 	dc.b   5
 	dc.b  $B
@@ -17963,7 +16778,9 @@ unk_CDF6:	dc.b   5
 	dc.b $FF
 	dc.b   0
 	dc.l unk_CDF6
-unk_CE0A:	dc.b $32
+
+unk_CE0A:
+	dc.b $32
 	dc.b  $F
 	dc.b   7
 	dc.b $10
@@ -17984,7 +16801,9 @@ unk_CE0A:	dc.b $32
 	dc.b $FF
 	dc.b   0
 	dc.l unk_CE0A
-unk_CE22:	dc.b   5
+
+unk_CE22:
+	dc.b   5
 	dc.b  $F
 	dc.b   5
 	dc.b $10
@@ -18005,24 +16824,24 @@ unk_CE22:	dc.b   5
 	dc.b $FF
 	dc.b   0
 	dc.l unk_CE22
+
 ; ---------------------------------------------------------------------------
 
 Password_LoadBG:
 	include "src/subroutines/password/Load Background.asm"
-	
+
 ; ---------------------------------------------------------------------------
 
 MapEni_Password:
 	incbin	"resource/mapeni/Background/Password.eni"
 	even
-	
+
 ; ---------------------------------------------------------------------------
 
 Password_Checks:
 	include "src/subroutines/password/Password Checks.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 DrawOpponentScrBoxes:
 	clr.w	d0
@@ -18080,29 +16899,28 @@ DrawOpponentScrBoxes:
 
 ; ---------------------------------------------------------------------------
 OpponentScrBoxMap:
-	dc.b %1110
-	dc.b %1110
-	dc.b %1110
-	dc.b %1100
-	dc.b %1110
-	dc.b %1111
-	dc.b %1111
-	dc.b %1111
-	dc.b %1111
-	dc.b %1111
-	dc.b %1111
-	dc.b %1111
-	dc.b %1111
-	dc.b %1111
-	dc.b %111
-	dc.b %100
-	
+	dc.b %1100	; Practise Stage 1
+	dc.b %1110	; Practise Stage 2
+	dc.b %1110	; Practise Stage 3
+	dc.b %1100	; Stage 1
+	dc.b %1110	; Stage 2
+	dc.b %1111	; Stage 3
+	dc.b %1111	; Stage 4
+	dc.b %1111	; Stage 5
+	dc.b %1111	; Stage 6
+	dc.b %1111	; Stage 7
+	dc.b %1111	; Stage 8
+	dc.b %1111	; Stage 9
+	dc.b %1111	; Stage 10
+	dc.b %1111	; Stage 11
+	dc.b %111	; Stage 12
+	dc.b %100	; Stage 13
+
 MapEni_OpponentScrBox:
 	incbin	"resource/mapeni/Background/Opponent's Screen.eni"
 	even
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 DrawOpponentScrBG:
 	clr.w	d0
@@ -18138,25 +16956,25 @@ DrawOpponentScrBG:
 ; End of function DrawOpponentScrBG
 
 ; ---------------------------------------------------------------------------
-OpponentScrBGBases:dc.w	0
-	dc.w 0
-	dc.w 0
-	dc.w $C400
-	dc.w $C400
-	dc.w $C400
-	dc.w $C400
-	dc.w $C400
-	dc.w $A400
-	dc.w $A400
-	dc.w $A400
-	dc.w $8400
-	dc.w $8400
-	dc.w $8400
-	dc.w $8400
-	dc.w $E400
+OpponentScrBGBases:		; Opponent Screen Palette Handler
+	dc.w 0		; Practise Stage 1
+	dc.w 0		; Practise Stage 2
+	dc.w 0		; Practise Stage 3
+	dc.w $C400	; Stage 1
+	dc.w $C400	; Stage 2
+	dc.w $C400	; Stage 3
+	dc.w $C400	; Stage 4
+	dc.w $C400	; Stage 5
+	dc.w $A400	; Stage 6
+	dc.w $A400	; Stage 7
+	dc.w $A400	; Stage 8
+	dc.w $8400	; Stage 9
+	dc.w $8400	; Stage 10
+	dc.w $8400	; Stage 11
+	dc.w $8400	; Stage 12
+	dc.w $E400	; Stage 13
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 Level_DrawSmallText:
 	move.l	#$97000000,d0 ; Stage #
@@ -18165,9 +16983,7 @@ Level_DrawSmallText:
 	jmp	(QueuePlaneCmd).l
 ; End of function Level_DrawSmallText
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 SpawnOpponentScrActors:
 	jsr	(EnableSHMode).l
@@ -18200,22 +17016,22 @@ SpawnOpponentScrActors:
 	bra.w	loc_D7A0
 ; ---------------------------------------------------------------------------
 OpponentScrScrlFlags:
-	dc.b $FF
-	dc.b 0
-	dc.b 0
-	dc.b $FF
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b 0
-	dc.b $FF
+	dc.b $FF	; Practise Stage 1
+	dc.b   0	; Practise Stage 2
+	dc.b   0	; Practise Stage 3
+	dc.b $FF	; Stage 1
+	dc.b   0	; Stage 2
+	dc.b   0	; Stage 3
+	dc.b   0	; Stage 4
+	dc.b   0	; Stage 5
+	dc.b   0	; Stage 6
+	dc.b   0	; Stage 7
+	dc.b   0	; Stage 8
+	dc.b   0	; Stage 9
+	dc.b   0	; Stage 10
+	dc.b   0	; Stage 11
+	dc.b   0	; Stage 12
+	dc.b $FF	; Stage 13
 ; ---------------------------------------------------------------------------
 
 ActOpponentScr:
@@ -18258,7 +17074,7 @@ ActOpponentScr_Update:
 	move.b	#SFX_GARBAGE_1,d0
 	jsr	(PlaySound_ChkPCM).l
 	move.w	#$C73E,d5
-	clr.l	d2
+	moveq	#0,d2
 	clr.w	d0
 	move.b	(level).l,d0
 	subq.b	#2,d0
@@ -18316,67 +17132,68 @@ ActOpponentScr_Done:
 ; ---------------------------------------------------------------------------
 
 loc_D7A0:
-	lea	(sub_D818).l,a1
+	lea	sub_D818(pc),a1
 	jsr	(FindActorSlot).l
 	clr.w	d0
 	move.b	(level).l,d0
-	add.w	d0,d0
-	move.w	word_D7F8(pc,d0.w),d0
-	move.w	d0,aField2C(a1)
+	lsl.w	#2,d0
+	move.l	word_D7F8(pc,d0.w),d5
+	move.l	d5,aField2C(a1)
 	move.w	#$CA08,aField26(a1)
-	move.w	d0,d5
 	DISABLE_INTS
-	move.w	#3,d1
+	moveq	#4-1,d1
 
-loc_D7CE:
-	move.w	d5,d0
-	andi.w	#$F,d0
-	beq.s	loc_D7EC
-	lea	(dword_D916).l,a2
+.loop:
+	moveq	#0,d0
+	move.b	d5,d0
+	bmi.s	.null
+
+	lea	dword_D916(pc),a2
 	lsl.w	#4,d0
 	adda.w	d0,a2
 	move.w	$C(a2),d0
 	movea.l	(a2),a0
 	jsr	(NemDec).l
 
-loc_D7EC:
-	lsr.w	#4,d5
-	dbf	d1,loc_D7CE
+.null:
+	lsr.l	#8,d5
+	dbf	d1,.loop
 	ENABLE_INTS
 	rts
 ; End of function SpawnOpponentScrActors
 
 ; ---------------------------------------------------------------------------
-word_D7F8:	dc.w 0
-	dc.w 0
-	dc.w 0
-	dc.w $1300
-	dc.w $E130
-	dc.w $7E13
-	dc.w $67E1
-	dc.w $F67E
-	dc.w $2F67
-	dc.w $52F6
-	dc.w $852F
-	dc.w $9852
-	dc.w $A985
-	dc.w $BA98
-	dc.w $BA9
-	dc.w $C00
+; -1 means nothing is loaded
+word_D7F8:	; Loads Opponent Art on Opponents Screen
+	dc.b -1, -1, -1, -1	; Practise Stage 1
+	dc.b -1, -1, -1, -1	; Practise Stage 2
+	dc.b -1, -1, -1, -1	; Practise Stage 3
+	dc.b  1,  3, -1, -1	; Stage 1
+	dc.b $E,  1,  3, -1	; Stage 2
+	dc.b  7, $E,  1,  3	; Stage 3
+	dc.b  6,  7, $E,  1	; Stage 4
+	dc.b $F,  6,  7, $E	; Stage 5
+	dc.b  2, $F,  6,  7	; Stage 6
+	dc.b  5,  2, $F,  6	; Stage 7
+	dc.b  8,  5,  2, $F	; Stage 8
+	dc.b  9,  8,  5,  2	; Stage 9
+	dc.b $A,  9,  8,  5	; Stage 10
+	dc.b $B, $A,  9,  8	; Stage 11
+	dc.b -1, $B, $A,  9	; Stage 12
+	dc.b -1, $C, -1, -1	; Stage 13
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_D818:
 	jsr	(ActorBookmark).l
 	jsr	(ActorBookmark).l
 	cmpi.b	#4,aAnimTime(a0)
-	bne.w	loc_D880
+	bne.s	loc_D880
 	clr.w	d0
 	move.b	(level).l,d0
 	add.w	d0,d0
 	move.w	word_D860(pc,d0.w),d0
-	bmi.w	loc_D85A
+	bmi.s	loc_D85A
 	move.w	d0,d1
 	andi.w	#$FF,d1
 	lsl.w	#5,d1
@@ -18389,10 +17206,11 @@ sub_D818:
 loc_D85A:
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
-word_D860:	dc.b -1, -1
+word_D860:	; Opponent screen palette override
 	dc.b -1, -1
 	dc.b -1, -1
-	dc.b 2, (Pal_Humpty-Palettes)>>5
+	dc.b -1, -1
+	dc.b  2, (Pal_Humpty-Palettes)>>5
 	dc.b -1, -1
 	dc.b -1, -1
 	dc.b -1, -1
@@ -18409,14 +17227,15 @@ word_D860:	dc.b -1, -1
 
 loc_D880:
 	addq.b	#1,aAnimTime(a0)
-	move.w	aField2C(a0),d5
-	move.w	d5,d1
-	lsr.w	#4,d1
-	move.w	d1,aField2C(a0)
-	andi.w	#$F,d5
-	beq.w	loc_D8FE
+	move.l	aField2C(a0),d5
+	move.l	d5,d1
+	lsr.l	#8,d1
+	move.l	d1,aField2C(a0)
+	and.w	#$FF,d5
+	tst.b	d5
+	bmi.s	loc_D8FE
+	lea	dword_D916(pc),a2
 	move.w	d5,d6
-	lea	(dword_D916).l,a2
 	lsl.w	#4,d5
 	adda.w	d5,a2
 	move.w	aField26(a0),d4
@@ -18426,7 +17245,7 @@ loc_D880:
 	tst.b	(a3,d6.w)
 	beq.s	loc_D8C4
 	movea.l	8(a2),a0
-	andi.w	#$7FFF,d0
+	and.w	#$7FFF,d0
 	bra.s	loc_D8C8
 ; ---------------------------------------------------------------------------
 
@@ -18438,14 +17257,14 @@ loc_D8C8:
 	move.w	#6,d2
 	movea.w	d4,a1
 	jsr	(EniDec).l
-	movea.l	(sp)+,a0
-	clr.l	d1
-	move.w	d6,d2
+	move.l	(sp)+,a0
 	lea	(OpponentPalettes).l,a1
-	move.b	(a1,d2.w),d1
+	moveq	#0,d1
+	move.b	(a1,d6.w),d1
 	lsl.w	#5,d1
 	lea	(Palettes).l,a2
-	adda.l	d1,a2
+	adda.w	d1,a2
+	moveq	#0,d0
 	move.b	byte_D906(pc,d6.w),d0
 	clr.w	d1
 	jsr	(FadeToPalette).l
@@ -18456,102 +17275,140 @@ loc_D8FE:
 ; End of function sub_D818
 
 ; ---------------------------------------------------------------------------
-byte_D906:	dc.b 0
-	dc.b 1
-	dc.b 2
-	dc.b 0
-	dc.b 0
-	dc.b 3
-	dc.b 0
-	dc.b 3
-	dc.b 0
-	dc.b 1
-	dc.b 2
-	dc.b 3
-	dc.b 0
-	dc.b 0
-	dc.b 2
-	dc.b 1
-dword_D916:	dc.l 0
-	dc.l 0
-	dc.l 0
-	dc.w 0
-	dc.w 0
+byte_D906:
+	dc.b 0	; Skeleton Tea - Puyo Leftover
+	dc.b 1	; Frankly
+	dc.b 2	; Dynamight
+	dc.b 0	; Arms
+	dc.b 1	; Nasu Grave - Puyo Leftover
+	dc.b 3	; Grounder
+	dc.b 0	; Davy Sprocket
+	dc.b 3	; Coconuts
+	dc.b 0	; Spike
+	dc.b 1	; Sir Ffuzzy-Logik
+	dc.b 2	; Dragon Breath
+	dc.b 3	; Scratch
+	dc.b 0	; Dr. Robotnik
+	dc.b 2	; Mummy - Puyo Leftover
+	dc.b 2	; Humpty
+	dc.b 1	; Skweel
+	even
+
+	; Load your custom opponents art into the opponents screen here
+
+dword_D916:
+	; Skeleton Tea - Puyo Leftover
+	dc.l 0		; Art File
+	dc.l 0		; Upcoming Opponent Frame
+	dc.l 0		; Defeated Opponent Frame
+	dc.w 0		; Palette Line (x$2000)
+	dc.w 0		; $8000 + Palette Line (x$2000) + Palette Line (x$100)
+
+;	Frankly
 	dc.l ArtNem_Frankly
 	dc.l MapEni_Frankly_0
 	dc.l MapEni_Frankly_Defeated
 	dc.w $2000
 	dc.w $A100
+
+	; Bean
 	dc.l ArtNem_Dynamight
 	dc.l MapEni_Dynamight_0
 	dc.l MapEni_Dynamight_9
 	dc.w $4000
 	dc.w $C200
+
+	; Arms
 	dc.l ArtNem_Arms
 	dc.l MapEni_Arms_8
 	dc.l MapEni_Arms_Defeated
 	dc.w 0
 	dc.w $8000
+
+	; Nasu Grave - Puyo Leftover
 	dc.l 0
 	dc.l 0
 	dc.l 0
 	dc.w 0
 	dc.w 0
+
+	; Grounder
 	dc.l ArtNem_Grounder
 	dc.l MapEni_Grounder_0
 	dc.l MapEni_Grounder_Defeated
 	dc.w $6000
 	dc.w $E300
+
+	; Davy Sprocket
 	dc.l ArtNem_DavySprocket
 	dc.l MapEni_DavySprocket_0
 	dc.l MapEni_DavySprocket_Defeated
 	dc.w 0
 	dc.w $8000
+
+	; Coconuts
 	dc.l ArtNem_Coconuts
 	dc.l MapEni_Coconuts_0
 	dc.l MapEni_Coconuts_Defeated
 	dc.w $6000
 	dc.w $E300
+
+	; Spike
 	dc.l ArtNem_Spike
 	dc.l MapEni_Spike_0
 	dc.l MapEni_Spike_Defeated
 	dc.w 0
 	dc.w $8000
+
+	; Sir Ffuzzy-Logik
 	dc.l ArtNem_SirFfuzzyLogik
 	dc.l MapEni_SirFfuzzyLogik_0
 	dc.l MapEni_SirFfuzzyLogik_Defeated_2
 	dc.w $2000
 	dc.w $A100
+
+	; Dragon Breath
 	dc.l ArtNem_DragonBreath
 	dc.l MapEni_DragonBreath_0
 	dc.l MapEni_DragonBreath_Defeated
 	dc.w $4000
 	dc.w $C200
+
+	; Scratch
 	dc.l ArtNem_Scratch
 	dc.l MapEni_Scratch_1
 	dc.l MapEni_Scratch_Defeated
 	dc.w $6000
 	dc.w $E300
+
+	; Dr. Robotnik
 	dc.l ArtNem_DrRobotnik
 	dc.l MapEni_DrRobotnik_0
 	dc.l MapEni_DrRobotnik_Defeated
 	dc.w 0
 	dc.w $8000
+
+	; Mummy - Puyo Leftover
 	dc.l 0
 	dc.l 0
 	dc.l 0
 	dc.w 0
 	dc.w 0
+
+	; Humpty
 	dc.l ArtNem_Humpty
 	dc.l MapEni_Humpty_0
 	dc.l MapEni_Humpty_Defeated
 	dc.w $4000
 	dc.w $C200
+
+	; Skweel
 	dc.l ArtNem_Skweel
 	dc.l MapEni_Skweel_0
 	dc.l MapEni_Skweel_Defeated
 	dc.w $2000
 	dc.w $A100
+
 ; ---------------------------------------------------------------------------
 	DISABLE_INTS
 	move.w	#$CC08,d5
@@ -18577,7 +17434,6 @@ loc_DA44:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_DA5A:
 	jsr	(SetVRAMWrite).l
 	addi.w	#$80,d5
@@ -18598,16 +17454,14 @@ loc_DA82:
 	rts
 ; End of function sub_DA5A
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_DA90:
 	bsr.w	sub_DBAC
 	bsr.w	sub_DBF4
 	lea	(sub_DAC8).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_DAAA
+	bcc.s	loc_DAAA
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -18620,31 +17474,26 @@ loc_DAAA:
 	rts
 ; End of function sub_DA90
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_DAC8:
-
-; FUNCTION CHUNK AT 0000DBD2 SIZE 00000022 BYTES
-
 	jsr	(GetCtrlData).l
 	btst	#7,d0
-	beq.w	loc_DAE4
+	beq.s	loc_DAE4
 	jsr	(CheckCoinInserted).l
-	bcs.w	loc_DAE4
+	bcs.s	loc_DAE4
 	bra.w	loc_DB4A
 ; ---------------------------------------------------------------------------
 
 loc_DAE4:
 	andi.b	#$70,d0
-	bne.w	loc_DAF4
+	bne.s	loc_DAF4
 	tst.w	$26(a0)
-	bne.w	loc_DB30
+	bne.s	loc_DB30
 
 loc_DAF4:
 	subq.w	#1,$28(a0)
-	bcs.w	loc_DB58
+	bcs.s	loc_DB58
 	move.w	#$9200,d0
 	move.b	$29(a0),d0
 	swap	d0
@@ -18683,7 +17532,6 @@ loc_DB58:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_DB66:
 	lea	(hblank_buffer_1).l,a1
 	addq.w	#1,(a1)
@@ -18710,9 +17558,7 @@ loc_DB9C:
 	rts
 ; End of function sub_DB66
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_DBAC:
 	lea	((hscroll_buffer+$302)).l,a1
@@ -18750,14 +17596,13 @@ loc_DBD2:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_DBF4:
 	move.w	#7,d0
 
 loc_DBF8:
 	lea	(loc_DC44).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcs.w	loc_DC2E
+	bcs.s	loc_DC2E
 	move.b	#$83,6(a1)
 	move.b	#$1F,8(a1)
 	move.b	d0,9(a1)
@@ -18774,7 +17619,8 @@ loc_DC2E:
 ; End of function sub_DBF4
 
 ; ---------------------------------------------------------------------------
-word_DC34:	dc.w $C8
+word_DC34:
+	dc.w $C8
 	dc.w $E0
 	dc.w $F8
 	dc.w $110
@@ -18798,7 +17644,7 @@ loc_DC44:
 	move.w	d2,$E(a0)
 	addq.b	#2,$36(a0)
 	subq.w	#1,$38(a0)
-	bcs.w	loc_DC7E
+	bcs.s	loc_DC7E
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -18816,7 +17662,7 @@ loc_DC7E:
 	move.l	#$FFFF9000,$16(a0)
 	jsr	(ActorBookmark).l
 	tst.w	$26(a0)
-	beq.w	loc_DCBA
+	beq.s	loc_DCBA
 	subq.w	#1,$26(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -18829,7 +17675,7 @@ loc_DCBA:
 	jsr	(sub_3810).l
 	move.l	$E(a0),$32(a0)
 	subq.w	#1,$26(a0)
-	beq.w	loc_DD00
+	beq.s	loc_DD00
 	move.b	$27(a0),d0
 	ori.b	#$80,d0
 	move.w	#$7800,d1
@@ -18853,7 +17699,7 @@ loc_DD00:
 	rts
 ; ---------------------------------------------------------------------------
 	tst.b	9(a0)
-	beq.w	loc_DD3C
+	beq.s	loc_DD3C
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
 
@@ -18862,14 +17708,13 @@ loc_DD3C:
 	jsr	(ActorBookmark).l
 	move.l	#$800B0F00,d0
 	tst.b	(swap_controls).l
-	beq.w	loc_DD5E
+	beq.s	loc_DD5E
 	move.l	#$80100F00,d0
 
 loc_DD5E:
 	jmp	(QueuePlaneCmd).l
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 LoadTimerCtrlSkip:
 	lea	(ActTimerCtrlSkip).l,a1
@@ -18883,18 +17728,14 @@ LoadTimerCtrlSkip:
 	rts
 ; End of function LoadTimerCtrlSkip
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 LoadCtrlWait:
 	lea	(ActTimerCtrlSkip).l,a1
 	jmp	(FindActorSlot).l
 ; End of function LoadCtrlWait
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ActTimerCtrlSkip:
 	move.b	(p1_ctrl_press).l,d0
@@ -18924,14 +17765,12 @@ ActTimerCtrlSkip:
 	jmp	(ActorDeleteSelf).l
 ; End of function ActTimerCtrlSkip
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_DDD8:
 	lea	(sub_DE0E).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcc.w	loc_DDEA
+	bcc.s	loc_DDEA
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -18946,13 +17785,11 @@ loc_DDEA:
 	rts
 ; End of function sub_DDD8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_DE0E:
 	jsr	(CheckCoinInserted).l
-	bcs.w	loc_DE1E
+	bcs.s	loc_DE1E
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
 
@@ -18966,7 +17803,9 @@ loc_DE1E:
 
 ; ---------------------------------------------------------------------------
 word_DE30:	dc.w $EE
-word_DE32:	dc.w $100
+
+word_DE32:
+	dc.w $100
 	dc.w $8E
 	dc.w $E0
 	dc.w $8E
@@ -18979,24 +17818,23 @@ InitTitle:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_DF74:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	clr.w	d0
 	move.b	(difficulty).l,d0
 	move.b	unk_DF8E(pc,d0.w),(byte_FF0104).l
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	rts
 ; End of function sub_DF74
 
 ; ---------------------------------------------------------------------------
-unk_DF8E:	dc.b   0
+unk_DF8E:
+	dc.b   0
 	dc.b   2
 	dc.b   4
 	dc.b   6
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 InitTitleFlags:
 	bsr.s	sub_DF74
@@ -19026,7 +17864,6 @@ loc_E000:
 	rts
 ; End of function InitTitleFlags
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
 ActTitleRobotnik:
@@ -19044,7 +17881,6 @@ ActTitleHandler:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 EnableLineHScroll:
 	move.w	#$8B00,d0
 	move.b	(vdp_reg_b).l,d0
@@ -19053,9 +17889,7 @@ EnableLineHScroll:
 	rts
 ; End of function EnableLineHScroll
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 DisableLineHScroll:
 	move.w	#$8B00,d0
@@ -19065,9 +17899,7 @@ DisableLineHScroll:
 	jmp	(ClearScroll).l
 ; End of function DisableLineHScroll
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_ED62:
 	move.w	#0,(word_FF1990).l
@@ -19084,9 +17916,7 @@ locret_ED9A:
 	rts
 ; End of function sub_ED62
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_ED9C:
 	move.w	#0,(word_FF1990).l
@@ -19103,9 +17933,7 @@ locret_EDD4:
 	rts
 ; End of function sub_ED9C
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_EDD6:
 	move.w	#0,(word_FF1990).l
@@ -19122,15 +17950,13 @@ locret_EE0E:
 	rts
 ; End of function sub_EDD6
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_EE10:
 	jsr	(ActorBookmark).l
 	move.b	(word_FF1990+1).l,d0
 	bpl.w	loc_EE3A
-	lea	(off_A15E).l,a1
+	lea	(Intro_SpecAnim).l,a1
 	andi.b	#$7F,d0
 	lsl.w	#2,d0
 	movea.l	(a1,d0.w),a2
@@ -19139,7 +17965,7 @@ sub_EE10:
 
 loc_EE3A:
 	tst.b	$22(a0)
-	beq.w	loc_EE48
+	beq.s	loc_EE48
 	subq.b	#1,$22(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -19147,13 +17973,13 @@ loc_EE3A:
 loc_EE48:
 	movea.l	$32(a0),a2
 	cmpi.b	#$FE,(a2)
-	bne.w	loc_EE56
+	bne.s	loc_EE56
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_EE56:
 	cmpi.b	#$FF,(a2)
-	bne.w	loc_EE62
+	bne.s	loc_EE62
 	movea.l	2(a2),a2
 
 loc_EE62:
@@ -19212,8 +18038,10 @@ off_EEC2:
 	dc.l ArtUnc_Robotnik_21
 	dc.l ArtUnc_Robotnik_22
 	dc.l ArtUnc_Robotnik_23
-	
-unk_EF22:	dc.b $32
+
+; TODO: Document Animation Code
+unk_EF22:
+	dc.b $32
 	dc.b   0
 	dc.b   6
 	dc.b   1
@@ -19318,7 +18146,9 @@ unk_EF22:	dc.b $32
 	dc.b $FF
 	dc.b   0
 	dc.l unk_EF22
-unk_EF8E:	dc.b   4
+
+unk_EF8E:
+	dc.b   4
 	dc.b   0
 	dc.b   4
 	dc.b   1
@@ -19371,7 +18201,9 @@ unk_EF8E:	dc.b   4
 	dc.b $FF
 	dc.b   0
 	dc.l unk_EF8E
-unk_EFC6:	dc.b $32
+
+unk_EFC6:
+	dc.b $32
 	dc.b   0
 	dc.b   6
 	dc.b   1
@@ -19415,7 +18247,9 @@ unk_EFC6:	dc.b $32
 	dc.b   0
 	dc.b $FE
 	dc.b   0
-unk_EFF2:	dc.b  $E
+
+unk_EFF2:
+	dc.b  $E
 	dc.b  $E
 	dc.b $12
 	dc.b  $F
@@ -19429,7 +18263,6 @@ unk_EFF2:	dc.b  $E
 	dc.b   0
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_EFFE:
 	lea	(ArtNem_IntroBadniks).l,a0
@@ -19446,7 +18279,7 @@ sub_EFFE:
 	move.w	d0,(hscroll_buffer).l
 	move.l	d0,(dword_FF112C).l
 	move.l	d0,(dword_FF1130).l
-	move.w	#0,(use_lair_background).l
+	move.w	#0,(use_lair_assets).l
 	jsr	(sub_F13A).l
 	bsr.w	sub_ED62
 	lea	(sub_F074).l,a1
@@ -19461,7 +18294,6 @@ loc_F06C:
 	bra.w	loc_F086
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_F074:
 	move.w	(dword_FF112C).l,d0
@@ -19498,7 +18330,7 @@ loc_F0B8:
 	andi.b	#1,d0
 	move.b	d0,(byte_FF1970).l
 	cmpi.b	#2,(bytecode_flag).l
-	beq.w	loc_F0F4
+	beq.s	loc_F0F4
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
 
@@ -19519,7 +18351,8 @@ loc_F0F4:
 	move.b	(a1,d0.w),(opponent).l
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
-byte_F12A:	dc.b OPP_SKELETON	; Puyo Puyo leftover
+byte_F12A:
+	dc.b OPP_SKELETON	; Puyo Puyo leftover
 	dc.b OPP_NASU_GRAVE	; Puyo Puyo leftover
 	dc.b OPP_MUMMY		; Puyo Puyo leftover
 	dc.b OPP_ARMS
@@ -19538,7 +18371,6 @@ byte_F12A:	dc.b OPP_SKELETON	; Puyo Puyo leftover
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_F13A:
 	movem.l	d0-a6,-(sp)
 	lea	(word_F456).l,a2
@@ -19553,7 +18385,7 @@ loc_F14C:
 	move.b	#$40,8(a1)
 	move.w	(a2)+,$A(a1)
 	move.w	(a2)+,d2
-	tst.b	(use_lair_background).l
+	tst.b	(use_lair_assets).l
 	beq.s	loc_F174
 	addi.w	#-$E0,d2
 
@@ -19579,7 +18411,6 @@ loc_F1A8:
 
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_F1AE:
 	addq.w	#1,$26(a0)
@@ -19614,8 +18445,11 @@ locret_F214:
 
 ; ---------------------------------------------------------------------------
 word_F216:	dc.w $BB77
+
 word_F218:	dc.w $7777
+
 word_F21A:	dc.w $7777
+
 word_F21C:	dc.w $7777
 	dc.w $7BB7
 	dc.w $7777
@@ -19775,7 +18609,8 @@ loc_F38E:
 	bpl.w	locret_F38C
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
-off_F41E:	dc.l loc_F29E
+off_F41E:
+	dc.l loc_F29E
 	dc.l loc_F296
 	dc.l loc_F296
 	dc.l loc_F296
@@ -19789,7 +18624,10 @@ off_F41E:	dc.l loc_F29E
 	dc.l loc_F296
 	dc.l loc_F296
 	dc.l loc_F31E
-word_F456:	dc.w $164
+; TODO: Document Animation Code
+
+word_F456:
+	dc.w $164
 	dc.w $A8
 	dc.b 0
 	dc.b 1
@@ -19859,12 +18697,16 @@ word_F456:	dc.w $164
 	dc.b 0
 	dc.b 1
 	dc.l unk_F4E2
-unk_F4E2:	dc.b   1
+
+unk_F4E2:
+	dc.b   1
 	dc.b   0
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F4E2
-unk_F4EA:	dc.b   2
+
+unk_F4EA:
+	dc.b   2
 	dc.b $2E
 	dc.b   3
 	dc.b $2F
@@ -19883,7 +18725,9 @@ unk_F4EA:	dc.b   2
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F4EA
-unk_F500:	dc.b   3
+
+unk_F500:
+	dc.b   3
 	dc.b   4
 	dc.b   4
 	dc.b   1
@@ -19898,7 +18742,9 @@ unk_F500:	dc.b   3
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F500
-unk_F512:	dc.b   3
+
+unk_F512:
+	dc.b   3
 	dc.b   5
 	dc.b   4
 	dc.b   6
@@ -19907,7 +18753,9 @@ unk_F512:	dc.b   3
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F512
-unk_F51E:	dc.b   3
+
+unk_F51E:
+	dc.b   3
 	dc.b $16
 	dc.b   4
 	dc.b $17
@@ -19918,7 +18766,9 @@ unk_F51E:	dc.b   3
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F51E
-unk_F52C:	dc.b   3
+
+unk_F52C:
+	dc.b   3
 	dc.b $10
 	dc.b   4
 	dc.b $11
@@ -19931,7 +18781,9 @@ unk_F52C:	dc.b   3
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F52C
-unk_F53C:	dc.b   3
+
+unk_F53C:
+	dc.b   3
 	dc.b $19
 	dc.b   4
 	dc.b $1A
@@ -19940,7 +18792,9 @@ unk_F53C:	dc.b   3
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F53C
-unk_F548:	dc.b   3
+
+unk_F548:
+	dc.b   3
 	dc.b $1C
 	dc.b   3
 	dc.b $1D
@@ -19957,7 +18811,9 @@ unk_F548:	dc.b   3
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F548
-unk_F55C:	dc.b $1E
+
+unk_F55C:
+	dc.b $1E
 	dc.b $36
 	dc.b $1C
 	dc.b $37
@@ -19972,7 +18828,9 @@ unk_F55C:	dc.b $1E
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F55C
-unk_F56E:	dc.b   7
+
+unk_F56E:
+	dc.b   7
 	dc.b $22
 	dc.b   8
 	dc.b $23
@@ -19983,7 +18841,9 @@ unk_F56E:	dc.b   7
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F56E
-unk_F57C:	dc.b   6
+
+unk_F57C:
+	dc.b   6
 	dc.b $25
 	dc.b   7
 	dc.b $26
@@ -19994,7 +18854,9 @@ unk_F57C:	dc.b   6
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F57C
-unk_F58A:	dc.b   7
+
+unk_F58A:
+	dc.b   7
 	dc.b $28
 	dc.b   8
 	dc.b $29
@@ -20009,6 +18871,7 @@ unk_F58A:	dc.b   7
 	dc.b $FF
 	dc.b   0
 	dc.l unk_F58A
+
 ; ---------------------------------------------------------------------------
 	rts
 ; ---------------------------------------------------------------------------
@@ -20016,8 +18879,37 @@ unk_F58A:	dc.b   7
 ; ---------------------------------------------------------------------------
 
 LoadLevelIntroArt:
-	tst.b	(use_lair_background).l
-	beq.s	loc_F5CE
+	tst.b	(use_lair_assets).l
+	bne.s	LevelIntro_LairBGLoad
+	clr.w	d0
+	move.b	(level).l, d0	
+	add.w	d0,d0
+	add.w	d0,d0
+	jmp CutsceneBGIDs(pc,d0.w)
+
+; ---------------------------------------------------------------------------
+
+CutsceneBGIDs:
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_Vanilla
+	bra.w	LevelIntro_LairBGLoad
+
+; ---------------------------------------------------------------------------
+
+LevelIntro_LairBGLoad:
 	lea	(ArtNem_Intro).l,a0
 	move.w	#$4000,d0
 	DISABLE_INTS
@@ -20026,15 +18918,26 @@ LoadLevelIntroArt:
 	lea	(ArtNem_IntroBadniks).l,a0
 	move.w	#$1200,d0
 	bra.w	NemDec_Safe
+
 ; ---------------------------------------------------------------------------
 
-loc_F5CE:
+LevelIntro_Vanilla:
 	lea	(ArtNem_LvlIntroBG).l,a0
 	move.w	#$2000,d0
 	bra.w	NemDec_Safe
 
-; =============== S U B	R O U T	I N E =======================================
+; ---------------------------------------------------------------------------
 
+; << Input your custom cutscene background art here >>
+;	Example
+;LevelIntro_GHZ:
+;	lea	(ArtNem_GHZIntroBG).l,a0	; Art File
+;	move.w	#$2000,d0			; VRAM Location
+;	bra.w	NemDec_Safe
+
+; ---------------------------------------------------------------------------
+
+; =============== S U B	R O U T	I N E =======================================
 
 LoadEndingBGArt:
 	lea	(ArtNem_EndingBG).l,a0
@@ -20047,31 +18950,38 @@ NemDec_Safe:
 	rts
 ; End of function LoadEndingBGArt
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_F5F6:
+	tst.b	(use_lair_assets).l
+	bne.s	LevelIntroMaps_LairMachine
+	clr.w	d0
+	move.b	(level).l,d0
+	add.w	d0,d0
+	add.w	d0,d0
+	jmp	@loadcutscenemaps(pc,d0.w)
 
-; FUNCTION CHUNK AT 0000F784 SIZE 00000010 BYTES
+@loadcutscenemaps:
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_Vanilla1
+	bra.w	LevelIntroMaps_LairMachine
 
-	tst.b	(use_lair_background).l
-	beq.s	loc_F602
-
-loc_F5FE:
-	bra.w	loc_F61E
 ; ---------------------------------------------------------------------------
 
-loc_F602:
-	lea	($D200).l,a1
-	lea	(MapEni_LvlIntroBG_0).l,a0
-	move.w	#$8100,d0
-	move.w	#$27,d1
-	move.w	#$1B,d2
-	bra.w	EniDec_Safe
-; ---------------------------------------------------------------------------
-
-loc_F61E:
+LevelIntroMaps_LairMachine:
 	lea	(MapEni_LairMachine).l,a0
 	lea	($D200).l,a1
 	move.w	#$200,d0
@@ -20079,40 +18989,70 @@ loc_F61E:
 	move.w	#$12,d2
 	lea	(MapPrio_LairMachine).l,a3
 	bra.w	EniDec_PrioMap_Safe
-; End of function sub_F5F6
 
+; ---------------------------------------------------------------------------
+
+LevelIntroMaps_Vanilla1:
+	lea	($D200).l,a1
+	lea	(MapEni_LvlIntroBG_0).l,a0
+	move.w	#$8100,d0
+	move.w	#$27,d1
+	move.w	#$1B,d2
+	bra.w	EniDec_Safe
+
+; ---------------------------------------------------------------------------
+
+; << Input the initial loaded custom cutscene foreground here >>
+;	Example
+;LevelIntroMaps_GHZ1:
+;	lea	($D200).l,a1			; Position on the plane map
+;	lea	(MapEni_GHZIntroBG_0).l,a0	; Mappings File to Use
+;	move.w	#$8100,d0			; Leave this as $8100
+;	move.w	#$27,d1				; Tile width - 1
+;	move.w	#$1B,d2				; Tile Height - 1
+;	bra.w	EniDec_Safe			; Call to the Enigma Decompression Routine
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_F640:
-	tst.b	(use_lair_background).l
-	bne.s	loc_F664
-	lea	($F600).l,a1
-	lea	(MapEni_LvlIntroBG_1).l,a0
-	move.w	#$2100,d0
-	move.w	#$1F,d1
-	move.w	#$A,d2
-	bra.w	EniDec_Safe
-; ---------------------------------------------------------------------------
+	tst.b	(use_lair_assets).l
+	bne.s	LevelIntroMaps_LairWall
+	clr.w	d0
+	move.b	(level).l,d0
+	add.w	d0,d0
+	add.w	d0,d0
+	jmp	@loadcutscenemaps2(pc,d0.w)
 
-loc_F664:
+@loadcutscenemaps2:
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_Vanilla2
+	bra.w	LevelIntroMaps_LairWall
+
+LevelIntroMaps_LairWall:
 	lea	(MapEni_LairWall).l,a0
 	lea	($F600).l,a1
 	move.w	#$6200,d0
 	move.w	#$27,d1
 	move.w	#$12,d2
 	bra.w	EniDec_Safe
-; End of function sub_F640
 
+; ---------------------------------------------------------------------------
 
-; =============== S U B	R O U T	I N E =======================================
-
-
-sub_F680:
-	tst.b	(use_lair_background).l
-	bne.s	loc_F6A4
-	lea	($F640).l,a1
+LevelIntroMaps_Vanilla2:
+	lea	($F600).l,a1
 	lea	(MapEni_LvlIntroBG_1).l,a0
 	move.w	#$2100,d0
 	move.w	#$1F,d1
@@ -20120,37 +19060,134 @@ sub_F680:
 	bra.w	EniDec_Safe
 ; ---------------------------------------------------------------------------
 
-loc_F6A4:
+; << Input the initial loaded custom cutscene upper background here >>
+;	Example
+;LevelIntroMaps_GHZ2:
+;	lea	($F580).l,a1			; Position on plane layer
+;	lea	(MapEni_GHZIntroBG_1).l,a0	; Mapping File
+;	move.w	#$2100,d0			; Leave this as $2100
+;	move.w	#$1F,d1				; Tile Width - 1
+;	move.w	#$A,d2				; Tile Height - 1
+;	bra.w	EniDec_Safe			; Call to the Enigma Decompression Routine
+
+
+; =============== S U B	R O U T	I N E =======================================
+
+
+sub_F680:
+	tst.b	(use_lair_assets).l
+	bne.s	LevelIntroMaps_LairFloor
+	clr.w	d0
+	move.b	(level).l,d0
+	add.w	d0,d0
+	add.w	d0,d0
+	jmp	@loadcutscenemaps3(pc,d0.w)
+
+@loadcutscenemaps3:
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_Vanilla3
+	bra.w	LevelIntroMaps_LairFloor
+
+; ---------------------------------------------------------------------------
+
+LevelIntroMaps_LairFloor:
 	lea	(MapEni_LairFloor).l,a0
 	lea	($DB80).l,a1
 	move.w	#$200,d0
 	move.w	#$27,d1
 	move.w	#8,d2
 	bra.w	EniDec_Safe
-; End of function sub_F680
 
+; ---------------------------------------------------------------------------
+
+LevelIntroMaps_Vanilla3:
+	lea	($F5C0).l,a1
+	lea	(MapEni_LvlIntroBG_1).l,a0
+	move.w	#$2100,d0
+	move.w	#$1F,d1
+	move.w	#$A,d2
+	bra.w	EniDec_Safe
+
+; ---------------------------------------------------------------------------
+
+; << Input the extra custom cutscene upper background here >>
+;	Example
+;LevelIntroMaps_GHZ3:
+;	lea	($F5C0).l,a1			; Position on plane layer
+;	lea	(MapEni_GHZIntroBG_1).l,a0	; Mapping File
+;	move.w	#$2100,d0			; Leave this as $2100
+;	move.w	#$1F,d1				; Tile Width - 1
+;	move.w	#$A,d2				; Tile Height - 1
+;	bra.w	EniDec_Safe			; Call to the Enigma Decompression Routine
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_F6C0:
-	tst.b	(use_lair_background).l
-	bne.s	locret_F6E4
+	tst.b	(use_lair_assets).l
+	bne.s	LevelIntroMaps_LairCancel
+	clr.w	d0
+	move.b	(level).l,d0
+	add.w	d0,d0
+	add.w	d0,d0
+	jmp	@loadcutscenemaps4(pc,d0.w)
+
+@loadcutscenemaps4:
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_Vanilla4
+	bra.w	LevelIntroMaps_LairCancel
+
+; ---------------------------------------------------------------------------
+
+LevelIntroMaps_Vanilla4:
 	lea	($FB80).l,a1
 	lea	(MapEni_LvlIntroBG_2).l,a0
 	move.w	#$2100,d0
 	move.w	#$27,d1
-	move.w	#8,d2
+	move.w	#$A,d2
 	bra.w	EniDec_Safe2
-; ---------------------------------------------------------------------------
 
-locret_F6E4:
+LevelIntroMaps_LairCancel:
 	rts
-; End of function sub_F6C0
 
+; ---------------------------------------------------------------------------
+; << Input the initial loaded custom cutscene lower background here >>
+;	Example
+;LevelIntroMaps_GHZ4:
+;	lea	($FB00).l,a1			; Position on plane layer
+;	lea	(MapEni_GHZIntroBG_2).l,a0	; Mapping File
+;	move.w	#$2100,d0			; Leave this as $2100
+;	move.w	#$27,d1				; Tile Width - 1
+;	move.w	#$A,d2				; Tile Height - 1
+;	bra.w	EniDec_Safe2			; Call to the Enigma Decompression Routine
+;	rts
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 LoadMainMenuMap:
 	lea	($C306).l,a1
@@ -20161,9 +19198,7 @@ LoadMainMenuMap:
 	bra.w	EniDec_Safe
 ; End of function LoadMainMenuMap
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 LoadScenarioMenuMap:
 	lea	($C65E).l,a1
@@ -20174,9 +19209,7 @@ LoadScenarioMenuMap:
 	bra.w	EniDec_Safe
 ; End of function LoadScenarioMenuMap
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_F71E:
 	lea	($C000).l,a1
@@ -20188,9 +19221,7 @@ sub_F71E:
 	bra.w	EniDec_PrioMap_Safe
 ; End of function sub_F71E
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_F740:
 	lea	($E000).l,a1
@@ -20201,9 +19232,7 @@ sub_F740:
 	bra.w	EniDec_Safe
 ; End of function sub_F740
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_F75C:
 	lea	($E000).l,a1
@@ -20213,9 +19242,7 @@ sub_F75C:
 	move.w	#$1B,d2
 ; End of function sub_F75C
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 EniDec_Safe:
 	DISABLE_INTS
@@ -20236,35 +19263,30 @@ EniDec_PrioMap_Safe:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_F794:
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	lea	($F600).l,a1
 	lea	(MapEni_CreditsSky).l,a0
 	move.w	#$4000,d0
 	move.w	#$27,d1
 	move.w	#9,d2
 	bsr.s	EniDec_Safe
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	rts
 ; End of function sub_F794
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_F7B8:
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	lea	(ArtNem_CreditsSky).l,a0
 	moveq	#0,d0
 	jsr	(NemDec).l
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	rts
 ; End of function sub_F7B8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 LoadMainMenuMountains:
 	lea	($F300).l,a1
@@ -20306,9 +19328,7 @@ EniDec_Safe2:
 	rts
 ; End of function LoadMainMenuMountains
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_F832:
 	lea	(MapEni_LairDestroyed0).l,a0
@@ -20338,9 +19358,7 @@ loc_F856:
 	rts
 ; End of function sub_F832
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_F878:
 	lea	(MapEni_LairDestroyed1).l,a0
@@ -20369,9 +19387,7 @@ loc_F89A:
 	rts
 ; End of function sub_F878
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_F8B6:
 	lea	(MapEni_LairDestroyed2).l,a0
@@ -20400,9 +19416,7 @@ loc_F8D8:
 	rts
 ; End of function sub_F8B6
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_F8F4:
 	moveq	#0,d0
@@ -20411,15 +19425,17 @@ sub_F8F4:
 
 ; ---------------------------------------------------------------------------
 
+; TODO: Change this to use a flag system for determining whether to load the lair in the BG or not
+
 loc_F8FC:
-	tst.b	(use_lair_background).l
-	bne.w	loc_F952
+	tst.b	(use_lair_assets).l
+	bne.s	loc_F952
 	lea	(loc_F942).l,a1
 	jsr	(FindActorSlot).l
 	bcs.s	locret_F940
 	move.b	#$40,8(a1)
 	move.b	#$39,9(a1)
-	move.l	#unk_F94A,$32(a1)
+	move.l	#Anim_CutsceneLair,$32(a1)
 	move.b	#$80,6(a1)
 	move.b	#$20,$22(a1)
 	move.w	#$FFE0,$E(a1)
@@ -20427,6 +19443,7 @@ loc_F8FC:
 
 locret_F940:
 	rts
+
 ; ---------------------------------------------------------------------------
 
 loc_F942:
@@ -20434,11 +19451,13 @@ loc_F942:
 ; ---------------------------------------------------------------------------
 	rts
 ; ---------------------------------------------------------------------------
-unk_F94A:	dc.b   3
+
+Anim_CutsceneLair:
+	dc.b   3
 	dc.b $39
 	dc.b $FF
 	dc.b   0
-	dc.l unk_F94A
+	dc.l Anim_CutsceneLair
 ; ---------------------------------------------------------------------------
 
 loc_F952:
@@ -20466,7 +19485,10 @@ loc_F994:
 ; ---------------------------------------------------------------------------
 	rts
 ; ---------------------------------------------------------------------------
-unk_F99C:	dc.b   3
+; TODO: Document Animation Code
+
+unk_F99C:
+	dc.b   3
 	dc.b $43
 	dc.b $FF
 	dc.b   0
@@ -20494,7 +19516,10 @@ loc_F9E0:
 ; ---------------------------------------------------------------------------
 	rts
 ; ---------------------------------------------------------------------------
-unk_F9E8:	dc.b   5
+; TODO: Document Animation Code
+
+unk_F9E8:
+	dc.b   5
 	dc.b $44
 	dc.b   4
 	dc.b $45
@@ -20563,7 +19588,8 @@ locret_FA98:
 loc_FA9A:
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
-unk_FAA0:	dc.b $4F
+unk_FAA0:
+	dc.b $4F
 	dc.b $50
 	dc.b $51
 	dc.b $52
@@ -20637,7 +19663,6 @@ loc_FB90:
 	jmp	(ActorDeleteSelf).l
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_FB96:
 	andi.w	#7,d0
@@ -20726,7 +19751,10 @@ loc_FCA0:
 loc_FCB6:
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
-unk_FCBC:	dc.b   1
+; TODO: Document Animation Code
+
+unk_FCBC:
+	dc.b   1
 	dc.b $49
 	dc.b   1
 	dc.b $54
@@ -20749,7 +19777,9 @@ unk_FCBC:	dc.b   1
 	dc.b $FF
 	dc.b   0
 	dc.l unk_FCBC
-unk_FCD6:	dc.b   4
+
+unk_FCD6:
+	dc.b   4
 	dc.b $22
 	dc.b   2
 	dc.b $22
@@ -20765,7 +19795,9 @@ unk_FCD6:	dc.b   4
 	dc.b $22
 	dc.b   4
 	dc.b   2
-unk_FCE6:	dc.b   8
+
+unk_FCE6:
+	dc.b   8
 	dc.b $66
 	dc.b   8
 	dc.b $46
@@ -20813,7 +19845,9 @@ unk_FCE6:	dc.b   8
 	dc.b $EE
 	dc.b  $C
 	dc.b $EE
-unk_FD16:	dc.b   4
+
+unk_FD16:
+	dc.b   4
 	dc.b   0
 	dc.b   6
 	dc.b $40
@@ -20909,6 +19943,7 @@ unk_FD16:	dc.b   4
 	dc.b $C8
 	dc.b   0
 	dc.b $EE
+
 ; ---------------------------------------------------------------------------
 	move.w	#$708,d0
 	tst.b	(difficulty).l
@@ -20948,9 +19983,12 @@ locret_FDE6:
 loc_FDE8:
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
-unk_FDEE:	dc.b   1
+unk_FDEE:
+	dc.b   1
 	dc.b $28
-unk_FDF0:	dc.b   0
+
+unk_FDF0:
+	dc.b   0
 	dc.b $E0
 	dc.b   0
 	dc.b $A0
@@ -21003,7 +20041,7 @@ loc_FE0C:
 	addi.w	#-$70,$E(a0)
 	move.w	$1E(a0),d0
 	cmp.w	$26(a0),d0
-	bcc.w	loc_FE8C
+	bcc.s	loc_FE8C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -21030,7 +20068,10 @@ loc_FE8C:
 locret_FEE4:
 	rts
 ; ---------------------------------------------------------------------------
-unk_FEE6:	dc.b   8
+; TODO: Document Animation Code
+
+unk_FEE6:
+	dc.b   8
 	dc.b   0
 	dc.b   8
 	dc.b   1
@@ -21049,18 +20090,24 @@ unk_FEE6:	dc.b   8
 	dc.b $FF
 	dc.b   0
 	dc.l unk_FEE6
-unk_FEFC:	dc.b   1
+
+unk_FEFC:
+	dc.b   1
 	dc.b   5
 	dc.b   1
 	dc.b   6
-unk_FF00:	dc.b   1
+
+unk_FF00:
+	dc.b   1
 	dc.b   7
 	dc.b   1
 	dc.b   8
 	dc.b $FF
 	dc.b   0
 	dc.l unk_FEFC
-unk_FF0A:	dc.b $22
+
+unk_FF0A:
+	dc.b $22
 	dc.b $5B
 	dc.b $26
 	dc.b $5C
@@ -21081,14 +20128,18 @@ unk_FF0A:	dc.b $22
 	dc.b $FF
 	dc.b   0
 	dc.l unk_FF0A
-unk_FF22:	dc.b $18
+
+unk_FF22:
+	dc.b $18
 	dc.b $60
 	dc.b $18
 	dc.b $61
 	dc.b $FF
 	dc.b   0
 	dc.l unk_FF22
-unk_FF2C:	dc.b   8
+
+unk_FF2C:
+	dc.b   8
 	dc.b $64
 	dc.b $10
 	dc.b $63
@@ -21118,27 +20169,26 @@ unk_FF2C:	dc.b   8
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_FF4A:
 	lea	(loc_FFBE).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_FF5C
+	bcc.s	loc_FF5C
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_FF5C:
-	movem.l	d1,-(sp)
+	move.l	d1,-(sp)
 	lsl.w	#2,d0
 	move.w	d0,d1
 	cmpi.w	#$20,d1
-	bcs.w	loc_FF70
+	bcs.s	loc_FF70
 	move.w	#$1C,d1
 
 loc_FF70:
 	lea	(unk_FF9E).l,a2
 	move.w	(a2,d1.w),$28(a1)
 	move.w	2(a2,d1.w),$2A(a1)
-	movem.l	(sp)+,d1
+	move.l	(sp)+,d1
 	move.b	#$69,8(a1)
 	lea	(off_1007A).l,a2
 	move.l	(a2,d0.w),$32(a1)
@@ -21147,7 +20197,8 @@ loc_FF70:
 ; End of function sub_FF4A
 
 ; ---------------------------------------------------------------------------
-unk_FF9E:	dc.b   0
+unk_FF9E:
+	dc.b   0
 	dc.b $80
 	dc.b   0
 	dc.b   1
@@ -21183,7 +20234,7 @@ unk_FF9E:	dc.b   0
 
 loc_FFBE:
 	tst.w	$26(a0)
-	beq.w	loc_FFCC
+	beq.s	loc_FFCC
 	subq.w	#1,$26(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -21192,7 +20243,7 @@ loc_FFCC:
 	movea.l	$32(a0),a1
 	move.w	(a1)+,d0
 	cmpi.b	#$FF,-2(a1)
-	beq.w	loc_10006
+	beq.s	loc_10006
 	move.l	a1,$32(a0)
 	bsr.w	sub_10058
 	addq.b	#1,(byte_FF1129).l
@@ -21216,11 +20267,16 @@ loc_1000C:
 	movea.l	off_10016(pc,d0.w),a1
 	jmp	(a1)
 ; ---------------------------------------------------------------------------
-off_10016:	dc.l loc_10038
+off_10016:
+	dc.l loc_10038
 	dc.l loc_1003E
-off_1001E:	dc.l loc_10044
+
+off_1001E:
+	dc.l loc_10044
 	dc.l loc_1004A
-off_10026:	dc.l loc_1002E
+
+off_10026:
+	dc.l loc_1002E
 	dc.l loc_10052
 ; ---------------------------------------------------------------------------
 
@@ -21257,7 +20313,6 @@ loc_10052:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_10058:
 	DISABLE_INTS
 	eori.w	#$8000,d0
@@ -21270,7 +20325,8 @@ sub_10058:
 ; End of function sub_10058
 
 ; ---------------------------------------------------------------------------
-off_1007A:	dc.l unk_1046E
+off_1007A:
+	dc.l unk_1046E
 	dc.l unk_1046E
 	dc.l unk_1046E
 	dc.l unk_1046E
@@ -21293,21 +20349,37 @@ off_1007A:	dc.l unk_1046E
 	dc.l unk_100DE
 	dc.l unk_100E0
 	dc.l unk_100E2
-unk_100D6:	dc.b $FF
+
+unk_100D6:
+	dc.b $FF
 	dc.b   0
-unk_100D8:	dc.b $FF
+
+unk_100D8:
+	dc.b $FF
 	dc.b   0
-unk_100DA:	dc.b $FF
+
+unk_100DA:
+	dc.b $FF
 	dc.b   0
-unk_100DC:	dc.b $FF
+
+unk_100DC:
+	dc.b $FF
 	dc.b   0
-unk_100DE:	dc.b $FF
+
+unk_100DE:
+	dc.b $FF
 	dc.b   0
-unk_100E0:	dc.b $FF
+
+unk_100E0:
+	dc.b $FF
 	dc.b   0
-unk_100E2:	dc.b $FF
+
+unk_100E2:
+	dc.b $FF
 	dc.b   0
-unk_100E4:	dc.b $FF
+
+unk_100E4:
+	dc.b $FF
 	dc.b  $C
 	dc.b   0
 	dc.b $2B
@@ -21425,7 +20497,9 @@ unk_100E4:	dc.b $FF
 	dc.b $32
 	dc.b $FF
 	dc.b   0
-unk_1015A:	dc.b $FF
+
+unk_1015A:
+	dc.b $FF
 	dc.b  $C
 	dc.b   0
 	dc.b $2B
@@ -21571,7 +20645,9 @@ unk_1015A:	dc.b $FF
 	dc.b $32
 	dc.b $FF
 	dc.b   0
-unk_101EC:	dc.b $FF
+
+unk_101EC:
+	dc.b $FF
 	dc.b  $C
 	dc.b   0
 	dc.b $2B
@@ -21647,7 +20723,9 @@ unk_101EC:	dc.b $FF
 	dc.b $32
 	dc.b $FF
 	dc.b   0
-unk_10238:	dc.b $FF
+
+unk_10238:
+	dc.b $FF
 	dc.b  $C
 	dc.b   0
 	dc.b $2B
@@ -21755,7 +20833,9 @@ unk_10238:	dc.b $FF
 	dc.b $32
 	dc.b $FF
 	dc.b   0
-unk_102A4:	dc.b $FF
+
+unk_102A4:
+	dc.b $FF
 	dc.b  $C
 	dc.b   0
 	dc.b $2B
@@ -21863,7 +20943,9 @@ unk_102A4:	dc.b $FF
 	dc.b $32
 	dc.b $FF
 	dc.b   0
-unk_10310:	dc.b $FF
+
+unk_10310:
+	dc.b $FF
 	dc.b  $C
 	dc.b   0
 	dc.b $2B
@@ -21975,9 +21057,13 @@ unk_10310:	dc.b $FF
 	dc.b $32
 	dc.b $FF
 	dc.b   0
-unk_10380:	dc.b $FF
+
+unk_10380:
+	dc.b $FF
 	dc.b   0
-unk_10382:	dc.b $FF
+
+unk_10382:
+	dc.b $FF
 	dc.b  $C
 	dc.b   0
 	dc.b $2B
@@ -22213,13 +21299,17 @@ unk_10382:	dc.b $FF
 	dc.b $32
 	dc.b $FF
 	dc.b   0
-unk_1046E:	dc.b $FF
+
+unk_1046E:
+	dc.b $FF
 	dc.b   8
 	dc.b $C4
 	dc.b $24
 	dc.b $FF
 	dc.b   0
-unk_10474:	dc.b $FF
+
+unk_10474:
+	dc.b $FF
 	dc.b   8
 	dc.b $C4
 	dc.b $24
@@ -22236,7 +21326,7 @@ loc_10486:
 	move.b	(p1_ctrl_press).l,d0
 	or.b	(p2_ctrl_press).l,d0
 	andi.b	#$F0,d0
-	bne.w	loc_1049C
+	bne.s	loc_1049C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -22247,11 +21337,10 @@ loc_1049C:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_104B0:
 	lea	(sub_104E2).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcc.w	loc_104C2
+	bcc.s	loc_104C2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -22264,9 +21353,7 @@ loc_104C2:
 	rts
 ; End of function sub_104B0
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_104E2:
 	tst.b	(word_FF1124).l
@@ -22278,12 +21365,10 @@ locret_104F0:
 	rts
 ; End of function sub_104E2
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_104F2:
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	move.b	(opponent).l,d0
 	cmpi.b	#OPP_ARMS,d0
 	bne.s	loc_10520
@@ -22296,7 +21381,7 @@ sub_104F2:
 	bsr.w	sub_10DB2
 
 loc_10520:
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(opponent).l,d0
 	cmpi.b	#OPP_ROBOTNIK,d0
 	beq.s	loc_1054C
@@ -22309,7 +21394,7 @@ loc_10520:
 	ENABLE_INTS
 
 loc_1054C:
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	clr.w	d0
 	move.b	(opponent).l,d0
 	move.b	d0,d1
@@ -22319,14 +21404,14 @@ loc_1054C:
 	move.b	#$2B,d1
 	lea	(loc_10712).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcc.w	loc_1058C
+	bcc.s	loc_1058C
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_1057A:
 	lea	(loc_1066C).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcc.w	loc_1058C
+	bcc.s	loc_1058C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -22358,7 +21443,7 @@ loc_1058C:
 	move.l	(a4,d3.w),$32(a1)
 
 loc_105F6:
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(opponent).l,d0
 	move.b	OpponentIntroPals2(pc,d0.w),d0
 	lsl.w	#5,d0
@@ -22369,12 +21454,12 @@ loc_105F6:
 ; End of function sub_104F2
 
 ; ---------------------------------------------------------------------------
-OpponentIntroPals2:
-	dc.b (Pal_CoconutsIntro-Palettes)>>5
+OpponentIntroPals2:	; For Role Call
+	dc.b (Pal_CoconutsIntro-Palettes)>>5		; Skeleton Tea - Puyo Leftover
 	dc.b (Pal_FranklyIntro-Palettes)>>5
 	dc.b (Pal_DynamightIntro-Palettes)>>5
 	dc.b (Pal_ArmsIntro-Palettes)>>5
-	dc.b (Pal_CoconutsIntro-Palettes)>>5
+	dc.b (Pal_CoconutsIntro-Palettes)>>5		; Nasu Grave - Puyo Leftover
 	dc.b (Pal_GrounderIntro-Palettes)>>5
 	dc.b (Pal_DavySprocketIntro-Palettes)>>5
 	dc.b (Pal_CoconutsIntro-Palettes)>>5
@@ -22382,13 +21467,15 @@ OpponentIntroPals2:
 	dc.b (Pal_SirFfuzzyLogikIntro-Palettes)>>5
 	dc.b (Pal_DragonBreathIntro-Palettes)>>5
 	dc.b (Pal_ScratchIntro-Palettes)>>5
-	dc.b (Pal_Black-Palettes)>>5
-	dc.b (Pal_CoconutsIntro-Palettes)>>5
+	dc.b (Pal_Black-Palettes)>>5			; Dr. Robotnik
+	dc.b (Pal_CoconutsIntro-Palettes)>>5		; Mummy - Puyo Leftover
 	dc.b (Pal_HumptyIntro-Palettes)>>5
 	dc.b (Pal_SkweelIntro-Palettes)>>5
-	dc.b (Pal_CoconutsIntro-Palettes)>>5
-	dc.b (Pal_RedYellowPuyos-Palettes)>>5
-unk_10628:	dc.b   0
+	dc.b (Pal_CoconutsIntro-Palettes)>>5		; Opening Cutscene
+	dc.b (Pal_RedYellowPuyos-Palettes)>>5		; Has Bean
+
+unk_10628:
+	dc.b   0
 	dc.b $30
 	dc.b   0
 	dc.b $40
@@ -22464,7 +21551,7 @@ loc_1066C:
 	move.w	$1E(a0),d0
 	add.w	d0,$A(a0)
 	subq.w	#1,$26(a0)
-	beq.w	loc_1068A
+	beq.s	loc_1068A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -22488,7 +21575,7 @@ loc_1068A:
 loc_106C8:
 	movea.l	$2E(a0),a1
 	tst.b	7(a1)
-	beq.w	loc_106D6
+	beq.s	loc_106D6
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -22497,7 +21584,7 @@ loc_106D6:
 	jsr	(ActorBookmark).l
 	jsr	(sub_3810).l
 	subq.w	#1,$26(a0)
-	beq.w	loc_106F2
+	beq.s	loc_106F2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -22506,22 +21593,23 @@ loc_106F2:
 	jsr	(ActorBookmark).l
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
-byte_10702:	dc.b 0
-	dc.b   0
-	dc.b   4
-	dc.b   1
-	dc.b   0
-	dc.b   1
-	dc.b   5
-	dc.b   1
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   2
-	dc.b   2
-	dc.b   0
-	dc.b   0
-	dc.b   0
+byte_10702:
+	dc.b   0	; Skeleton Tea - Puyo Leftover
+	dc.b   0	; Frankly
+	dc.b   4	; Dynamight
+	dc.b   1	; Arms
+	dc.b   0	; Nasu Grave - Puyo Leftover
+	dc.b   1	; Grounder
+	dc.b   5	; Davy Sprocket
+	dc.b   1	; Coconuts
+	dc.b   0	; Spike
+	dc.b   0	; Sir Ffuzzy-Logik
+	dc.b   0	; Dragon Breath
+	dc.b   2	; Scratch
+	dc.b   2	; Dr. Robotnik
+	dc.b   0	; Mummy - Puyo Leftover
+	dc.b   0	; Humpty
+	dc.b   0	; Skweel
 ; ---------------------------------------------------------------------------
 
 loc_10712:
@@ -22531,7 +21619,7 @@ loc_10712:
 	move.w	$1E(a0),d0
 	add.w	d0,$A(a0)
 	subq.w	#1,$26(a0)
-	beq.w	loc_10736
+	beq.s	loc_10736
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -22540,7 +21628,7 @@ loc_10736:
 	jsr	(sub_1077C).l
 	movea.l	$2E(a0),a1
 	tst.b	7(a1)
-	beq.w	loc_10750
+	beq.s	loc_10750
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -22549,7 +21637,7 @@ loc_10750:
 	jsr	(ActorBookmark).l
 	jsr	(sub_3810).l
 	subq.w	#1,$26(a0)
-	beq.w	loc_1076C
+	beq.s	loc_1076C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -22560,10 +21648,9 @@ loc_1076C:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_1077C:
 	tst.b	$22(a0)
-	beq.w	loc_1078A
+	beq.s	loc_1078A
 	subq.b	#1,$22(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -22571,7 +21658,7 @@ sub_1077C:
 loc_1078A:
 	movea.l	$32(a0),a2
 	cmpi.b	#$FF,(a2)
-	bne.w	loc_1079A
+	bne.s	loc_1079A
 	movea.l	2(a2),a2
 
 loc_1079A:
@@ -22605,9 +21692,7 @@ loc_1079A:
 	rts
 ; End of function sub_1077C
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_10800:
 	clr.w	d0
@@ -22636,7 +21721,7 @@ unk_10822:	dc.b $10
 	dc.b OPP_DRAGON
 	dc.b OPP_SCRATCH
 	dc.b OPP_ROBOTNIK
-	dc.b $11
+	dc.b $11		; Has Bean
 ; ---------------------------------------------------------------------------
 
 loc_10834:
@@ -22660,7 +21745,7 @@ loc_10834:
 	jsr	(ActorBookmark_SetDelay).l
 	jsr	(ActorBookmark).l
 	cmpi.b	#$11,(level).l
-	bcs.w	loc_108B8
+	bcs.s	loc_108B8
 	move.w	#$100,d0
 	jsr	(ActorBookmark_SetDelay).l
 	jsr	(ActorBookmark).l
@@ -22677,14 +21762,13 @@ loc_108B8:
 	clr.b	(bytecode_flag).l
 	addq.b	#1,(level).l
 	cmpi.b	#$12,(level).l
-	bcc.w	loc_10904
+	bcc.s	loc_10904
 	move.b	#1,(bytecode_flag).l
 
 loc_10904:
 	jmp	(ActorDeleteSelf).l
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1090A:
 	clr.w	d0
@@ -22696,17 +21780,15 @@ sub_1090A:
 	lsl.w	#2,d1
 	lea	(off_1099E).l,a1
 	movea.l	(a1,d1.w),a2
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	jsr	(a2)
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 
 locret_10938:
 	rts
 ; End of function sub_1090A
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1093A:
 	cmpi.b	#$10,(opponent).l
@@ -22720,13 +21802,11 @@ locret_10958:
 	rts
 ; End of function sub_1093A
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1095A:
 	cmpi.b	#$10,(opponent).l
-	bcc.w	loc_1097A
+	bcc.s	loc_1097A
 	jsr	(sub_604E).l
 	cmpi.b	#OPP_NASU_GRAVE,(opponent).l
 	bne.s	loc_1097A
@@ -22743,25 +21823,28 @@ loc_10986:
 ; End of function sub_1095A
 
 ; ---------------------------------------------------------------------------
-byte_1098C:	dc.b 0
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
+byte_1098C:
+	dc.b   0	; Practise Stage 1
+	dc.b $FF	; Practise Stage 2
+	dc.b $FF	; Practise Stage 3
+	dc.b $FF	; Stage 1
+	dc.b $FF	; Stage 2
+	dc.b $FF	; Stage 3
+	dc.b $FF	; Stage 4
+	dc.b $FF	; Stage 5
+	dc.b $FF	; Stage 6
+	dc.b $FF	; Stage 7
+	dc.b $FF	; Stage 8
+	dc.b $FF	; Stage 9
+	dc.b $FF	; Stage 10
+	dc.b $FF	; Stage 11
+	dc.b $FF	; Stage 12
+	dc.b $FF	; Stage 1e
 	dc.b   1
 	dc.b   2
-off_1099E:	dc.l locret_109AA
+
+off_1099E:
+	dc.l locret_109AA
 	dc.l locret_109AA
 	dc.l loc_109AC
 ; ---------------------------------------------------------------------------
@@ -22778,7 +21861,7 @@ loc_109AC:
 	movem.l	d2/a0,-(sp)
 	lea	(ArtPuyo_LevelSprites).l,a0
 	move.w	#$2000,d0
-	
+
 	if PuyoCompression=0
 	jsr	(PuyoDec).l
 	else
@@ -22786,7 +21869,7 @@ loc_109AC:
 	jsr	(NemDec).l
 	ENABLE_INTS
 	endc
-	
+
 	lea	(ArtNem_HasBeanShadow).l,a0
 	move.w	#$400,d0
 	DISABLE_INTS
@@ -22821,7 +21904,7 @@ loc_10A14:
 	move.w	$E(a0),$1E(a0)
 	addi.w	#-$70,$E(a0)
 	cmpi.w	#$C0,$1E(a0)
-	bcc.w	loc_10A86
+	bcc.s	loc_10A86
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -22832,7 +21915,9 @@ loc_10A86:
 	jsr	(ActorBookmark).l
 	jmp	(ActorAnimate).l
 ; ---------------------------------------------------------------------------
-unk_10AA4:	
+; TODO: Document Animation Code
+
+unk_10AA4:
 	dc.b   8
 	dc.b   0
 	dc.b   8
@@ -22852,7 +21937,8 @@ unk_10AA4:
 	dc.b $FF
 	dc.b   0
 	dc.l unk_10AA4
-unk_10ABA:	
+
+unk_10ABA:
 	dc.b   1
 	dc.b   5
 	dc.b   1
@@ -22903,20 +21989,18 @@ loc_10B1A:
 locret_10B58:
 	rts
 ; ---------------------------------------------------------------------------
-word_10B5A:	dc.w $26
-	dc.b   0
-	dc.b $48
-	dc.b   0
-	dc.b $4A
-	dc.b   0
-	dc.b $6A
-	dc.b   0
-	dc.b $6C
-	dc.b   0
-	dc.b $8C
-	dc.b   0
-	dc.b $8E
-unk_10B68:	dc.b   3
+word_10B5A:
+	dc.w $26
+	dc.w $48
+	dc.w $4A
+	dc.w $6A
+	dc.w $6C
+	dc.w $8C
+	dc.w $8E
+; TODO: Document Animation Code
+
+unk_10B68:
+	dc.b   3
 	dc.b  $A
 	dc.b   3
 	dc.b  $B
@@ -22947,7 +22031,7 @@ unk_10B68:	dc.b   3
 	lea	(Palettes).l,a2
 	adda.l	#(Pal_RedYellowPuyos-Palettes),a2
 	cmpi.b	#$11,(level).l
-	beq.w	loc_10BB8
+	beq.s	loc_10BB8
 	adda.l	#(Pal_Characters_Puyo-Pal_RedYellowPuyos),a2
 
 loc_10BB8:
@@ -22961,7 +22045,8 @@ loc_10BB8:
 locret_10BD8:
 	rts
 ; ---------------------------------------------------------------------------
-byte_10BDA:	dc.b 0
+byte_10BDA:
+	dc.b   0
 	dc.b $FF
 	dc.b $FF
 	dc.b $FF
@@ -22986,17 +22071,16 @@ byte_10BDA:	dc.b 0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_10BF8:
 	clr.w	d0
 	move.b	(level).l,d0
 	lea	(unk_10C78).l,a1
 	tst.b	(a1,d0.w)
-	beq.w	loc_10C38
+	beq.s	loc_10C38
 	jsr	(InitPalette_Safe).l
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	jsr	(InitActors).l
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	jsr	(ClearScroll).l
 	move.w	#$FF20,(vscroll_buffer).l
 	move.w	#$FF60,(vscroll_buffer+2).l
@@ -23028,28 +22112,29 @@ locret_10C76:
 ; End of function sub_10BF8
 
 ; ---------------------------------------------------------------------------
-unk_10C78:	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b $FF
+unk_10C78:
+	dc.b   0	; Practise Stage 1
+	dc.b   0	; Practise Stage 2
+	dc.b   0	; Practise Stage 3
+	dc.b   0	; Stage 1
+	dc.b   0	; Stage 2
+	dc.b   0	; Stage 3
+	dc.b   0	; Stage 4
+	dc.b   0	; Stage 5
+	dc.b   0	; Stage 6
+	dc.b   0	; Stage 7
+	dc.b   0	; Stage 8
+	dc.b   0	; Stage 9
+	dc.b   0	; Stage 10
+	dc.b   0	; Stage 11
+	dc.b   0	; Stage 12
+	dc.b $FF	; Stage 13
 	dc.b $FF
 	dc.b   0
 ; ---------------------------------------------------------------------------
 
 loc_10C8A:
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	movea.l	(dword_FF112C).l,a0
 	jsr	(ActorDeleteSelf).l
 	moveq	#0,d0
@@ -23061,30 +22146,30 @@ loc_10CA6:
 	dbf	d1,loc_10CA6
 	jsr	(QueuePlaneCmdList).l
 	jsr	(InitPalette_Safe).l
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	jsr	(ActorBookmark).l
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	jsr	(sub_F8B6).l
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	moveq	#4,d0
 	jsr	(ActorBookmark_SetDelay).l
 	jsr	(ActorBookmark).l
-	movem.l	a0,-(sp)
-	move.b	#1,(use_lair_background).l
+	move.l	a0,-(sp)
+	move.b	#1,(use_lair_assets).l
 	jsr	(LoadEndingBGArt).l
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	jsr	(ActorBookmark).l
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	jsr	(sub_F878).l
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	jsr	(ActorBookmark).l
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	jsr	(sub_F832).l
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	jsr	(ActorBookmark).l
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	jsr	(sub_10D8C).l
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	jsr	(ActorBookmark).l
 	move.b	#0,d0
 	move.b	#0,d1
@@ -23106,7 +22191,6 @@ loc_10CA6:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_10D8C:
 	movea.w	#$D688,a1
 	move.w	#$C400,d0
@@ -23119,9 +22203,7 @@ sub_10D8C:
 	rts
 ; End of function sub_10D8C
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_10DB2:
 	lsl.w	#2,d0
@@ -23133,7 +22215,7 @@ sub_10DB2:
 	jsr	(QueuePlaneCmd).l
 	lea	(sub_10DF2).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcc.w	loc_10DDE
+	bcc.s	loc_10DDE
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -23149,19 +22231,18 @@ loc_10DDE:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_10DF2:
 	addq.b	#1,$26(a0)
 	move.b	$26(a0),d0
 	andi.b	#7,d0
-	beq.w	loc_10E04
+	beq.s	loc_10E04
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_10E04:
 	bsr.w	sub_10E18
 	subq.w	#1,$28(a0)
-	beq.w	loc_10E12
+	beq.s	loc_10E12
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -23171,7 +22252,6 @@ loc_10E12:
 
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_10E18:
 	clr.w	d1
@@ -23192,9 +22272,7 @@ sub_10E18:
 	jmp	(PlaySound_ChkPCM).l
 ; End of function sub_10E18
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_10E5C:
 	lea	(ArtNem_MainFont).l,a0
@@ -23218,103 +22296,11 @@ loc_10E78:
 ; End of function sub_10E5C
 
 ; ---------------------------------------------------------------------------
-RoleCallText:	dc.l word_10F14
-	dc.l word_10F14
-	dc.l word_10F14
-	dc.l word_10F14
-	dc.l word_10F14
-	dc.l word_10F1E
-	dc.l word_10F2A
-	dc.l word_10F36
-	dc.l word_10F44
-	dc.l word_10F64
-	dc.l word_10F56
-	dc.l word_10F70
-	dc.l word_10F7E
-	dc.l word_10F88
-	dc.l word_10F9E
-	dc.l word_10FB0
-	dc.l word_10FBC
-	dc.l word_10FCE
-	dc.l word_10EFE
-	dc.l word_10F08
-word_10EFE:	dc.w 4
-	dc.w $D724
-	dc.b "CAST"
-	dc.b $FF
-	dc.b 0
-word_10F08:	dc.w 6
-	dc.w $D720
-	dc.b "AND..."
-	dc.b $FF
-	dc.b 0
-word_10F14:	dc.w 4
-	dc.w $D724
-	dc.b "ARMS"
-	dc.b $FF
-	dc.b 0
-word_10F1E:	dc.w 7
-	dc.w $D722
-	dc.b "FRANKLY"
-	dc.b $FF
-word_10F2A:	dc.w 6
-	dc.w $D722
-	dc.b "HUMPTY"
-	dc.b $FF
-	dc.b 0
-word_10F36:	dc.w 8
-	dc.w $D722
-	dc.b "COCONUTS"
-	dc.b $FF
-	dc.b 0
-word_10F44:	dc.w $D
-	dc.w $D722
-	dc.b "DAVY SPROCKET"
-	dc.b $FF
-word_10F56:	dc.w 9
-	dc.w $D722
-	dc.b "DYNAMIGHT"
-	dc.b $FF
-word_10F64:	dc.w 6
-	dc.w $D722
-	dc.b "SKWEEL"
-	dc.b $FF
-	dc.b 0
-word_10F70:	dc.w 8
-	dc.w $D722
-	dc.b "GROUNDER"
-	dc.b $FF
-	dc.b 0
-word_10F7E:	dc.w 5
-	dc.w $D722
-	dc.b "SPIKE"
-	dc.b $FF
-word_10F88:	dc.w $10
-	dc.w $D722
-	dc.b "SIR FFUZZY-LOGIK"
-	dc.b $FF
-	dc.b 0
-word_10F9E:	dc.w $D
-	dc.w $D722
-	dc.b "DRAGON BREATH"
-	dc.b $FF
-word_10FB0:	dc.w 7
-	dc.w $D722
-	dc.b "SCRATCH"
-	dc.b $FF
-word_10FBC:	dc.w $C
-	dc.w $D722
-	dc.b "DR. ROBOTNIK"
-	dc.b $FF
-	dc.b 0
-word_10FCE:	dc.w 8
-	dc.w $D71E
-	dc.b "HAS BEAN"
-	dc.b $FF
-	dc.b 0
+
+	include "resource/text/Role Call/Role Call.asm"
+	even
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ActLevelIntro:
 	move.l	a0,-(sp)
@@ -23348,11 +22334,11 @@ Actlevel_intro_update:
 	bne.s	loc_11062
 	jsr	(GetCtrlData).l
 	andi.b	#$F0,d0
-	bne.w	loc_110C2
+	bne.s	CutsceneCmd_EndScene
 
 loc_11062:
 	tst.w	aField26(a0)
-	beq.w	loc_11070
+	beq.s	loc_11070
 	subq.w	#1,aField26(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -23366,26 +22352,27 @@ loc_11070:
 	bpl.w	loc_111EE
 	andi.b	#$7F,d0
 	lsl.w	#2,d0
-	movea.l	off_11096(pc,d0.w),a3
+	movea.l	Cutscene_Commands(pc,d0.w),a3
 	clr.w	d0
 	move.b	(a2)+,d0
 	move.l	a2,aAnim(a0)
 	jmp	(a3)
 ; ---------------------------------------------------------------------------
-off_11096:	dc.l loc_110C2
-	dc.l loc_1112A
-	dc.l loc_1118E
-	dc.l loc_111CC
-	dc.l loc_111D6
-	dc.l loc_111E2
-	dc.l sub_110F0
-	dc.l sub_1110E
+Cutscene_Commands:
+	dc.l CutsceneCmd_EndScene
+	dc.l CutsceneCmd_NewText
+	dc.l CutsceneCmd_CloseText
+	dc.l CutsceneCmd_Pause
+	dc.l CutsceneCmd_AnimArle	; Puyo Leftover
+	dc.l CutsceneCmd_AnimOpp
+	dc.l CutsceneCmd_NewLine
+	dc.l CutsceneCmd_SameFrame
 	dc.l 0
-	dc.l sub_111C4
+	dc.l CutsceneCmd_AddBlank
 	dc.l PlaySound_ChkPCM
 ; ---------------------------------------------------------------------------
 
-loc_110C2:
+CutsceneCmd_EndScene:
 	bsr.w	sub_11192
 	jsr	(ActorBookmark).l
 	cmpi.b	#$10,(opponent).l
@@ -23399,15 +22386,13 @@ loc_110E4:
 	jmp	(ActorDeleteSelf).l
 ; End of function ActLevelIntro
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_110F0:
+CutsceneCmd_NewLine:
 	subq.l	#1,aAnim(a0)
-; End of function sub_110F0
+; End of function CutsceneCmd_NewLine
 
-; START	OF FUNCTION CHUNK FOR sub_111C4
+; START	OF FUNCTION CHUNK FOR CutsceneCmd_AddBlank
 
 loc_110F4:
 	clr.w	aX(a0)
@@ -23419,12 +22404,11 @@ loc_110F4:
 
 locret_1110C:
 	rts
-; END OF FUNCTION CHUNK	FOR sub_111C4
+; END OF FUNCTION CHUNK	FOR CutsceneCmd_AddBlank
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_1110E:
+CutsceneCmd_SameFrame:
 	subq.l	#1,$32(a0)
 	clr.w	$A(a0)
 	clr.w	$C(a0)
@@ -23432,11 +22416,11 @@ sub_1110E:
 	ori.w	#$8E00,d0
 	swap	d0
 	jmp	(QueuePlaneCmd).l
-; End of function sub_1110E
+; End of function CutsceneCmd_SameFrame
 
 ; ---------------------------------------------------------------------------
 
-loc_1112A:
+CutsceneCmd_NewText:
 	move.w	d0,d1
 	andi.b	#$1F,d0
 	lsr.b	#5,d1
@@ -23471,15 +22455,14 @@ loc_1117A:
 	rts
 ; ---------------------------------------------------------------------------
 
-loc_1118E:
+CutsceneCmd_CloseText:
 	subq.l	#1,$32(a0)
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_11192:
 	tst.b	7(a0)
-	bne.w	loc_1119C
+	bne.s	loc_1119C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -23491,9 +22474,7 @@ loc_1119C:
 	jmp	(QueuePlaneCmd).l
 ; End of function sub_11192
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_111B0:
 	move.w	aField12(a0),d0
@@ -23505,31 +22486,26 @@ sub_111B0:
 	rts
 ; End of function sub_111B0
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
-sub_111C4:
-
-; FUNCTION CHUNK AT 000110F4 SIZE 0000001A BYTES
-
+CutsceneCmd_AddBlank:
 	subq.l	#1,$32(a0)
 	bra.w	loc_11246
 ; ---------------------------------------------------------------------------
 
-loc_111CC:
+CutsceneCmd_Pause:
 	mulu.w	#$A,d0
 	move.w	d0,$26(a0)
 	rts
 ; ---------------------------------------------------------------------------
 
-loc_111D6:
+CutsceneCmd_AnimArle:
 	ori.w	#$FF00,d0
 	move.w	d0,(word_FF198E).l
 	rts
 ; ---------------------------------------------------------------------------
 
-loc_111E2:
+CutsceneCmd_AnimOpp:
 	ori.w	#$FF00,d0
 	move.w	d0,(word_FF1990).l
 	rts
@@ -23566,7 +22542,7 @@ loc_11246:
 	cmp.w	$E(a0),d0
 	bcc.w	loc_110F4
 	rts
-; End of function sub_111C4
+; End of function CutsceneCmd_AddBlank
 
 ; ---------------------------------------------------------------------------
 
@@ -23574,7 +22550,6 @@ byte_11258:	; Main Font Table
 	include "resource/font tables/Table - Main.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_112D8:
 	move.w	$12(a0),d0
@@ -23599,7 +22574,7 @@ sub_112D8:
 loc_1130C:
 	lea	(loc_113D8).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcs.w	loc_11368
+	bcs.s	loc_11368
 	move.l	a0,$2E(a1)
 	move.b	#$80,6(a1)
 	move.b	#$20,8(a1)
@@ -23615,20 +22590,20 @@ loc_11344:
 loc_11348:
 	move.w	d0,$A(a1)
 	btst	#0,d5
-	beq.w	loc_11358
+	beq.s	loc_11358
 	move.w	d2,$A(a1)
 
 loc_11358:
 	move.w	d1,$E(a1)
 	btst	#1,d5
-	beq.w	loc_11368
+	beq.s	loc_11368
 	move.w	d3,$E(a1)
 
 loc_11368:
 	dbf	d5,loc_1130C
 	lea	(sub_113B8).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcc.w	loc_1137E
+	bcc.s	loc_1137E
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -23651,9 +22626,7 @@ loc_113AC:
 	rts
 ; End of function sub_112D8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_113B8:
 	move.w	$14(a0),d0
@@ -23661,13 +22634,13 @@ sub_113B8:
 	move.w	(a1,d0.w),$A(a0)
 	clr.w	d0
 	move.b	(opponent).l,d0
-	move.b	byte_113EC(pc,d0.w),d0
+	move.b	TextBox_ArrowLoc(pc,d0.w),d0
 	add.w	d0,$A(a0)
 
 loc_113D8:
 	movea.l	$2E(a0),a1
 	tst.b	7(a1)
-	beq.w	loc_113E6
+	beq.s	loc_113E6
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -23676,2321 +22649,88 @@ loc_113E6:
 ; End of function sub_113B8
 
 ; ---------------------------------------------------------------------------
-byte_113EC:	dc.b 0
-	dc.b $28
-	dc.b $28
-	dc.b $38
-	dc.b   0
-	dc.b $28
-	dc.b $10
-	dc.b   0
-	dc.b $28
-	dc.b $28
-	dc.b $28
-	dc.b   0
-	dc.b $58
-	dc.b   0
-	dc.b $30
-	dc.b   8
-	dc.b   0
-	dc.b   0
-off_113FE:	dc.l unk_11852
-	dc.l unk_11554
-	dc.l unk_115FC
-	dc.l unk_1169A
-	dc.l unk_11852
-	dc.l unk_11730
-	dc.l unk_117C8
-	dc.l unk_11852
-	dc.l unk_118D4
-	dc.l unk_11974
-	dc.l unk_11A12
-	dc.l unk_11A9A
-	dc.l unk_11B58
-	dc.l unk_11852
-	dc.l unk_11442
-	dc.l unk_114D4
-	dc.l unk_11BE2
-unk_11442:	dc.b $85
-	dc.b   2
-	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   8
-	dc.b $81
-	dc.b $74
-	dc.b $D7
-	dc.b $12
-	dc.b $85
-	dc.b   1
-	dc.b $47
-	dc.b $72
-	dc.b $61
-	dc.b $63
-	dc.b $69
-	dc.b $6F
-	dc.b $75
-	dc.b $73
-	dc.b $21
-	dc.b $86
-	dc.b $59
-	dc.b $6F
-	dc.b $75
-	dc.b $27
-	dc.b $72
-	dc.b $65
-	dc.b $20
-	dc.b $68
-	dc.b $65
-	dc.b $72
-	dc.b $65
-	dc.b $20
-	dc.b $61
-	dc.b $6C
-	dc.b $72
-	dc.b $65
-	dc.b $61
-	dc.b $64
-	dc.b $79
-	dc.b $2E
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $73
-	dc.b $68
-	dc.b $65
-	dc.b $6C
-	dc.b $6C
-	dc.b $20
-	dc.b $73
-	dc.b $68
-	dc.b $6F
-	dc.b $63
-	dc.b $6B
-	dc.b $65
-	dc.b $64
-	dc.b $21
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b  $C
-	dc.b $82
-	dc.b $83
-	dc.b   4
-	dc.b $81
-	dc.b $7B
-	dc.b $D7
-	dc.b  $C
-	dc.b $85
-	dc.b   1
-	dc.b $42
-	dc.b $75
-	dc.b $74
-	dc.b $20
-	dc.b $70
-	dc.b $6C
-	dc.b $65
-	dc.b $61
-	dc.b $73
-	dc.b $65
-	dc.b $20
-	dc.b $65
-	dc.b $67
-	dc.b $67
-	dc.b $73
-	dc.b $63
-	dc.b $75
-	dc.b $73
-	dc.b $65
-	dc.b $20
-	dc.b $6D
-	dc.b $65
-	dc.b $20
-	dc.b $69
-	dc.b $66
-	dc.b $20
-	dc.b $49
-	dc.b $73
-	dc.b $63
-	dc.b $72
-	dc.b $61
-	dc.b $6D
-	dc.b $62
-	dc.b $6C
-	dc.b $65
-	dc.b $20
-	dc.b $79
-	dc.b $6F
-	dc.b $75
-	dc.b $72
-	dc.b $20
-	dc.b $63
-	dc.b $68
-	dc.b $61
-	dc.b $6E
-	dc.b $63
-	dc.b $65
-	dc.b $73
-	dc.b $20
-	dc.b $6F
-	dc.b $66
-	dc.b $86
-	dc.b $73
-	dc.b $65
-	dc.b $65
-	dc.b $69
-	dc.b $6E
-	dc.b $67
-	dc.b $20
-	dc.b $44
-	dc.b $72
-	dc.b $2E
-	dc.b $20
-	dc.b $52
-	dc.b $2E
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b  $C
-	dc.b $82
-	dc.b $80
-unk_114D4:	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b $82
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   4
-	dc.b $81
-	dc.b $59
-	dc.b $D7
-	dc.b  $C
-	dc.b $49
-	dc.b $27
-	dc.b $76
-	dc.b $65
-	dc.b $20
-	dc.b $67
-	dc.b $6F
-	dc.b $74
-	dc.b $20
-	dc.b $6D
-	dc.b $6F
-	dc.b $72
-	dc.b $65
-	dc.b $20
-	dc.b $73
-	dc.b $69
-	dc.b $7A
-	dc.b $7A
-	dc.b $6C
-	dc.b $65
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $61
-	dc.b $6E
-	dc.b $61
-	dc.b $20
-	dc.b $72
-	dc.b $61
-	dc.b $73
-	dc.b $68
-	dc.b $65
-	dc.b $72
-	dc.b $20
-	dc.b $6F
-	dc.b $66
-	dc.b $20
-	dc.b $62
-	dc.b $61
-	dc.b $63
-	dc.b $6F
-	dc.b $6E
-	dc.b $2E
-	dc.b $83
-	dc.b  $A
-	dc.b $82
-	dc.b $83
-	dc.b   6
-	dc.b $81
-	dc.b $77
-	dc.b $D7
-	dc.b  $C
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $68
-	dc.b $75
-	dc.b $6E
-	dc.b $67
-	dc.b $72
-	dc.b $79
-	dc.b $20
-	dc.b $61
-	dc.b $6E
-	dc.b $64
-	dc.b $20
-	dc.b $69
-	dc.b $74
-	dc.b $20
-	dc.b $61
-	dc.b $69
-	dc.b $6E
-	dc.b $27
-	dc.b $74
-	dc.b $6D
-	dc.b $65
-	dc.b $61
-	dc.b $6C
-	dc.b $73
-	dc.b $20
-	dc.b $6F
-	dc.b $6E
-	dc.b $20
-	dc.b $77
-	dc.b $68
-	dc.b $65
-	dc.b $65
-	dc.b $6C
-	dc.b $73
-	dc.b $86
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $61
-	dc.b $66
-	dc.b $74
-	dc.b $65
-	dc.b $72
-	dc.b $20
-	dc.b $2D
-	dc.b $20
-	dc.b $69
-	dc.b $74
-	dc.b $27
-	dc.b $73
-	dc.b $20
-	dc.b $79
-	dc.b $6F
-	dc.b $75
-	dc.b $2E
-	dc.b $83
-	dc.b  $A
-	dc.b $82
-	dc.b $80
-unk_11554:	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   6
-	dc.b $81
-	dc.b $7A
-	dc.b $D6
-	dc.b $88
-	dc.b $85
-	dc.b   1
-	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b   2
-	dc.b $41
-	dc.b $72
-	dc.b $6D
-	dc.b $73
-	dc.b $20
-	dc.b $69
-	dc.b $73
-	dc.b $20
-	dc.b $61
-	dc.b $6C
-	dc.b $77
-	dc.b $61
-	dc.b $79
-	dc.b $73
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $6F
-	dc.b $20
-	dc.b $77
-	dc.b $72
-	dc.b $61
-	dc.b $70
-	dc.b $70
-	dc.b $65
-	dc.b $64
-	dc.b $75
-	dc.b $70
-	dc.b $20
-	dc.b $69
-	dc.b $6E
-	dc.b $20
-	dc.b $68
-	dc.b $69
-	dc.b $6D
-	dc.b $73
-	dc.b $65
-	dc.b $6C
-	dc.b $66
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $64
-	dc.b $6F
-	dc.b $86
-	dc.b $61
-	dc.b $6E
-	dc.b $79
-	dc.b $74
-	dc.b $68
-	dc.b $69
-	dc.b $6E
-	dc.b $67
-	dc.b $20
-	dc.b $75
-	dc.b $73
-	dc.b $65
-	dc.b $66
-	dc.b $75
-	dc.b $6C
-	dc.b $2E
-	dc.b $85
-	dc.b   3
-	dc.b $83
-	dc.b   3
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   6
-	dc.b $82
-	dc.b $83
-	dc.b   1
-	dc.b $81
-	dc.b $7A
-	dc.b $D6
-	dc.b $88
-	dc.b $85
-	dc.b   1
-	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b   2
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $61
-	dc.b $20
-	dc.b $62
-	dc.b $72
-	dc.b $69
-	dc.b $67
-	dc.b $68
-	dc.b $74
-	dc.b $20
-	dc.b $73
-	dc.b $70
-	dc.b $61
-	dc.b $72
-	dc.b $6B
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $6F
-	dc.b $75
-	dc.b $67
-	dc.b $68
-	dc.b $20
-	dc.b $61
-	dc.b $6E
-	dc.b $64
-	dc.b $20
-	dc.b $49
-	dc.b $20
-	dc.b $72
-	dc.b $65
-	dc.b $63
-	dc.b $6B
-	dc.b $6F
-	dc.b $6E
-	dc.b $20
-	dc.b $49
-	dc.b $20
-	dc.b $6B
-	dc.b $6E
-	dc.b $6F
-	dc.b $77
-	dc.b $20
-	dc.b $68
-	dc.b $6F
-	dc.b $77
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $62
-	dc.b $65
-	dc.b $61
-	dc.b $74
-	dc.b $20
-	dc.b $79
-	dc.b $6F
-	dc.b $75
-	dc.b $2E
-	dc.b $85
-	dc.b   3
-	dc.b $83
-	dc.b   3
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   6
-	dc.b $82
-	dc.b $80
-unk_115FC:	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b   2
-	dc.b $83
-	dc.b  $A
-	dc.b $81
-	dc.b $32
-	dc.b $D8
-	dc.b $10
-	dc.b $85
-	dc.b   1
-	dc.b $57
-	dc.b $65
-	dc.b $6C
-	dc.b $6C
-	dc.b $20
-	dc.b $62
-	dc.b $6C
-	dc.b $6F
-	dc.b $77
-	dc.b $20
-	dc.b $6D
-	dc.b $65
-	dc.b $20
-	dc.b $61
-	dc.b $77
-	dc.b $61
-	dc.b $79
-	dc.b $21
-	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   4
-	dc.b $82
-	dc.b $85
-	dc.b   3
-	dc.b $83
-	dc.b  $C
-	dc.b $81
-	dc.b $56
-	dc.b $D7
-	dc.b $8C
-	dc.b $85
-	dc.b   1
-	dc.b $41
-	dc.b $73
-	dc.b $20
-	dc.b $69
-	dc.b $66
-	dc.b $20
-	dc.b $44
-	dc.b $72
-	dc.b $2E
-	dc.b $20
-	dc.b $52
-	dc.b $20
-	dc.b $68
-	dc.b $61
-	dc.b $73
-	dc.b $6E
-	dc.b $27
-	dc.b $74
-	dc.b $20
-	dc.b $68
-	dc.b $61
-	dc.b $64
-	dc.b $65
-	dc.b $6E
-	dc.b $6F
-	dc.b $75
-	dc.b $67
-	dc.b $68
-	dc.b $20
-	dc.b $73
-	dc.b $74
-	dc.b $69
-	dc.b $63
-	dc.b $6B
-	dc.b $20
-	dc.b $61
-	dc.b $6C
-	dc.b $72
-	dc.b $65
-	dc.b $61
-	dc.b $64
-	dc.b $79
-	dc.b $2E
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   8
-	dc.b $82
-	dc.b $85
-	dc.b   2
-	dc.b $83
-	dc.b   8
-	dc.b $81
-	dc.b $56
-	dc.b $D7
-	dc.b $8C
-	dc.b $85
-	dc.b   1
-	dc.b $48
-	dc.b $65
-	dc.b $72
-	dc.b $65
-	dc.b $20
-	dc.b $49
-	dc.b $20
-	dc.b $61
-	dc.b $6D
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $70
-	dc.b $72
-	dc.b $6F
-	dc.b $76
-	dc.b $69
-	dc.b $64
-	dc.b $65
-	dc.b $20
-	dc.b $61
-	dc.b $66
-	dc.b $69
-	dc.b $72
-	dc.b $65
-	dc.b $77
-	dc.b $6F
-	dc.b $72
-	dc.b $6B
-	dc.b $73
-	dc.b $20
-	dc.b $64
-	dc.b $69
-	dc.b $73
-	dc.b $70
-	dc.b $6C
-	dc.b $61
-	dc.b $79
-	dc.b $2E
-	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   4
-	dc.b $85
-	dc.b   2
-	dc.b $82
-	dc.b $80
-	dc.b   0
-unk_1169A:	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b   0
-	dc.b $81
-	dc.b $5C
-	dc.b $D7
-	dc.b $88
-	dc.b $42
-	dc.b $65
-	dc.b $61
-	dc.b $6E
-	dc.b $73
-	dc.b $2C
-	dc.b $20
-	dc.b $62
-	dc.b $65
-	dc.b $61
-	dc.b $6E
-	dc.b $73
-	dc.b $20
-	dc.b $6C
-	dc.b $65
-	dc.b $74
-	dc.b $20
-	dc.b $6D
-	dc.b $65
-	dc.b $20
-	dc.b $67
-	dc.b $69
-	dc.b $76
-	dc.b $65
-	dc.b $20
-	dc.b $79
-	dc.b $6F
-	dc.b $75
-	dc.b $61
-	dc.b $20
-	dc.b $68
-	dc.b $61
-	dc.b $6E
-	dc.b $64
-	dc.b $20
-	dc.b $2D
-	dc.b $20
-	dc.b $6F
-	dc.b $72
-	dc.b $20
-	dc.b $74
-	dc.b $77
-	dc.b $6F
-	dc.b $2E
-	dc.b $83
-	dc.b  $A
-	dc.b $82
-	dc.b $83
-	dc.b   4
-	dc.b $81
-	dc.b $5C
-	dc.b $D7
-	dc.b $88
-	dc.b $49
-	dc.b $27
-	dc.b $76
-	dc.b $65
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $70
-	dc.b $72
-	dc.b $65
-	dc.b $70
-	dc.b $61
-	dc.b $72
-	dc.b $65
-	dc.b $20
-	dc.b $44
-	dc.b $72
-	dc.b $2E
-	dc.b $20
-	dc.b $52
-	dc.b $6F
-	dc.b $62
-	dc.b $6F
-	dc.b $74
-	dc.b $6E
-	dc.b $69
-	dc.b $6B
-	dc.b $61
-	dc.b $20
-	dc.b $62
-	dc.b $65
-	dc.b $61
-	dc.b $75
-	dc.b $74
-	dc.b $69
-	dc.b $66
-	dc.b $75
-	dc.b $6C
-	dc.b $20
-	dc.b $62
-	dc.b $65
-	dc.b $61
-	dc.b $6E
-	dc.b $20
-	dc.b $66
-	dc.b $65
-	dc.b $61
-	dc.b $73
-	dc.b $74
-	dc.b $2E
-	dc.b $83
-	dc.b   6
-	dc.b $82
-	dc.b $83
-	dc.b   4
-	dc.b $81
-	dc.b $39
-	dc.b $D8
-	dc.b $8C
-	dc.b $43
-	dc.b $6F
-	dc.b $6D
-	dc.b $65
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $41
-	dc.b $72
-	dc.b $6D
-	dc.b $73
-	dc.b $20
-	dc.b $6D
-	dc.b $79
-	dc.b $20
-	dc.b $62
-	dc.b $65
-	dc.b $61
-	dc.b $75
-	dc.b $74
-	dc.b $69
-	dc.b $65
-	dc.b $73
-	dc.b $2E
-	dc.b $83
-	dc.b   8
-	dc.b $82
-	dc.b $80
-unk_11730:	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b $81
-	dc.b $83
-	dc.b   4
-	dc.b $81
-	dc.b $2C
-	dc.b $D8
-	dc.b $94
-	dc.b $85
-	dc.b   1
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $47
-	dc.b $72
-	dc.b $6F
-	dc.b $75
-	dc.b $6E
-	dc.b $64
-	dc.b $65
-	dc.b $72
-	dc.b $83
-	dc.b   8
-	dc.b $82
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   6
-	dc.b $81
-	dc.b $7A
-	dc.b $D7
-	dc.b $8C
-	dc.b $85
-	dc.b   1
-	dc.b $62
-	dc.b $75
-	dc.b $74
-	dc.b $20
-	dc.b $79
-	dc.b $6F
-	dc.b $75
-	dc.b $20
-	dc.b $63
-	dc.b $61
-	dc.b $6E
-	dc.b $20
-	dc.b $63
-	dc.b $61
-	dc.b $6C
-	dc.b $6C
-	dc.b $20
-	dc.b $6D
-	dc.b $65
-	dc.b $20
-	dc.b $53
-	dc.b $41
-	dc.b $4D
-	dc.b $20
-	dc.b $2D
-	dc.b $20
-	dc.b $27
-	dc.b $63
-	dc.b $6F
-	dc.b $73
-	dc.b $20
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $6C
-	dc.b $69
-	dc.b $6B
-	dc.b $65
-	dc.b $20
-	dc.b $61
-	dc.b $20
-	dc.b $53
-	dc.b $75
-	dc.b $72
-	dc.b $66
-	dc.b $61
-	dc.b $63
-	dc.b $65
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $41
-	dc.b $69
-	dc.b $72
-	dc.b $20
-	dc.b $4D
-	dc.b $69
-	dc.b $73
-	dc.b $73
-	dc.b $69
-	dc.b $6C
-	dc.b $65
-	dc.b $83
-	dc.b  $C
-	dc.b $82
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   6
-	dc.b $81
-	dc.b $5A
-	dc.b $D8
-	dc.b  $C
-	dc.b $85
-	dc.b   1
-	dc.b $61
-	dc.b $6E
-	dc.b $64
-	dc.b $20
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $67
-	dc.b $6F
-	dc.b $6E
-	dc.b $6E
-	dc.b $61
-	dc.b $20
-	dc.b $68
-	dc.b $61
-	dc.b $76
-	dc.b $65
-	dc.b $20
-	dc.b $79
-	dc.b $6F
-	dc.b $75
-	dc.b $20
-	dc.b $66
-	dc.b $6F
-	dc.b $72
-	dc.b $6C
-	dc.b $61
-	dc.b $75
-	dc.b $6E
-	dc.b $63
-	dc.b $68
-	dc.b $2E
-	dc.b $83
-	dc.b  $C
-	dc.b $85
-	dc.b   0
-	dc.b $82
-	dc.b $80
-unk_117C8:	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   2
-	dc.b $81
-	dc.b $5A
-	dc.b $D7
-	dc.b   8
-	dc.b $41
-	dc.b $20
-	dc.b $73
-	dc.b $71
-	dc.b $75
-	dc.b $69
-	dc.b $72
-	dc.b $74
-	dc.b $20
-	dc.b $6C
-	dc.b $69
-	dc.b $6B
-	dc.b $65
-	dc.b $20
-	dc.b $79
-	dc.b $6F
-	dc.b $75
-	dc.b $20
-	dc.b $68
-	dc.b $61
-	dc.b $73
-	dc.b $20
-	dc.b $62
-	dc.b $65
-	dc.b $65
-	dc.b $6E
-	dc.b $72
-	dc.b $65
-	dc.b $75
-	dc.b $6E
-	dc.b $69
-	dc.b $74
-	dc.b $69
-	dc.b $6E
-	dc.b $67
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $6F
-	dc.b $20
-	dc.b $6D
-	dc.b $61
-	dc.b $6E
-	dc.b $79
-	dc.b $20
-	dc.b $62
-	dc.b $65
-	dc.b $61
-	dc.b $6E
-	dc.b $73
-	dc.b $2E
-	dc.b $85
-	dc.b   1
-	dc.b $83
-	dc.b   6
-	dc.b $85
-	dc.b   2
-	dc.b $82
-	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b   3
-	dc.b $83
-	dc.b   8
-	dc.b $81
-	dc.b $5C
-	dc.b $D7
-	dc.b   8
-	dc.b $85
-	dc.b   4
-	dc.b $49
-	dc.b $20
-	dc.b $72
-	dc.b $65
-	dc.b $63
-	dc.b $6B
-	dc.b $6F
-	dc.b $6E
-	dc.b $20
-	dc.b $49
-	dc.b $27
-	dc.b $6C
-	dc.b $6C
-	dc.b $20
-	dc.b $68
-	dc.b $61
-	dc.b $76
-	dc.b $65
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $86
-	dc.b $70
-	dc.b $69
-	dc.b $6F
-	dc.b $6E
-	dc.b $65
-	dc.b $65
-	dc.b $72
-	dc.b $20
-	dc.b $73
-	dc.b $6F
-	dc.b $6D
-	dc.b $65
-	dc.b $20
-	dc.b $6E
-	dc.b $65
-	dc.b $77
-	dc.b $20
-	dc.b $74
-	dc.b $65
-	dc.b $63
-	dc.b $68
-	dc.b $6E
-	dc.b $69
-	dc.b $71
-	dc.b $75
-	dc.b $65
-	dc.b $73
-	dc.b $2E
-	dc.b $83
-	dc.b   4
-	dc.b $85
-	dc.b   5
-	dc.b $83
-	dc.b  $A
-	dc.b $82
-	dc.b $80
-unk_11852:	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b $80
-	dc.b $81
-	dc.b $76
-	dc.b $D7
-	dc.b  $E
-	dc.b $85
-	dc.b   2
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $43
-	dc.b $6F
-	dc.b $63
-	dc.b $6F
-	dc.b $6E
-	dc.b $75
-	dc.b $74
-	dc.b $73
-	dc.b $86
-	dc.b $61
-	dc.b $6E
-	dc.b $64
-	dc.b $20
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $44
-	dc.b $72
-	dc.b $2E
-	dc.b $20
-	dc.b $52
-	dc.b $6F
-	dc.b $62
-	dc.b $6F
-	dc.b $74
-	dc.b $6E
-	dc.b $69
-	dc.b $6B
-	dc.b $27
-	dc.b $73
-	dc.b $66
-	dc.b $61
-	dc.b $76
-	dc.b $6F
-	dc.b $72
-	dc.b $69
-	dc.b $74
-	dc.b $65
-	dc.b $20
-	dc.b $72
-	dc.b $6F
-	dc.b $62
-	dc.b $6F
-	dc.b $74
-	dc.b $83
-	dc.b   3
-	dc.b $85
-	dc.b   0
-	dc.b $83
-	dc.b   5
-	dc.b $82
-	dc.b $85
-	dc.b   1
-	dc.b $83
-	dc.b  $A
-	dc.b $85
-	dc.b   1
-	dc.b $83
-	dc.b   6
-	dc.b $81
-	dc.b $5B
-	dc.b $D8
-	dc.b  $A
-	dc.b $85
-	dc.b   2
-	dc.b $62
-	dc.b $65
-	dc.b $63
-	dc.b $61
-	dc.b $75
-	dc.b $73
-	dc.b $65
-	dc.b $20
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $67
-	dc.b $6F
-	dc.b $69
-	dc.b $6E
-	dc.b $67
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $66
-	dc.b $69
-	dc.b $6E
-	dc.b $69
-	dc.b $73
-	dc.b $68
-	dc.b $79
-	dc.b $6F
-	dc.b $75
-	dc.b $20
-	dc.b $69
-	dc.b $6E
-	dc.b $20
-	dc.b $61
-	dc.b $20
-	dc.b $66
-	dc.b $6C
-	dc.b $61
-	dc.b $73
-	dc.b $68
-	dc.b $2E
-	dc.b $83
-	dc.b   6
-	dc.b $85
-	dc.b   1
-	dc.b $83
-	dc.b   4
-	dc.b $82
-	dc.b $80
-unk_118D4:	dc.b $83
-	dc.b   4
-	dc.b $85
-	dc.b   0
-	dc.b $81
-	dc.b $56
-	dc.b $D7
-	dc.b  $C
-	dc.b $43
-	dc.b $27
-	dc.b $6D
-	dc.b $6F
-	dc.b $6E
-	dc.b $20
-	dc.b $73
-	dc.b $71
-	dc.b $75
-	dc.b $69
-	dc.b $72
-	dc.b $74
-	dc.b $2C
-	dc.b $6C
-	dc.b $65
-	dc.b $74
-	dc.b $27
-	dc.b $73
-	dc.b $20
-	dc.b $73
-	dc.b $65
-	dc.b $65
-	dc.b $77
-	dc.b $68
-	dc.b $61
-	dc.b $74
-	dc.b $20
-	dc.b $79
-	dc.b $6F
-	dc.b $75
-	dc.b $27
-	dc.b $72
-	dc.b $65
-	dc.b $20
-	dc.b $6D
-	dc.b $61
-	dc.b $64
-	dc.b $65
-	dc.b $20
-	dc.b $6F
-	dc.b $66
-	dc.b $2E
-	dc.b $83
-	dc.b   6
-	dc.b $85
-	dc.b   1
-	dc.b $83
-	dc.b   4
-	dc.b $82
-	dc.b $83
-	dc.b   6
-	dc.b $85
-	dc.b   0
-	dc.b $81
-	dc.b $59
-	dc.b $D7
-	dc.b  $C
-	dc.b $46
-	dc.b $6F
-	dc.b $72
-	dc.b $67
-	dc.b $65
-	dc.b $74
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $6F
-	dc.b $73
-	dc.b $65
-	dc.b $20
-	dc.b $72
-	dc.b $69
-	dc.b $76
-	dc.b $65
-	dc.b $74
-	dc.b $2D
-	dc.b $62
-	dc.b $72
-	dc.b $61
-	dc.b $69
-	dc.b $6E
-	dc.b $73
-	dc.b $79
-	dc.b $6F
-	dc.b $75
-	dc.b $27
-	dc.b $76
-	dc.b $65
-	dc.b $20
-	dc.b $73
-	dc.b $65
-	dc.b $65
-	dc.b $6E
-	dc.b $2E
-	dc.b $83
-	dc.b   4
-	dc.b $85
-	dc.b   1
-	dc.b $83
-	dc.b   6
-	dc.b $82
-	dc.b $83
-	dc.b   4
-	dc.b $85
-	dc.b   0
-	dc.b $81
-	dc.b $57
-	dc.b $D7
-	dc.b  $C
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $53
-	dc.b $70
-	dc.b $69
-	dc.b $6B
-	dc.b $65
-	dc.b $20
-	dc.b $61
-	dc.b $6E
-	dc.b $64
-	dc.b $20
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $67
-	dc.b $6F
-	dc.b $6E
-	dc.b $6E
-	dc.b $61
-	dc.b $73
-	dc.b $74
-	dc.b $69
-	dc.b $63
-	dc.b $6B
-	dc.b $20
-	dc.b $69
-	dc.b $74
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $79
-	dc.b $61
-	dc.b $21
-	dc.b $83
-	dc.b  $A
-	dc.b $82
-	dc.b $80
-	dc.b   0
-unk_11974:	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b $85
-	dc.b $85
-	dc.b $8A
-	dc.b $85
-	dc.b   0
-	dc.b $81
-	dc.b $55
-	dc.b $D7
-	dc.b  $C
-	dc.b $4D
-	dc.b $69
-	dc.b $6C
-	dc.b $6F
-	dc.b $72
-	dc.b $64
-	dc.b $20
-	dc.b $69
-	dc.b $73
-	dc.b $20
-	dc.b $74
-	dc.b $72
-	dc.b $6F
-	dc.b $75
-	dc.b $62
-	dc.b $6C
-	dc.b $65
-	dc.b $64
-	dc.b $86
-	dc.b $62
-	dc.b $79
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $79
-	dc.b $20
-	dc.b $73
-	dc.b $75
-	dc.b $63
-	dc.b $63
-	dc.b $65
-	dc.b $73
-	dc.b $73
-	dc.b $2C
-	dc.b $20
-	dc.b $53
-	dc.b $69
-	dc.b $72
-	dc.b $65
-	dc.b $2E
-	dc.b $83
-	dc.b  $C
-	dc.b $82
-	dc.b $83
-	dc.b   4
-	dc.b $81
-	dc.b $56
-	dc.b $D7
-	dc.b  $C
-	dc.b $42
-	dc.b $75
-	dc.b $74
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $6F
-	dc.b $75
-	dc.b $20
-	dc.b $61
-	dc.b $72
-	dc.b $74
-	dc.b $20
-	dc.b $64
-	dc.b $65
-	dc.b $73
-	dc.b $74
-	dc.b $69
-	dc.b $6E
-	dc.b $65
-	dc.b $64
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $70
-	dc.b $72
-	dc.b $6F
-	dc.b $63
-	dc.b $65
-	dc.b $65
-	dc.b $64
-	dc.b $20
-	dc.b $6E
-	dc.b $6F
-	dc.b $20
-	dc.b $66
-	dc.b $75
-	dc.b $72
-	dc.b $74
-	dc.b $68
-	dc.b $65
-	dc.b $72
-	dc.b $2E
-	dc.b $83
-	dc.b  $C
-	dc.b $82
-	dc.b $83
-	dc.b   4
-	dc.b $81
-	dc.b $54
-	dc.b $D7
-	dc.b  $C
-	dc.b $50
-	dc.b $72
-	dc.b $65
-	dc.b $70
-	dc.b $61
-	dc.b $72
-	dc.b $65
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $64
-	dc.b $75
-	dc.b $65
-	dc.b $6C
-	dc.b $20
-	dc.b $4C
-	dc.b $6F
-	dc.b $72
-	dc.b $64
-	dc.b $52
-	dc.b $6F
-	dc.b $62
-	dc.b $6F
-	dc.b $74
-	dc.b $6E
-	dc.b $69
-	dc.b $6B
-	dc.b $27
-	dc.b $73
-	dc.b $20
-	dc.b $63
-	dc.b $68
-	dc.b $61
-	dc.b $6D
-	dc.b $70
-	dc.b $69
-	dc.b $6F
-	dc.b $6E
-	dc.b $2E
-	dc.b $83
-	dc.b $10
-	dc.b $82
-	dc.b $80
-unk_11A12:	dc.b $83
-	dc.b   4
-	dc.b $85
-	dc.b   0
-	dc.b $81
-	dc.b $54
-	dc.b $D7
-	dc.b  $E
-	dc.b $4F
-	dc.b $6C
-	dc.b $27
-	dc.b $20
-	dc.b $46
-	dc.b $66
-	dc.b $75
-	dc.b $7A
-	dc.b $7A
-	dc.b $79
-	dc.b $2D
-	dc.b $46
-	dc.b $66
-	dc.b $61
-	dc.b $63
-	dc.b $65
-	dc.b $20
-	dc.b $67
-	dc.b $6F
-	dc.b $74
-	dc.b $74
-	dc.b $69
-	dc.b $65
-	dc.b $64
-	dc.b $20
-	dc.b $69
-	dc.b $6E
-	dc.b $20
-	dc.b $6B
-	dc.b $6E
-	dc.b $6F
-	dc.b $74
-	dc.b $73
-	dc.b $2C
-	dc.b $20
-	dc.b $68
-	dc.b $75
-	dc.b $68
-	dc.b $3F
-	dc.b $83
-	dc.b  $A
-	dc.b $82
-	dc.b $83
-	dc.b   4
-	dc.b $81
-	dc.b $5C
-	dc.b $D7
-	dc.b  $A
-	dc.b $49
-	dc.b $20
-	dc.b $67
-	dc.b $75
-	dc.b $65
-	dc.b $73
-	dc.b $73
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $61
-	dc.b $74
-	dc.b $27
-	dc.b $73
-	dc.b $20
-	dc.b $77
-	dc.b $68
-	dc.b $79
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $65
-	dc.b $20
-	dc.b $44
-	dc.b $6F
-	dc.b $63
-	dc.b $27
-	dc.b $73
-	dc.b $73
-	dc.b $65
-	dc.b $6E
-	dc.b $64
-	dc.b $69
-	dc.b $6E
-	dc.b $67
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $65
-	dc.b $20
-	dc.b $62
-	dc.b $6F
-	dc.b $79
-	dc.b $73
-	dc.b $20
-	dc.b $27
-	dc.b $72
-	dc.b $6F
-	dc.b $75
-	dc.b $6E
-	dc.b $64
-	dc.b $2E
-	dc.b $83
-	dc.b  $A
-	dc.b $82
-	dc.b $83
-	dc.b   4
-	dc.b $81
-	dc.b $2F
-	dc.b $D8
-	dc.b $16
-	dc.b $53
-	dc.b $6F
-	dc.b $20
-	dc.b $6C
-	dc.b $6F
-	dc.b $6E
-	dc.b $67
-	dc.b $20
-	dc.b $73
-	dc.b $75
-	dc.b $63
-	dc.b $6B
-	dc.b $65
-	dc.b $72
-	dc.b $21
-	dc.b $83
-	dc.b  $A
-	dc.b $82
-	dc.b $80
-unk_11A9A:	dc.b $83
-	dc.b   2
-	dc.b $85
-	dc.b   0
-	dc.b $81
-	dc.b $79
-	dc.b $D7
-	dc.b  $C
-	dc.b $85
-	dc.b   1
-	dc.b $59
-	dc.b $6F
-	dc.b $75
-	dc.b $27
-	dc.b $76
-	dc.b $65
-	dc.b $20
-	dc.b $62
-	dc.b $65
-	dc.b $65
-	dc.b $6E
-	dc.b $20
-	dc.b $73
-	dc.b $63
-	dc.b $72
-	dc.b $61
-	dc.b $74
-	dc.b $63
-	dc.b $68
-	dc.b $69
-	dc.b $6E
-	dc.b $67
-	dc.b $86
-	dc.b $61
-	dc.b $72
-	dc.b $6F
-	dc.b $75
-	dc.b $6E
-	dc.b $64
-	dc.b $20
-	dc.b $68
-	dc.b $65
-	dc.b $72
-	dc.b $65
-	dc.b $20
-	dc.b $66
-	dc.b $6F
-	dc.b $72
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $6F
-	dc.b $20
-	dc.b $6C
-	dc.b $6F
-	dc.b $6E
-	dc.b $67
-	dc.b $2C
-	dc.b $77
-	dc.b $6F
-	dc.b $72
-	dc.b $6D
-	dc.b $2D
-	dc.b $62
-	dc.b $61
-	dc.b $69
-	dc.b $74
-	dc.b $2E
-	dc.b $83
-	dc.b   3
-	dc.b $85
-	dc.b   2
-	dc.b $83
-	dc.b   7
-	dc.b $82
-	dc.b $83
-	dc.b   4
-	dc.b $81
-	dc.b $56
-	dc.b $D7
-	dc.b  $C
-	dc.b $85
-	dc.b   3
-	dc.b $54
-	dc.b $69
-	dc.b $6D
-	dc.b $65
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $63
-	dc.b $72
-	dc.b $6F
-	dc.b $73
-	dc.b $73
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $65
-	dc.b $20
-	dc.b $72
-	dc.b $6F
-	dc.b $61
-	dc.b $64
-	dc.b $61
-	dc.b $6E
-	dc.b $64
-	dc.b $20
-	dc.b $68
-	dc.b $65
-	dc.b $61
-	dc.b $64
-	dc.b $20
-	dc.b $68
-	dc.b $6F
-	dc.b $6D
-	dc.b $65
-	dc.b $2C
-	dc.b $20
-	dc.b $70
-	dc.b $61
-	dc.b $6C
-	dc.b $2E
-	dc.b $83
-	dc.b   3
-	dc.b $85
-	dc.b   4
-	dc.b $83
-	dc.b   7
-	dc.b $82
-	dc.b $83
-	dc.b   4
-	dc.b $81
-	dc.b $57
-	dc.b $D7
-	dc.b  $C
-	dc.b $85
-	dc.b   5
-	dc.b $49
-	dc.b $27
-	dc.b $6D
-	dc.b $20
-	dc.b $77
-	dc.b $69
-	dc.b $6E
-	dc.b $6E
-	dc.b $69
-	dc.b $6E
-	dc.b $67
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $69
-	dc.b $73
-	dc.b $20
-	dc.b $6F
-	dc.b $6E
-	dc.b $65
-	dc.b $20
-	dc.b $62
-	dc.b $79
-	dc.b $66
-	dc.b $61
-	dc.b $69
-	dc.b $72
-	dc.b $20
-	dc.b $6D
-	dc.b $65
-	dc.b $61
-	dc.b $6E
-	dc.b $73
-	dc.b $20
-	dc.b $6F
-	dc.b $72
-	dc.b $20
-	dc.b $66
-	dc.b $6F
-	dc.b $77
-	dc.b $6C
-	dc.b $2E
-	dc.b $83
-	dc.b   3
-	dc.b $85
-	dc.b   6
-	dc.b $83
-	dc.b   7
-	dc.b $82
-	dc.b $80
-	dc.b   0
-unk_11B58:	dc.b $83
-	dc.b   1
-	dc.b $85
-	dc.b $89
-	dc.b $83
-	dc.b   1
-	dc.b $85
-	dc.b $84
-	dc.b $83
-	dc.b $23
-	dc.b $81
-	dc.b $5C
-	dc.b $D5
-	dc.b $8E
-	dc.b $59
-	dc.b $6F
-	dc.b $75
-	dc.b $20
-	dc.b $64
-	dc.b $6F
-	dc.b $70
-	dc.b $65
-	dc.b $79
-	dc.b $20
-	dc.b $64
-	dc.b $75
-	dc.b $6E
-	dc.b $63
-	dc.b $65
-	dc.b $62
-	dc.b $6F
-	dc.b $74
-	dc.b $73
-	dc.b $20
-	dc.b $2D
-	dc.b $86
-	dc.b $43
-	dc.b $61
-	dc.b $6E
-	dc.b $27
-	dc.b $74
-	dc.b $20
-	dc.b $79
-	dc.b $6F
-	dc.b $75
-	dc.b $20
-	dc.b $64
-	dc.b $6F
-	dc.b $20
-	dc.b $61
-	dc.b $6E
-	dc.b $79
-	dc.b $74
-	dc.b $68
-	dc.b $69
-	dc.b $6E
-	dc.b $67
-	dc.b $20
-	dc.b $72
-	dc.b $69
-	dc.b $67
-	dc.b $68
-	dc.b $74
-	dc.b $3F
-	dc.b $83
-	dc.b  $A
-	dc.b $82
-	dc.b $83
-	dc.b   6
-	dc.b $81
-	dc.b $76
-	dc.b $D5
-	dc.b $10
-	dc.b $4E
-	dc.b $6F
-	dc.b $77
-	dc.b $20
-	dc.b $49
-	dc.b $27
-	dc.b $6C
-	dc.b $6C
-	dc.b $20
-	dc.b $68
-	dc.b $61
-	dc.b $76
-	dc.b $65
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $64
-	dc.b $6F
-	dc.b $20
-	dc.b $6D
-	dc.b $79
-	dc.b $6F
-	dc.b $77
-	dc.b $6E
-	dc.b $20
-	dc.b $64
-	dc.b $69
-	dc.b $72
-	dc.b $74
-	dc.b $79
-	dc.b $20
-	dc.b $77
-	dc.b $6F
-	dc.b $72
-	dc.b $6B
-	dc.b $20
-	dc.b $61
-	dc.b $6E
-	dc.b $64
-	dc.b $86
-	dc.b $62
-	dc.b $6C
-	dc.b $65
-	dc.b $6E
-	dc.b $64
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $6F
-	dc.b $73
-	dc.b $65
-	dc.b $20
-	dc.b $62
-	dc.b $65
-	dc.b $61
-	dc.b $6E
-	dc.b $73
-	dc.b $2E
-	dc.b $83
-	dc.b $10
-	dc.b $82
-	dc.b $83
-	dc.b   6
-	dc.b $80
-unk_11BE2:	dc.b $85
-	dc.b $83
-	dc.b $83
-	dc.b  $A
-	dc.b $81
-	dc.b $7B
-	dc.b $C3
-	dc.b  $C
-	dc.b $57
-	dc.b $69
-	dc.b $74
-	dc.b $6E
-	dc.b $65
-	dc.b $73
-	dc.b $73
-	dc.b $20
-	dc.b $6D
-	dc.b $79
-	dc.b $20
-	dc.b $65
-	dc.b $76
-	dc.b $69
-	dc.b $6C
-	dc.b $20
-	dc.b $64
-	dc.b $72
-	dc.b $65
-	dc.b $61
-	dc.b $6D
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $86
-	dc.b $72
-	dc.b $69
-	dc.b $64
-	dc.b $20
-	dc.b $4D
-	dc.b $6F
-	dc.b $62
-	dc.b $69
-	dc.b $75
-	dc.b $73
-	dc.b $20
-	dc.b $6F
-	dc.b $66
-	dc.b $20
-	dc.b $6D
-	dc.b $75
-	dc.b $73
-	dc.b $69
-	dc.b $63
-	dc.b $20
-	dc.b $61
-	dc.b $6E
-	dc.b $64
-	dc.b $20
-	dc.b $66
-	dc.b $75
-	dc.b $6E
-	dc.b $66
-	dc.b $6F
-	dc.b $72
-	dc.b $65
-	dc.b $76
-	dc.b $65
-	dc.b $72
-	dc.b $2E
-	dc.b $83
-	dc.b  $C
-	dc.b $82
-	dc.b $83
-	dc.b  $F
-	dc.b $81
-	dc.b $5A
-	dc.b $C3
-	dc.b $8E
-	dc.b $4D
-	dc.b $79
-	dc.b $20
-	dc.b $6C
-	dc.b $61
-	dc.b $74
-	dc.b $65
-	dc.b $73
-	dc.b $74
-	dc.b $20
-	dc.b $69
-	dc.b $6E
-	dc.b $76
-	dc.b $65
-	dc.b $6E
-	dc.b $74
-	dc.b $69
-	dc.b $6F
-	dc.b $6E
-	dc.b $2C
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $65
-	dc.b $20
-	dc.b $20
-	dc.b $6D
-	dc.b $65
-	dc.b $61
-	dc.b $6E
-	dc.b $20
-	dc.b $62
-	dc.b $65
-	dc.b $61
-	dc.b $6E
-	dc.b $2D
-	dc.b $73
-	dc.b $74
-	dc.b $65
-	dc.b $61
-	dc.b $6D
-	dc.b $69
-	dc.b $6E
-	dc.b $67
-	dc.b $20
-	dc.b $6D
-	dc.b $61
-	dc.b $63
-	dc.b $68
-	dc.b $69
-	dc.b $6E
-	dc.b $65
-	dc.b $83
-	dc.b  $C
-	dc.b $82
-	dc.b $83
-	dc.b  $F
-	dc.b $81
-	dc.b $78
-	dc.b $C3
-	dc.b $10
-	dc.b $77
-	dc.b $69
-	dc.b $6C
-	dc.b $6C
-	dc.b $20
-	dc.b $6E
-	dc.b $6F
-	dc.b $74
-	dc.b $20
-	dc.b $6F
-	dc.b $6E
-	dc.b $6C
-	dc.b $79
-	dc.b $20
-	dc.b $64
-	dc.b $69
-	dc.b $73
-	dc.b $70
-	dc.b $6F
-	dc.b $73
-	dc.b $65
-	dc.b $20
-	dc.b $6F
-	dc.b $66
-	dc.b $74
-	dc.b $68
-	dc.b $6F
-	dc.b $73
-	dc.b $65
-	dc.b $20
-	dc.b $66
-	dc.b $75
-	dc.b $6E
-	dc.b $2D
-	dc.b $6C
-	dc.b $6F
-	dc.b $76
-	dc.b $69
-	dc.b $6E
-	dc.b $67
-	dc.b $20
-	dc.b $6A
-	dc.b $6F
-	dc.b $6C
-	dc.b $6C
-	dc.b $79
-	dc.b $20
-	dc.b $20
-	dc.b $62
-	dc.b $65
-	dc.b $61
-	dc.b $6E
-	dc.b $73
-	dc.b $20
-	dc.b $6F
-	dc.b $66
-	dc.b $20
-	dc.b $42
-	dc.b $65
-	dc.b $61
-	dc.b $6E
-	dc.b $76
-	dc.b $69
-	dc.b $6C
-	dc.b $6C
-	dc.b $65
-	dc.b $83
-	dc.b  $C
-	dc.b $82
-	dc.b $83
-	dc.b  $F
-	dc.b $81
-	dc.b $78
-	dc.b $C3
-	dc.b $10
-	dc.b $62
-	dc.b $75
-	dc.b $74
-	dc.b $20
-	dc.b $74
-	dc.b $75
-	dc.b $72
-	dc.b $6E
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $65
-	dc.b $6D
-	dc.b $20
-	dc.b $69
-	dc.b $6E
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $72
-	dc.b $6F
-	dc.b $62
-	dc.b $6F
-	dc.b $74
-	dc.b $73
-	dc.b $6C
-	dc.b $61
-	dc.b $76
-	dc.b $65
-	dc.b $73
-	dc.b $20
-	dc.b $74
-	dc.b $6F
-	dc.b $20
-	dc.b $73
-	dc.b $65
-	dc.b $72
-	dc.b $76
-	dc.b $65
-	dc.b $20
-	dc.b $6D
-	dc.b $79
-	dc.b $20
-	dc.b $65
-	dc.b $76
-	dc.b $69
-	dc.b $6C
-	dc.b $20
-	dc.b $70
-	dc.b $75
-	dc.b $72
-	dc.b $70
-	dc.b $6F
-	dc.b $73
-	dc.b $65
-	dc.b $73
-	dc.b $2E
-	dc.b $83
-	dc.b  $C
-	dc.b $82
-	dc.b $83
-	dc.b  $F
-	dc.b $81
-	dc.b $55
-	dc.b $C3
-	dc.b $92
-	dc.b $52
-	dc.b $6F
-	dc.b $62
-	dc.b $6F
-	dc.b $74
-	dc.b $73
-	dc.b $2E
-	dc.b $86
-	dc.b $42
-	dc.b $72
-	dc.b $69
-	dc.b $6E
-	dc.b $67
-	dc.b $20
-	dc.b $6D
-	dc.b $65
-	dc.b $20
-	dc.b $74
-	dc.b $68
-	dc.b $6F
-	dc.b $73
-	dc.b $65
-	dc.b $20
-	dc.b $62
-	dc.b $65
-	dc.b $61
-	dc.b $6E
-	dc.b $73
-	dc.b $2E
-	dc.b $83
-	dc.b  $C
-	dc.b $82
-	dc.b $83
-	dc.b   6
-	dc.b $85
-	dc.b $86
-	dc.b $83
-	dc.b   6
-	dc.b $85
-	dc.b $87
-	dc.b $83
-	dc.b   3
-	dc.b $85
-	dc.b $88
-	dc.b $8A
-	dc.b $6B
-	dc.b $83
-	dc.b $14
-	dc.b $80
+TextBox_ArrowLoc:
+	dc.b   0	; Skeleton Tea - Puyo Leftover
+	dc.b $28	; Frankly
+	dc.b $28	; Dynamight
+	dc.b $38	; Arms
+	dc.b   0	; Nasu Grave - Puyo Leftover
+	dc.b $28	; Grounder
+	dc.b $10	; Davy Sprocket
+	dc.b   0	; Coconuts
+	dc.b $28	; Spike
+	dc.b $28	; Sir Ffuzzy-Logik
+	dc.b $28	; Dragon Breath
+	dc.b   0	; Scratch
+	dc.b $58	; Robotnik
+	dc.b   0	; Mummy - Puyo Leftover
+	dc.b $30	; Humpty
+	dc.b   8	; Skweel
+	dc.b   0	; Opening Cutscene
+	dc.b   0	; Ending???
+
+off_113FE:
+	dc.l Introtext_Coconuts		; Skeleton Tea - Puyo Leftover
+	dc.l Introtext_Frankly
+	dc.l Introtext_Dynamight
+	dc.l Introtext_Arms
+	dc.l Introtext_Coconuts		; Nasu Grave - Puyo Leftover
+	dc.l Introtext_Grounder
+	dc.l Introtext_Davy
+	dc.l Introtext_Coconuts
+	dc.l Introtext_Spike
+	dc.l Introtext_SirFfuzzy
+	dc.l Introtext_DragonBreath
+	dc.l Introtext_Scratch
+	dc.l Introtext_Robotnik
+	dc.l Introtext_Coconuts		; Mummy - Puyo Leftover
+	dc.l Introtext_Humpty
+	dc.l Introtext_Skweel
+	dc.l Introtext_Opening
+
+	include "resource/text/Dialog/arms intro.asm"
+	even
+
+	include "resource/text/Dialog/frankly intro.asm"
+	even
+
+	include "resource/text/Dialog/humpty intro.asm"
+	even
+
+	include "resource/text/Dialog/coconuts intro.asm"
+	even
+
+	include "resource/text/Dialog/davy sprocket intro.asm"
+	even
+
+	include "resource/text/Dialog/skweel intro.asm"
+	even
+
+	include "resource/text/Dialog/dynamight intro.asm"
+	even
+
+	include "resource/text/Dialog/grounder intro.asm"
+	even
+
+	include "resource/text/Dialog/spike intro.asm"
+	even
+
+	include "resource/text/Dialog/sir ffuzzy logik intro.asm"
+	even
+
+	include "resource/text/Dialog/dragon breath intro.asm"
+	even
+
+	include "resource/text/Dialog/scratch intro.asm"
+	even
+
+	include "resource/text/Dialog/robotnik intro.asm"
+	even
+
+	include "resource/text/Dialog/game intro.asm"
+	even
+
+; TODO: Convert Intro Text to Macro Format
 
 ; --------------------------------------------------------------
 ; Initialize sprite drawing
@@ -26007,14 +22747,14 @@ InitSpriteDraw:
 
 DrawActors:
 	tst.w	sprite_count
-	beq.w	.DoDraw
+	beq.s	.DoDraw
 	rts
 
 .DoDraw:
 	lea	actors,a0
 	moveq	#aSize,d2
 	tst.w	draw_order
-	beq.w	.StartDraw
+	beq.s	.StartDraw
 	lea	actors_end-aSize,a0
 	moveq	#-aSize,d2
 
@@ -26039,14 +22779,14 @@ DrawActors:
 .DrawLoop:
 	move.b	aField0(a0),d5
 	and.b	d4,d5
-	beq.w	.NextActor
+	beq.s	.NextActor
 	
 	btst	#7,aDrawFlags(a0)
-	beq.w	.NextActor
+	beq.s	.NextActor
 
-	movem.l	d2,-(sp)
+	move.l	d2,-(sp)
 	bsr.w	DrawActorSprite
-	movem.l	(sp)+,d2
+	move.l	(sp)+,d2
 
 .NextActor:
 	adda.l	d2,a0
@@ -26056,7 +22796,6 @@ DrawActors:
 	lsl.w	#2,d1
 	move.w	d1,sprite_count
 	not.w	draw_order
-
 	rts
 
 ; --------------------------------------------------------------
@@ -26071,7 +22810,7 @@ SetSpriteLinks:
 	lea	sprite_links,a1
 	
 	move.w	#5-1,d0
-	move.b	#0,d2
+	move.b	#0,d2			; last linked sprite should be 0
 
 .LayerLoop:
 	move.w	d1,d3
@@ -26079,8 +22818,9 @@ SetSpriteLinks:
 
 .CheckLayer:
 	cmp.b	(a0,d3.w),d0
-	bne.w	.NextLayer
-	bsr.w	SetSpriteLink
+	bne.s	.NextLayer
+	move.b	d2,(a1,d3.w)		; write sprite link
+	move.b	d3,d2			; copy next sprite index
 
 .NextLayer:
 	dbf	d3,.CheckLayer
@@ -26092,23 +22832,9 @@ SetSpriteLinks:
 
 .SetLinks:
 	move.b	(a1)+,3(a0)
-	adda.l	#8,a0
+	addq.l	#8,a0
 	dbf	d0,.SetLinks
 
-	rts
-
-; --------------------------------------------------------------
-; Set a sprite link
-; --------------------------------------------------------------
-; PARAMETERS:
-;	d2.b	- Sprite link value
-;	d3.w	- Sprite link buffer index
-;	a1.l	- Pointer to sprite link buffer
-; --------------------------------------------------------------
-
-SetSpriteLink:
-	move.b	d2,(a1,d3.w)
-	move.b	d3,d2
 	rts
 
 ; --------------------------------------------------------------
@@ -26123,45 +22849,24 @@ SetSpriteLink:
 ; --------------------------------------------------------------
 
 DrawActorSprite:
+	cmpi.w	#80,d1
+	bhs.s	.NoDraw
 	clr.w	d2
 	move.b	aMappings(a0),d2
-	lsl.w	#2,d2
+	add.w	d2,d2
+	add.w	d2,d2
 	movea.l	(a2,d2.w),a5
-	
+
 	clr.w	d2
 	move.b	aFrame(a0),d2
-	lsl.w	#2,d2
+	add.w	d2,d2
+	add.w	d2,d2
 	movea.l	(a5,d2.w),a3
 	move.w	(a3)+,d2
 	subq.w	#1,d2
 
+; DrawActorSpritePiece:
 .DrawPieces:
-	movem.l	a3,-(sp)
-	bsr.w	DrawActorSpritePiece
-	movem.l	(sp)+,a3
-
-	adda.l	#8,a3
-	dbf	d2,.DrawPieces
-
-	rts
-
-; --------------------------------------------------------------
-; Draw a sprite piece for an actor
-; --------------------------------------------------------------
-; PARAMETERS:
-;	d1.w	- Current sprite count
-;	a0.l	- Pointer to actor slot
-;	a1.l	- Pointer to sprite buffer
-;	a3.l	- Pointer to sprite mappings data
-;	a4.l	- Pointer to sprite layer buffer
-; --------------------------------------------------------------
-
-DrawActorSpritePiece:
-	cmpi.w	#$50,d1
-	bcs.w	.DoDraw
-	rts
-
-.DoDraw:
 	addq.w	#1,d1
 
 	move.w	(a3)+,d3
@@ -26170,23 +22875,25 @@ DrawActorSpritePiece:
 	move.w	d3,(a1)+
 
 	move.b	(a3)+,(a1)+
-	adda.l	#1,a1
-	move.b	(a3)+,(a4)+
+	adda.l	#1,a1		; skip link (handled in SetSpriteLinks)
+	move.b	(a3)+,(a4)+	; store sprite priority in buffer
 	move.w	(a3)+,(a1)+
 
 	move.w	(a3)+,d3
 	add.w	aX(a0),d3
-	bne.w	.SetX
+	bne.s	.SetX
 	addq.w	#1,d3
 
 .SetX:
 	move.w	d3,(a1)+
 
+	cmpi.w	#80,d1
+	dbhs	d2,.DrawPieces	; if no more sprites can be rendered, end loop
+;	bhs.s	.NoDraw
+.NoDraw:
 	rts
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_11E90:
 	movem.l	d3-d4/a2,-(sp)
@@ -26194,16 +22901,16 @@ sub_11E90:
 	lsl.b	#1,d3
 	lea	(byte_FF1D4E).l,a2
 	tst.b	$2A(a0)
-	beq.w	loc_11EAC
+	beq.s	loc_11EAC
 	lea	(byte_FF1D58).l,a2
 
 loc_11EAC:
 	move.b	8(a2),d4
 	cmp.b	d4,d3
-	bcs.w	loc_11EC8
+	bcs.s	loc_11EC8
 	move.b	9(a2),d4
 	cmp.b	d3,d4
-	bcs.w	loc_11EC8
+	bcs.s	loc_11EC8
 	movem.l	(sp)+,d3-d4/a2
 	bra.w	sub_11ECE
 ; ---------------------------------------------------------------------------
@@ -26213,85 +22920,81 @@ loc_11EC8:
 	rts
 ; End of function sub_11E90
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_11ECE:
-	movem.l	a1,-(sp)
+	move.l	a1,-(sp)
 	lea	(byte_FF1D4E).l,a1
 	tst.b	$2A(a0)
-	beq.w	loc_11EE6
+	beq.s	loc_11EE6
 	lea	(byte_FF1D58).l,a1
 
 loc_11EE6:
 	move.b	#0,1(a1)
-	movem.l	(sp)+,a1
+	move.l	(sp)+,a1
 	rts
 ; End of function sub_11ECE
 
+; =============== S U B	R O U T	I N E =======================================
+
+; This code handles the loading of the lesson mode text in Practise Stage 1
+; As the art assets for this have been removed in Mean Bean, said text loads
+; garbage art tiles, as such, functionality has been removed for convenience
+
+;sub_11EF2:
+;	move.b	(level_mode).l,d2
+;	or.b	(level).l,d2
+;	or.b	$2A(a0),d2
+;	bne.w	locret_11F48
+;	lea	(sub_11F4A).l,a1
+;	jsr	(FindActorSlotQuick).l
+;	bcs.w	locret_11F48
+;	move.b	0(a0),0(a1)
+;	move.b	#$80,6(a1)
+;	move.b	#$2A,8(a1)
+;	move.b	#3,9(a1)
+;	jsr	(GetPuyoFieldPos).l
+;	addi.w	#$30,d0
+;	move.w	d0,$A(a1)
+;	move.w	#$D0,$E(a1)
+;	move.w	#$D0,$26(a1)
+;
+;locret_11F48:
+;	rts
+;; End of function sub_11EF2
 
 ; =============== S U B	R O U T	I N E =======================================
 
+;sub_11F4A:
+;	subq.w	#1,$26(a0)
+;	beq.w	loc_11F74
+;	addq.b	#1,$28(a0)
+;	andi.b	#$1F,$28(a0)
+;	move.b	#$80,6(a0)
+;	cmpi.b	#$18,$28(a0)
+;	bcs.w	locret_11F72
+;	move.b	#0,6(a0)
 
-sub_11EF2:
-	move.b	(level_mode).l,d2
-	or.b	(level).l,d2
-	or.b	$2A(a0),d2
-	bne.w	locret_11F48
-	lea	(sub_11F4A).l,a1
-	jsr	(FindActorSlotQuick).l
-	bcs.w	locret_11F48
-	move.b	0(a0),0(a1)
-	move.b	#$80,6(a1)
-	move.b	#$2A,8(a1)
-	move.b	#3,9(a1)
-	jsr	(GetPuyoFieldPos).l
-	addi.w	#$30,d0
-	move.w	d0,$A(a1)
-	move.w	#$D0,$E(a1)
-	move.w	#$D0,$26(a1)
-
-locret_11F48:
-	rts
-; End of function sub_11EF2
-
-
-; =============== S U B	R O U T	I N E =======================================
-
-
-sub_11F4A:
-	subq.w	#1,$26(a0)
-	beq.w	loc_11F74
-	addq.b	#1,$28(a0)
-	andi.b	#$1F,$28(a0)
-	move.b	#$80,6(a0)
-	cmpi.b	#$18,$28(a0)
-	bcs.w	locret_11F72
-	move.b	#0,6(a0)
-
-locret_11F72:
-	rts
+;locret_11F72:
+;	rts
 ; ---------------------------------------------------------------------------
 
-loc_11F74:
-	move.b	#$85,6(a0)
-	move.w	#$FFFF,$20(a0)
-	move.w	#$3000,$1C(a0)
-	move.w	#1,$16(a0)
-	jsr	(ActorBookmark).l
-	jsr	(sub_3810).l
-	bcs.w	loc_11F9E
-	rts
+;loc_11F74:
+;	move.b	#$85,6(a0)
+;	move.w	#$FFFF,$20(a0)
+;	move.w	#$3000,$1C(a0)
+;	move.w	#1,$16(a0)
+;	jsr	(ActorBookmark).l
+;	jsr	(sub_3810).l
+;	bcs.w	loc_11F9E
+;	rts
 ; ---------------------------------------------------------------------------
 
-loc_11F9E:
-	jmp	(ActorDeleteSelf).l
+;loc_11F9E:
+;	jmp	(ActorDeleteSelf).l
 ; End of function sub_11F4A
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_11FA4:
 	move.b	(level_mode).l,d2
@@ -26308,7 +23011,7 @@ sub_11FA4:
 	move.b	$2A(a0),$2A(a1)
 	move.w	#$15,$28(a1)
 	cmp.b	d0,d1
-	bne.w	loc_11FF2
+	bne.s	loc_11FF2
 	move.w	#$A,$28(a1)
 
 loc_11FF2:
@@ -26319,14 +23022,12 @@ locret_11FFC:
 	rts
 ; End of function sub_11FA4
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_11FFE:
 	lea	(byte_FF19B6).l,a1
 	tst.b	$2A(a0)
-	beq.w	loc_12012
+	beq.s	loc_12012
 	lea	(byte_FF1B60).l,a1
 
 loc_12012:
@@ -26339,7 +23040,7 @@ loc_12020:
 
 loc_12022:
 	tst.b	(a2,d2.w)
-	beq.w	loc_12030
+	beq.s	loc_12030
 	subi.w	#PUYO_FIELD_COLS*2,d2
 	bcc.s	loc_12022
 
@@ -26354,13 +23055,11 @@ loc_12030:
 	rts
 ; End of function sub_11FFE
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12048:
 	bsr.w	sub_120E8
-	bcs.w	loc_120D6
+	bcs.s	loc_120D6
 	bsr.w	sub_1213E
 	jsr	(sub_5960).l
 	bsr.w	sub_1216C
@@ -26375,7 +23074,7 @@ loc_12070:
 	tst.b	(a3,d2.w)
 	bmi.w	loc_1208E
 	tst.b	(a2,d2.w)
-	beq.w	loc_1208E
+	beq.s	loc_1208E
 	addq.w	#1,d1
 	move.w	d1,d2
 	lsl.w	#1,d2
@@ -26384,12 +23083,12 @@ loc_12070:
 loc_1208E:
 	dbf	d0,loc_12070
 	move.w	d1,(a1)
-	beq.w	loc_1209C
+	beq.s	loc_1209C
 	bsr.w	sub_12218
 
 loc_1209C:
 	subq.w	#1,$28(a0)
-	bcs.w	loc_120A6
+	bcs.s	loc_120A6
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -26400,12 +23099,12 @@ loc_120A6:
 	addi.w	#$C,$28(a0)
 	move.b	$28(a0),d0
 	cmp.b	$2C(a0),d0
-	bcs.w	loc_120CC
+	bcs.s	loc_120CC
 	clr.b	$28(a0)
 
 loc_120CC:
 	bsr.w	sub_120E8
-	bcs.w	loc_120D6
+	bcs.s	loc_120D6
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -26415,32 +23114,30 @@ loc_120D6:
 	jmp	(ActorDeleteSelf).l
 ; End of function sub_12048
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_120E8:
 	movea.l	$2E(a0),a1
 	move.b	7(a1),d0
 	andi.b	#3,d0
 	cmpi.b	#3,d0
-	bne.w	loc_12138
+	bne.s	loc_12138
 	tst.b	(level_mode).l
-	bne.w	loc_12116
+	bne.s	loc_12116
 	tst.w	(puyos_popping).l
-	bne.w	loc_12138
+	bne.s	loc_12138
 	andi	#$FFFE,sr
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_12116:
 	tst.b	$2B(a0)
-	bne.w	loc_12138
+	bne.s	loc_12138
 	clr.w	d0
 	move.b	$2A(a0),d0
 	lea	(puyos_popping).l,a1
 	tst.b	(a1,d0.w)
-	bne.w	loc_12138
+	bne.s	loc_12138
 	andi	#$FFFE,sr
 	rts
 ; ---------------------------------------------------------------------------
@@ -26450,9 +23147,7 @@ loc_12138:
 	rts
 ; End of function sub_120E8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1213E:
 	bsr.w	sub_1218A
@@ -26475,9 +23170,7 @@ locret_1216A:
 	rts
 ; End of function sub_1213E
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1216C:
 	bsr.w	sub_1218A
@@ -26494,15 +23187,13 @@ locret_12188:
 	rts
 ; End of function sub_1216C
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1218A:
 	jsr	(GetPuyoField).l
 	lea	(byte_FF19B6).l,a1
 	tst.b	$2A(a0)
-	beq.w	loc_121A4
+	beq.s	loc_121A4
 	lea	(byte_FF1B60).l,a1
 
 loc_121A4:
@@ -26519,7 +23210,9 @@ loc_121A4:
 
 ; ---------------------------------------------------------------------------
 word_121C0:	dc.w 0
-word_121C2:	dc.w 1
+
+word_121C2:
+	dc.w 1
 	dc.w 2
 	dc.w 3
 	dc.w 4
@@ -26565,17 +23258,16 @@ word_121C2:	dc.w 1
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_12218:
 	bsr.w	sub_122A0
-	bcc.w	loc_12222
+	bcc.s	loc_12222
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_12222:
 	lea	(byte_FF19CE).l,a2
 	tst.b	$2A(a0)
-	beq.w	loc_12236
+	beq.s	loc_12236
 	lea	(byte_FF1B78).l,a2
 
 loc_12236:
@@ -26588,13 +23280,13 @@ loc_12236:
 loc_12244:
 	lea	(sub_12300).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcs.w	loc_1228A
+	bcs.s	loc_1228A
 	move.b	0(a0),0(a1)
 	move.l	a0,$2E(a1)
 	move.b	#$2A,8(a1)
 	move.l	#unk_12294,$32(a1)
 	move.b	$2C(a0),$26(a1)
-	clr.l	d3
+	moveq	#0,d3
 	move.w	(a2)+,d3
 	divu.w	#6,d3
 	lsl.l	#4,d3
@@ -26611,7 +23303,10 @@ loc_1228A:
 ; End of function sub_12218
 
 ; ---------------------------------------------------------------------------
-unk_12294:	dc.b   1
+; TODO: Document Animation Code
+
+unk_12294:
+	dc.b   1
 	dc.b   0
 	dc.b   1
 	dc.b   1
@@ -26623,7 +23318,6 @@ unk_12294:	dc.b   1
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_122A0:
 	movea.l	a1,a2
 	adda.l	#$92,a2
@@ -26631,20 +23325,20 @@ sub_122A0:
 
 loc_122AA:
 	move.w	(a2,d0.w),d1
-	beq.w	loc_122DC
-	movem.l	a1,-(sp)
+	beq.s	loc_122DC
+	move.l	a1,-(sp)
 	move.b	#0,d2
 
 loc_122BA:
 	move.w	(a1)+,d3
 	cmp.w	(a2,d0.w),d3
-	beq.w	loc_122C8
+	beq.s	loc_122C8
 	move.b	#$FF,d2
 
 loc_122C8:
 	addq.w	#2,d0
 	dbf	d1,loc_122BA
-	movem.l	(sp)+,a1
+	move.l	(sp)+,a1
 	tst.b	d2
 	bne.s	loc_122AA
 	ori	#1,sr
@@ -26656,7 +23350,7 @@ loc_122DC:
 	addq.w	#1,d1
 	lsl.w	#1,d1
 	add.w	d0,d1
-	bcc.w	loc_122EA
+	bcc.s	loc_122EA
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -26672,14 +23366,12 @@ loc_122EC:
 	rts
 ; End of function sub_122A0
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12300:
 	movea.l	$2E(a0),a1
 	tst.b	7(a1)
-	beq.w	loc_12334
+	beq.s	loc_12334
 	jsr	(ActorAnimate).l
 	move.b	#0,6(a0)
 	tst.b	$2D(a1)
@@ -26697,9 +23389,7 @@ loc_12334:
 	jmp	(ActorDeleteSelf).l
 ; End of function sub_12300
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1233A:
 	lea	(byte_FF1D4E).l,a2
@@ -26711,7 +23401,7 @@ loc_12346:
 	dbf	d0,loc_12346
 	move.b	(level_mode).l,d0
 	andi.b	#3,d0
-	beq.w	loc_1235C
+	beq.s	loc_1235C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -26722,13 +23412,11 @@ loc_1235C:
 	jmp	(FindActorSlot).l
 ; End of function sub_1233A
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12374:
 	tst.w	(puyos_popping).l
-	bne.w	loc_1239C
+	bne.s	loc_1239C
 	addq.w	#1,$26(a0)
 	andi.w	#$7FFF,$26(a0)
 	addq.w	#1,$28(a0)
@@ -26744,17 +23432,15 @@ loc_1239C:
 	jmp	(ActorDeleteSelf).l
 ; End of function sub_12374
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_123AE:
 	move.b	#1,(byte_FF1121).l
 	tst.w	$2A(a0)
-	beq.w	loc_123F0
+	beq.s	loc_123F0
 	subq.w	#1,$2A(a0)
 	bne.w	locret_1244C
-	clr.l	d0
+	moveq	#0,d0
 	move.b	(opponent).l,d0
 	lea	(OpponentPalettes).l,a1
 	move.b	(a1,d0.w),d0
@@ -26770,7 +23456,7 @@ loc_123F0:
 	move.w	(puyo_field_p2+pCount).l,d0
 	lsr.w	#3,d0
 	cmpi.w	#9,d0
-	bcs.w	loc_12404
+	bcs.s	loc_12404
 	move.w	#8,d0
 
 loc_12404:
@@ -26797,7 +23483,8 @@ locret_1244C:
 ; End of function sub_123AE
 
 ; ---------------------------------------------------------------------------
-unk_1244E:	dc.b $FF
+unk_1244E:
+	dc.b $FF
 	dc.b $FF
 	dc.b $FF
 	dc.b $FF
@@ -26818,12 +23505,11 @@ unk_1244E:	dc.b $FF
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_12460:
 	move.w	(puyo_field_p2+pCount).l,d0
 	lsr.w	#3,d0
 	cmpi.w	#9,d0
-	bcs.w	loc_12474
+	bcs.s	loc_12474
 	move.w	#8,d0
 
 loc_12474:
@@ -26865,7 +23551,8 @@ locret_124FC:
 ; End of function sub_12460
 
 ; ---------------------------------------------------------------------------
-unk_124FE:	dc.b $FF
+unk_124FE:
+	dc.b $FF
 	dc.b $FF
 	dc.b $FF
 	dc.b $FF
@@ -26883,13 +23570,19 @@ unk_124FE:	dc.b $FF
 	dc.b   2
 	dc.b   0
 	dc.b   1
-unk_12510:	dc.b  $C
+
+; TODO: Document animation code
+
+unk_12510:
+	dc.b  $C
 	dc.b  $A
 	dc.b   6
 	dc.b   6
 	dc.b $FE
 	dc.b   0
-unk_12516:	dc.b   3
+
+unk_12516:
+	dc.b   3
 	dc.b   6
 	dc.b   3
 	dc.b  $A
@@ -26903,7 +23596,7 @@ loc_1251C:
 	jsr	(ActorBookmark).l
 	jsr	(sub_3810).l
 	jsr	(ActorAnimate).l
-	bcs.w	loc_12540
+	bcs.s	loc_12540
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -26911,7 +23604,7 @@ loc_12540:
 	move.l	#unk_12516,$32(a0)
 	jsr	(ActorBookmark).l
 	jsr	(ActorAnimate).l
-	bcs.w	loc_1255A
+	bcs.s	loc_1255A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -26922,41 +23615,40 @@ loc_1255A:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_12562:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	move.w	#5,d0
 	tst.b	$2A(a0)
-	beq.w	loc_12578
+	beq.s	loc_12578
 	move.b	(opponent).l,d0
 
 loc_12578:
 	lsl.w	#2,d0
-	movea.l	off_12584(pc,d0.w),a2
-	movem.l	(sp)+,d0
+	movea.l	AIData_Pointers(pc,d0.w),a2
+	move.l	(sp)+,d0
 	rts
 ; End of function sub_12562
 
 ; ---------------------------------------------------------------------------
-off_12584: ; AI?
-	dc.l unk_125C4
-	dc.l unk_125E4
-	dc.l unk_1260C	
-	dc.l unk_125DC ; Arms
-	dc.l unk_125CC
-	dc.l unk_12614
-	dc.l unk_125FC
-	dc.l byte_125F4
-	dc.l byte_1261C
-	dc.l byte_12624
-	dc.l byte_1262C
-	dc.l byte_12634 ; Scratch
-	dc.l byte_1263C ; Dr. Robotnik
-	dc.l unk_125D4
-	dc.l unk_125EC
-	dc.l byte_12604
-		
-unk_125C4:	
+AIData_Pointers: ; AI?
+	dc.l AIData_SkeletonT		; Puyo Leftover
+	dc.l AIData_Frankly
+	dc.l AIData_Dynamight
+	dc.l AIData_Arms
+	dc.l AIData_NasuGrave		; Puyo Leftover
+	dc.l AIData_Grounder
+	dc.l AIData_Davy
+	dc.l AIData_Coconuts
+	dc.l AIData_Spike
+	dc.l AIData_SirFfuzzy
+	dc.l AIData_DragonBreath
+	dc.l AIData_Scratch
+	dc.l AIData_Robotnik
+	dc.l AIData_Mummy		; Puyo Leftover
+	dc.l AIData_Humpty
+	dc.l AIData_Skweel
+
+AIData_SkeletonT:
 	dc.b   0
 	dc.b $C0
 	dc.b   3
@@ -26965,8 +23657,8 @@ unk_125C4:
 	dc.b   0
 	dc.b $FF
 	dc.b   0
-	
-unk_125CC:	
+
+AIData_NasuGrave:
 	dc.b   0
 	dc.b $40
 	dc.b $FF
@@ -26975,8 +23667,8 @@ unk_125CC:
 	dc.b   0
 	dc.b $FF
 	dc.b $83
-	
-unk_125D4:	
+
+AIData_Mummy:
 	dc.b   0
 	dc.b $10
 	dc.b $FF
@@ -26985,18 +23677,18 @@ unk_125D4:
 	dc.b   0
 	dc.b $FF
 	dc.b $83
-	
-unk_125DC: ; Arms AI
+
+AIData_Arms:
 	dc.b   0
-	dc.b $80 ; 
+	dc.b $80
 	dc.b $FF
 	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b $FF
 	dc.b $82 ; Rotate Beans
-	
-unk_125E4:
+
+AIData_Frankly:
 	dc.b   0
 	dc.b $60
 	dc.b $FF
@@ -27005,8 +23697,8 @@ unk_125E4:
 	dc.b   0
 	dc.b $FF
 	dc.b $83 ; Rotate Beans
-	
-unk_125EC:	
+
+AIData_Humpty:
 	dc.b   0
 	dc.b $20
 	dc.b   8
@@ -27015,8 +23707,8 @@ unk_125EC:
 	dc.b   0
 	dc.b $FF
 	dc.b $83
-	
-byte_125F4:	
+
+AIData_Coconuts:
 	dc.b   0
 	dc.b   8
 	dc.b   8
@@ -27025,8 +23717,8 @@ byte_125F4:
 	dc.b   0
 	dc.b $FF
 	dc.b $83
-	
-unk_125FC:	
+
+AIData_Davy:
 	dc.b $40
 	dc.b   8
 	dc.b $FF
@@ -27035,8 +23727,8 @@ unk_125FC:
 	dc.b   0
 	dc.b  $C
 	dc.b $83
-	
-byte_12604:	
+
+AIData_Skweel:
 	dc.b   0
 	dc.b   0
 	dc.b $FF
@@ -27045,8 +23737,8 @@ byte_12604:
 	dc.b   0
 	dc.b $FF
 	dc.b $83
-	
-unk_1260C:	
+
+AIData_Dynamight:
 	dc.b $20
 	dc.b   0
 	dc.b $FF
@@ -27055,8 +23747,8 @@ unk_1260C:
 	dc.b $6E
 	dc.b $FF
 	dc.b $83
-	
-unk_12614:	
+
+AIData_Grounder:
 	dc.b $10
 	dc.b   0
 	dc.b $FF
@@ -27065,9 +23757,9 @@ unk_12614:
 	dc.b $2C
 	dc.b $FF
 	dc.b $83
-	
-byte_1261C:
-	dc.b 0
+
+AIData_Spike:
+	dc.b   0
 	dc.b   0
 	dc.b $FF
 	dc.b   0
@@ -27075,8 +23767,8 @@ byte_1261C:
 	dc.b   0
 	dc.b $FF
 	dc.b $83
-	
-byte_12624:
+
+AIData_SirFfuzzy:
 	dc.b   0
 	dc.b   0
 	dc.b $FF
@@ -27085,19 +23777,19 @@ byte_12624:
 	dc.b $2A
 	dc.b $FF
 	dc.b $83
-	
-byte_1262C:	
-	dc.b 0
-	dc.b 0
+
+AIData_DragonBreath:
+	dc.b   0
+	dc.b   0
 	dc.b $FF
 	dc.b $30
 	dc.b $24
 	dc.b $66
 	dc.b $FF
 	dc.b $83
-	
-byte_12634:	
-	dc.b 0
+
+AIData_Scratch:
+	dc.b   0
 	dc.b   0
 	dc.b $FF
 	dc.b $30
@@ -27105,37 +23797,34 @@ byte_12634:
 	dc.b   0
 	dc.b   8
 	dc.b $83
-	
-byte_1263C:
-	dc.b 0
-	dc.b 0
+
+AIData_Robotnik:
+	dc.b   0
+	dc.b   0
 	dc.b $FF
 	dc.b $24
 	dc.b $24
-	dc.b 0
-	dc.b 8
+	dc.b   0
+	dc.b   8
 	dc.b $83
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 nullsub_4:
 	rts
 ; End of function nullsub_4
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12646:
 	move.b	(level_mode).l,d0
 	btst	#2,d0
-	bne.w	loc_1266E
+	bne.s	loc_1266E
 	lsl.b	#1,d0
 	or.b	$2A(a0),d0
 	eori.b	#1,d0
 	and.b	(control_player_1).l,d0
-	beq.w	loc_1266E
+	beq.s	loc_1266E
 	andi	#$FFFE,sr
 	rts
 ; ---------------------------------------------------------------------------
@@ -27145,29 +23834,27 @@ loc_1266E:
 	rts
 ; End of function sub_12646
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12674:
 	lea	(byte_FF1D4E).l,a6
 	tst.b	$2A(a0)
-	beq.w	loc_12688
+	beq.s	loc_12688
 	lea	(byte_FF1D58).l,a6
 
 loc_12688:
 	cmpi.w	#2,(time_minutes).l
-	bcs.w	loc_1269E
+	bcs.s	loc_1269E
 	move.b	#1,0(a6)
 	bra.w	loc_126D6
 ; ---------------------------------------------------------------------------
 
 loc_1269E:
 	tst.b	0(a6)
-	bne.w	loc_126C0
+	bne.s	loc_126C0
 	move.b	9(a4),d0
 	cmp.b	3(a2),d0
-	bcs.w	loc_126D6
+	bcs.s	loc_126D6
 	eori.b	#1,0(a6)
 	clr.b	1(a6)
 	bra.w	loc_126D6
@@ -27176,7 +23863,7 @@ loc_1269E:
 loc_126C0:
 	move.b	9(a4),d0
 	cmp.b	4(a2),d0
-	bcc.w	loc_126D6
+	bcc.s	loc_126D6
 	eori.b	#1,0(a6)
 	bra.w	*+4
 ; ---------------------------------------------------------------------------
@@ -27187,13 +23874,11 @@ loc_126D6:
 	rts
 ; End of function sub_12674
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_126DE:
 	tst.b	$2A(a0)
-	bne.w	loc_126E8
+	bne.s	loc_126E8
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -27201,39 +23886,39 @@ loc_126E8:
 	clr.w	d0
 	move.b	(opponent).l,d0
 	lsl.b	#2,d0
-	movea.l	off_126F8(pc,d0.w),a6
+	movea.l	SpecAI_Pointers(pc,d0.w),a6
 	jmp	(a6)
 ; End of function sub_126DE
 
 ; ---------------------------------------------------------------------------
-off_126F8: ; AI Special
-	dc.l locret_12738
-	dc.l loc_12778 ; Frankly
-	dc.l locret_12738
-	dc.l locret_12738 ; Arms
-	dc.l locret_12738
-	dc.l locret_12738
-	dc.l locret_12738
-	dc.l loc_1273A ; Coconuts
-	dc.l locret_12738
-	dc.l locret_12738
-	dc.l locret_12738
-	dc.l locret_12738
-	dc.l locret_12738 ; Robotnik
-	dc.l locret_12738
-	dc.l locret_12738
-	dc.l locret_12738
+SpecAI_Pointers: ; AI Special
+	dc.l SpecAI_Null	; Skeleton Tea - Puyo Leftover
+	dc.l SpecAI_Frankly	; Frankly
+	dc.l SpecAI_Null	; Dynamight
+	dc.l SpecAI_Null	; Arms
+	dc.l SpecAI_Null	; Nasu Grave - Puyo Leftover
+	dc.l SpecAI_Null	; Grounder
+	dc.l SpecAI_Null	; Davy Sprocket
+	dc.l SpecAI_Coconuts	; Coconuts
+	dc.l SpecAI_Null	; Spike
+	dc.l SpecAI_Null	; Sir Ffuzzy-Logik
+	dc.l SpecAI_Null	; Dragon Breath
+	dc.l SpecAI_Null	; Scratch
+	dc.l SpecAI_Null	; Robotnik
+	dc.l SpecAI_Null	; Mummy - Puyo Leftover
+	dc.l SpecAI_Null	; Humpty
+	dc.l SpecAI_Null	; Skweel
 ; ---------------------------------------------------------------------------
 
-locret_12738:
+SpecAI_Null:
 	rts
-	
+
 ; ---------------------------------------------------------------------------
 
-loc_1273A:
+SpecAI_Coconuts:
 	move.b	0(a5),d0
 	or.b	$A(a5),d0
-	bne.w	loc_12748
+	bne.s	loc_12748
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -27242,7 +23927,7 @@ loc_12748:
 	move.b	#0,$21(a0)
 	move.b	0(a5),d0
 	cmp.b	$A(a5),d0
-	bcc.w	loc_12766
+	bcc.s	loc_12766
 	move.b	#5,$20(a0)
 
 loc_12766:
@@ -27252,9 +23937,9 @@ loc_12766:
 	rts
 ; ---------------------------------------------------------------------------
 
-loc_12778:
+SpecAI_Frankly:
 	cmpi.w	#$18,8(a4)
-	bcs.w	loc_12784
+	bcs.s	loc_12784
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -27268,7 +23953,7 @@ loc_1278E:
 	lsl.w	#1,d2
 	move.b	(a5,d2.w),d3
 	cmp.b	d1,d3
-	bcs.w	loc_127A2
+	bcs.s	loc_127A2
 	move.b	d0,$20(a0)
 	move.b	d3,d1
 
@@ -27281,13 +23966,9 @@ loc_127A2:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_127BA:
-
-; FUNCTION CHUNK AT 00012B14 SIZE 0000001C BYTES
-
 	bsr.w	sub_12646
-	bcs.w	loc_127C4
+	bcs.s	loc_127C4
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -27330,14 +24011,14 @@ loc_12834:
 	move.w	(a1)+,d4
 	clr.w	d5
 	move.w	(a6,d3.w),d6
-	beq.w	loc_1284C
+	beq.s	loc_1284C
 	move.w	(a6,d4.w),d5
-	beq.w	loc_1284C
+	beq.s	loc_1284C
 	add.w	d6,d5
 
 loc_1284C:
 	cmp.w	d1,d5
-	bcs.w	loc_12856
+	bcs.s	loc_12856
 	move.w	d5,d1
 	move.w	d0,d2
 
@@ -27348,7 +24029,8 @@ loc_12856:
 ; End of function sub_127BA
 
 ; ---------------------------------------------------------------------------
-unk_12860:	dc.b   0
+unk_12860:
+	dc.b   0
 	dc.b $2C
 	dc.b   0
 	dc.b $26
@@ -27439,9 +24121,8 @@ unk_12860:	dc.b   0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_128B8:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	move.b	(a2,d0.w),d2
 	bsr.w	sub_128EA
 	bsr.w	sub_12906
@@ -27451,18 +24132,16 @@ sub_128B8:
 	move.b	d0,$2D(a0)
 	move.b	#0,$27(a0)
 	move.b	#0,$26(a0)
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	rts
 ; End of function sub_128B8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_128EA:
 	move.b	(byte_FF0104).l,d0
 	subq.b	#2,d0
-	bcc.w	loc_128F8
+	bcc.s	loc_128F8
 	clr.b	d0
 
 loc_128F8:
@@ -27475,9 +24154,7 @@ locret_12904:
 	rts
 ; End of function sub_128EA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12906:
 	clr.w	d0
@@ -27493,9 +24170,7 @@ locret_1291E:
 	rts
 ; End of function sub_12906
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12920:
 	bsr.w	sub_1295E
@@ -27519,14 +24194,12 @@ loc_12958:
 	rts
 ; End of function sub_12920
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1295E:
 	move.b	#0,d2
 	tst.b	d3
-	bne.w	loc_1296C
+	bne.s	loc_1296C
 	move.b	5(a2),d2
 
 loc_1296C:
@@ -27541,9 +24214,7 @@ loc_12970:
 	rts
 ; End of function sub_1295E
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12982:
 	move.b	(byte_FF1D16).l,d1
@@ -27561,9 +24232,7 @@ locret_129B6:
 	rts
 ; End of function sub_12982
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_129B8:
 	clr.b	(byte_FF1D17).l
@@ -27573,9 +24242,7 @@ sub_129B8:
 	rts
 ; End of function sub_129B8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_129CE:
 	clr.w	d1
@@ -27587,20 +24254,20 @@ sub_129CE:
 
 loc_129DE:
 	cmpi.b	#4,d1
-	bcs.w	loc_129EA
+	bcs.s	loc_129EA
 	move.b	#3,d1
 
 loc_129EA:
 	move.b	(byte_FF1D1A).l,d2
 	cmpi.b	#5,d2
-	bcs.w	loc_129FC
+	bcs.s	loc_129FC
 	move.b	#4,d2
 
 loc_129FC:
 	lsl.b	#2,d2
 	or.b	d2,d1
 	tst.b	(byte_FF1D1D).l
-	beq.w	loc_12A0E
+	beq.s	loc_12A0E
 	addi.b	#$14,d1
 
 loc_12A0E:
@@ -27616,7 +24283,8 @@ locret_12A2A:
 ; End of function sub_129CE
 
 ; ---------------------------------------------------------------------------
-byte_12A2C:	dc.b 0
+byte_12A2C:
+	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -27659,7 +24327,6 @@ byte_12A2C:	dc.b 0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_12A54:
 	clr.w	d1
 	move.b	(byte_FF1D1B).l,d1
@@ -27670,13 +24337,13 @@ sub_12A54:
 
 loc_12A64:
 	cmpi.b	#4,d1
-	bcs.w	loc_12A70
+	bcs.s	loc_12A70
 	move.b	#3,d1
 
 loc_12A70:
 	move.b	(byte_FF1D1C).l,d2
 	cmpi.b	#5,d2
-	bcs.w	loc_12A82
+	bcs.s	loc_12A82
 	move.b	#4,d2
 
 loc_12A82:
@@ -27693,9 +24360,7 @@ locret_12AA2:
 	rts
 ; End of function sub_12A54
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12AA4:
 	move.w	d0,d5
@@ -27719,9 +24384,7 @@ sub_12AA4:
 	rts
 ; End of function sub_12AA4
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12AEA:
 	clr.b	d1
@@ -27729,9 +24392,9 @@ sub_12AEA:
 
 loc_12AF0:
 	cmp.w	d5,d6
-	beq.w	loc_12B02
+	beq.s	loc_12B02
 	cmp.b	$C(a5,d5.w),d1
-	bcc.w	loc_12B02
+	bcc.s	loc_12B02
 	move.b	$C(a5,d5.w),d1
 
 loc_12B02:
@@ -27756,8 +24419,10 @@ loc_12B14:
 	rts
 ; END OF FUNCTION CHUNK	FOR sub_127BA
 ; ---------------------------------------------------------------------------
-byte_12B30:	dc.b 0
-byte_12B31:	dc.b 0
+byte_12B30:	dc.b   0
+
+byte_12B31:
+	dc.b   0
 	dc.b   1
 	dc.b   0
 	dc.b   2
@@ -27803,7 +24468,6 @@ byte_12B31:	dc.b 0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_12B5C:
 	jsr	(GetPuyoField).l
 	adda.l	#pUnk3,a2
@@ -27812,7 +24476,7 @@ sub_12B5C:
 
 loc_12B72:
 	move.w	(a3)+,d1
-	beq.w	loc_12B86
+	beq.s	loc_12B86
 	add.w	d0,d1
 	tst.b	(a2,d1.w)
 	bne.s	loc_12B72
@@ -27827,7 +24491,8 @@ loc_12B86:
 ; End of function sub_12B5C
 
 ; ---------------------------------------------------------------------------
-unk_12B8C:	dc.b $FF
+unk_12B8C:
+	dc.b $FF
 	dc.b $FE
 	dc.b $FF
 	dc.b $FC
@@ -27860,11 +24525,7 @@ unk_12B8C:	dc.b $FF
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_12BAA:
-
-; FUNCTION CHUNK AT 00012C38 SIZE 00000052 BYTES
-
 	jsr	(GetPuyoField).l
 	movea.l	a2,a3
 	movea.l	a2,a4
@@ -27905,9 +24566,7 @@ loc_12BFE:
 	bra.w	loc_12C38
 ; End of function sub_12BAA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12C14:
 	move.w	#$C00,d1
@@ -27917,7 +24576,7 @@ sub_12C14:
 
 loc_12C20:
 	tst.b	(a2,d2.w)
-	beq.w	loc_12C30
+	beq.s	loc_12C30
 	subi.w	#$100,d1
 	move.b	(a5,d2.w),d1
 
@@ -27936,7 +24595,7 @@ loc_12C38:
 	lsl.b	#1,d0
 	or.b	$2A(a0),d0
 	eori.b	#1,d0
-	beq.w	loc_12C52
+	beq.s	loc_12C52
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -27947,10 +24606,10 @@ loc_12C52:
 	adda.l	#-$36A,a3
 	move.w	#2,d0
 	cmpi.w	#$24,8(a2)
-	bcc.w	loc_12C82
+	bcc.s	loc_12C82
 	subq.w	#1,d0
 	cmpi.w	#$24,8(a3)
-	bcc.w	loc_12C82
+	bcc.s	loc_12C82
 	subq.w	#1,d0
 
 loc_12C82:
@@ -27960,10 +24619,9 @@ loc_12C82:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_12C8A:
 	bsr.w	sub_12646
-	bcs.w	loc_12C94
+	bcs.s	loc_12C94
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -27977,7 +24635,7 @@ loc_12C94:
 	adda.l	#pUnk3,a4
 	adda.l	#pUnk4,a5
 	tst.b	(byte_FF1D0E).l
-	beq.w	loc_12CC8
+	beq.s	loc_12CC8
 	adda.l	#pUnk5-pUnk4,a5
 
 loc_12CC8:
@@ -27993,9 +24651,7 @@ loc_12CCA:
 	rts
 ; End of function sub_12C8A
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12CE2:
 	move.w	d0,d1
@@ -28011,13 +24667,13 @@ sub_12CE2:
 	add.w	d5,d2
 	bmi.s	loc_12D1E
 	bsr.w	sub_12D68
-	bcs.w	loc_12D1E
-	movem.l	a1,-(sp)
+	bcs.s	loc_12D1E
+	move.l	a1,-(sp)
 	move.w	d1,d3
 	lsl.w	#2,d3
 	movea.l	off_12D2C(pc,d3.w),a1
 	move.b	(a1,d2.w),d3
-	movem.l	(sp)+,a1
+	move.l	(sp)+,a1
 	ori.b	#$10,d3
 
 loc_12D1E:
@@ -28030,13 +24686,16 @@ loc_12D22:
 ; End of function sub_12CE2
 
 ; ---------------------------------------------------------------------------
-off_12D2C:	dc.l unk_12D44
+off_12D2C:
+	dc.l unk_12D44
 	dc.l unk_12D50
 	dc.l unk_12D5C
 	dc.l unk_12D50
 	dc.l unk_12D50
 	dc.l unk_12D44
-unk_12D44:	dc.b   4
+
+unk_12D44:
+	dc.b   4
 	dc.b   5
 	dc.b   6
 	dc.b   7
@@ -28048,7 +24707,9 @@ unk_12D44:	dc.b   4
 	dc.b  $D
 	dc.b  $E
 	dc.b  $F
-unk_12D50:	dc.b   2
+
+unk_12D50:
+	dc.b   2
 	dc.b   5
 	dc.b   6
 	dc.b   7
@@ -28060,7 +24721,9 @@ unk_12D50:	dc.b   2
 	dc.b  $D
 	dc.b  $E
 	dc.b  $F
-unk_12D5C:	dc.b   1
+
+unk_12D5C:
+	dc.b   1
 	dc.b   2
 	dc.b   3
 	dc.b   7
@@ -28075,10 +24738,9 @@ unk_12D5C:	dc.b   1
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_12D68:
 	tst.b	(byte_FF1D0E).l
-	bne.w	loc_12D78
+	bne.s	loc_12D78
 	andi	#$FFFE,sr
 	rts
 ; ---------------------------------------------------------------------------
@@ -28086,7 +24748,7 @@ sub_12D68:
 loc_12D78:
 	addq.w	#1,d2
 	cmpi.w	#$C,d2
-	bcc.w	loc_12DB8
+	bcc.s	loc_12DB8
 	move.w	d2,d4
 	mulu.w	#6,d4
 	add.w	d1,d4
@@ -28099,7 +24761,7 @@ loc_12D98:
 	move.b	(a2,d4.w),d6
 	andi.b	#$F0,d6
 	cmp.b	d6,d5
-	bne.w	loc_12DB2
+	bne.s	loc_12DB2
 	addi.w	#$C,d4
 	addq.w	#1,d2
 	cmpi.b	#$B,d2
@@ -28116,13 +24778,11 @@ loc_12DB8:
 	rts
 ; End of function sub_12D68
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12DC2:
 	tst.b	0(a5)
-	bne.w	loc_12DCC
+	bne.s	loc_12DCC
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -28138,9 +24798,7 @@ loc_12DCC:
 	bsr.w	*+4
 ; End of function sub_12DC2
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12DEA:
 	cmpi.w	#$B,d2
@@ -28172,15 +24830,13 @@ locret_12E34:
 	rts
 ; End of function sub_12DEA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12E36:
 	move.w	d4,d5
 	add.w	d1,d5
 	cmpi.w	#6,d5
-	bcs.w	loc_12E44
+	bcs.s	loc_12E44
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -28194,7 +24850,7 @@ loc_12E44:
 	andi.b	#7,d5
 	move.b	(a3,d4.w),d6
 	andi.b	#3,d6
-	bne.w	loc_12E64
+	bne.s	loc_12E64
 	addq.b	#1,d6
 
 loc_12E64:
@@ -28205,9 +24861,7 @@ locret_12E6A:
 	rts
 ; End of function sub_12E36
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12E6C:
 	andi.w	#$FD8F,d0
@@ -28216,27 +24870,27 @@ sub_12E6C:
 	movea.l	$2E(a0),a1
 	lea	(byte_FF1D0A).l,a2
 	tst.b	$2A(a1)
-	beq.w	loc_12E90
+	beq.s	loc_12E90
 	lea	(byte_FF1D0B).l,a2
 
 loc_12E90:
 	addq.b	#1,(a2)
-	bne.w	loc_12E9A
+	bne.s	loc_12E9A
 	move.b	#$FF,(a2)
 
 loc_12E9A:
 	bsr.w	sub_12F82
 	move.b	$20(a1),d2
 	sub.b	$1B(a0),d2
-	beq.w	loc_12ED6
+	beq.s	loc_12ED6
 	clr.w	d3
 	rol.b	#1,d2
 	andi.w	#1,d2
 	or.b	byte_12F04(pc,d2.w),d1
 	tst.b	$2A(a1)
-	beq.w	loc_12ED6
+	beq.s	loc_12ED6
 	cmpi.b	#4,(level).l
-	bcc.w	loc_12ED6
+	bcc.s	loc_12ED6
 	tst.b	$27(a1)
 	bmi.w	loc_12ED6
 	bsr.w	sub_12F4A
@@ -28244,12 +24898,12 @@ loc_12E9A:
 loc_12ED6:
 	move.b	$21(a1),d2
 	sub.b	$2B(a0),d2
-	beq.w	loc_12EF8
+	beq.s	loc_12EF8
 	clr.w	d3
 	bset	#5,d0
 	andi.b	#3,d2
 	cmpi.b	#3,d2
-	bne.w	loc_12EF8
+	bne.s	loc_12EF8
 	eori.b	#$60,d0
 
 loc_12EF8:
@@ -28265,16 +24919,15 @@ byte_12F04:	dc.b 8
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_12F06:
 	move.b	d0,d2
 	andi.b	#$70,d0
-	beq.w	loc_12F18
+	beq.s	loc_12F18
 	move.b	#$FF,(byte_FF1D0C).l
 
 loc_12F18:
 	btst	#9,d0
-	beq.w	loc_12F2A
+	beq.s	loc_12F2A
 	move.b	#$80,(byte_FF1D0D).l
 	rts
 ; ---------------------------------------------------------------------------
@@ -28285,7 +24938,7 @@ loc_12F2A:
 	lsr.b	#2,d2
 	andi.b	#3,d2
 	move.b	byte_12F46(pc,d2.w),d3
-	bne.w	loc_12F3E
+	bne.s	loc_12F3E
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -28295,25 +24948,25 @@ loc_12F3E:
 ; End of function sub_12F06
 
 ; ---------------------------------------------------------------------------
-byte_12F46:	dc.b 0
+byte_12F46:
+	dc.b   0
 	dc.b $84
 	dc.b $88
 	dc.b   0
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_12F4A:
 	cmpi.b	#$FF,(a2)
-	bcs.w	loc_12F54
+	bcs.s	loc_12F54
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_12F54:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	move.b	(a2),d0
 	andi.b	#$F,d0
-	beq.w	loc_12F6A
+	beq.s	loc_12F6A
 	andi.b	#$F3,d1
 	bra.w	loc_12F7C
 ; ---------------------------------------------------------------------------
@@ -28321,27 +24974,25 @@ loc_12F54:
 loc_12F6A:
 	jsr	(Random).l
 	andi.b	#1,d0
-	beq.w	loc_12F7C
+	beq.s	loc_12F7C
 	eori.b	#$C,d1
 
 loc_12F7C:
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	rts
 ; End of function sub_12F4A
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_12F82:
 	move.b	$2C(a1),d2
 	tst.b	$27(a1)
-	beq.w	loc_12F92
+	beq.s	loc_12F92
 	move.b	$2D(a1),d2
 
 loc_12F92:
 	cmp.b	$26(a1),d2
-	bcc.w	loc_12FA4
+	bcc.s	loc_12FA4
 	clr.b	$26(a1)
 	eori.b	#$80,$27(a1)
 
@@ -28352,20 +25003,15 @@ loc_12FA4:
 	rts
 ; End of function sub_12F82
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_12FAE:
-
-; FUNCTION CHUNK AT 00013142 SIZE 0000003A BYTES
-
 	tst.b	6(a2)
-	bmi.w	locret_12FCA
+	bmi.s	locret_12FCA
 	tst.b	d3
-	bne.w	locret_12FCA
+	bne.s	locret_12FCA
 	cmpi.b	#8,3(a6)
-	bcc.w	loc_12FCC
+	bcc.s	loc_12FCC
 	addq.b	#1,3(a6)
 
 locret_12FCA:
@@ -28375,7 +25021,7 @@ locret_12FCA:
 loc_12FCC:
 	tst.b	1(a6)
 	beq.w	loc_13142
-	bra.w	*+4
+	bra.w	*+4		; TODO: uhh
 ; ---------------------------------------------------------------------------
 
 loc_12FD8:
@@ -28397,9 +25043,7 @@ loc_13000:
 	rts
 ; End of function sub_12FAE
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_13006:
 	move.b	(a3)+,d1
@@ -28411,17 +25055,17 @@ sub_13006:
 loc_13012:
 	move.b	(a5,d0.w),d6
 	cmp.b	d2,d6
-	bcs.w	loc_1302E
+	bcs.s	loc_1302E
 	addq.b	#1,d5
 	cmp.b	d4,d6
-	beq.w	loc_1302E
+	beq.s	loc_1302E
 	move.b	d0,8(a6)
 	move.b	#1,d5
 	move.b	d6,d4
 
 loc_1302E:
 	cmp.b	d1,d5
-	beq.w	loc_13042
+	beq.s	loc_13042
 	addq.b	#2,d0
 	cmpi.b	#$C,d0
 	bcs.s	loc_13012
@@ -28440,9 +25084,7 @@ loc_13042:
 	rts
 ; End of function sub_13006
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_13060:
 	move.b	8(a6),d1
@@ -28451,10 +25093,10 @@ sub_13060:
 
 loc_13068:
 	bsr.w	sub_1308E
-	bcs.w	loc_13084
+	bcs.s	loc_13084
 	move.b	(a5,d2.w),d4
 	cmp.b	d3,d4
-	bcs.w	loc_13084
+	bcs.s	loc_13084
 	move.b	d4,d3
 	move.b	d2,d4
 	lsr.b	#1,d4
@@ -28467,15 +25109,13 @@ loc_13084:
 	rts
 ; End of function sub_13060
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1308E:
 	cmp.b	d1,d2
-	bcs.w	loc_130A0
+	bcs.s	loc_130A0
 	cmp.b	d2,d0
-	bcs.w	loc_130A0
+	bcs.s	loc_130A0
 	ori	#1,sr
 	rts
 ; ---------------------------------------------------------------------------
@@ -28486,7 +25126,8 @@ loc_130A0:
 ; End of function sub_1308E
 
 ; ---------------------------------------------------------------------------
-byte_130A6:	dc.b 0
+byte_130A6:
+	dc.b 0
 	dc.b 1
 	dc.b 3
 	dc.b 4
@@ -28494,7 +25135,6 @@ byte_130A6:	dc.b 0
 	dc.b 0
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_130AC:
 	move.w	#4,d0
@@ -28540,9 +25180,7 @@ loc_1311A:
 	rts
 ; End of function sub_130AC
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_13120:
 	move.w	#4,d1
@@ -28561,15 +25199,15 @@ loc_13124:
 ; START	OF FUNCTION CHUNK FOR sub_12FAE
 
 loc_13142:
-	movem.l	a3,-(sp)
+	move.l	a3,-(sp)
 	clr.w	d0
 	move.b	6(a2),d0
 	jsr	(RandomBound).l
 	lsl.w	#2,d0
 	movea.l	off_1317C(pc,d0.w),a3
 	bsr.w	sub_13006
-	bcc.w	loc_13168
-	movem.l	(sp)+,a3
+	bcc.s	loc_13168
+	move.l	(sp)+,a3
 	clr.b	d3
 	rts
 ; ---------------------------------------------------------------------------
@@ -28577,12 +25215,13 @@ loc_13142:
 loc_13168:
 	bsr.w	sub_130AC
 	move.b	#$FF,1(a6)
-	movem.l	(sp)+,a3
-	movem.l	(sp)+,a3
+	move.l	(sp)+,a3
+	move.l	(sp)+,a3
 	rts
 ; END OF FUNCTION CHUNK	FOR sub_12FAE
 ; ---------------------------------------------------------------------------
-off_1317C:	dc.l byte_13226
+off_1317C:
+	dc.l byte_13226
 	dc.l byte_13232
 	dc.l byte_13240
 	dc.l byte_1324E
@@ -28594,185 +25233,208 @@ off_1317C:	dc.l byte_13226
 	dc.l byte_131CA
 	dc.l byte_131BA
 	dc.l byte_131AC
-byte_131AC:	dc.b 3
-	dc.b 5
-	dc.b 0
+
+byte_131AC:
+	dc.b   3
+	dc.b   5
+	dc.b   0
 	dc.b $22
 	dc.b $10
 	dc.b $10
 	dc.b $11
 	dc.b $FF
 	dc.b $10
-	dc.b 0
+	dc.b   0
 	dc.b $13
 	dc.b $23
 	dc.b $22
 	dc.b $FF
-byte_131BA:	dc.b 3
-	dc.b 6
+
+byte_131BA:
+	dc.b   3
+	dc.b   6
 	dc.b $22
-	dc.b 1
+	dc.b   1
 	dc.b $10
 	dc.b $31
-	dc.b 0
+	dc.b   0
 	dc.b $21
 	dc.b $FF
 	dc.b $11
-	dc.b 1
+	dc.b   1
 	dc.b $23
 	dc.b $13
-	dc.b 2
+	dc.b   2
 	dc.b $22
 	dc.b $FF
-byte_131CA:	dc.b 3
-	dc.b 6
-	dc.b 0
-	dc.b 1
+
+byte_131CA:
+	dc.b   3
+	dc.b   6
+	dc.b   0
+	dc.b   1
 	dc.b $12
 	dc.b $34
 	dc.b $10
 	dc.b $12
 	dc.b $FF
-	dc.b 2
+	dc.b   2
 	dc.b $10
 	dc.b $11
 	dc.b $22
 	dc.b $10
-	dc.b 0
+	dc.b   0
 	dc.b $FF
-byte_131DA:	dc.b 3
-	dc.b 6
-	dc.b 0
+
+byte_131DA:
+	dc.b   3
+	dc.b   6
+	dc.b   0
 	dc.b $23
 	dc.b $12
 	dc.b $10
 	dc.b $10
 	dc.b $31
 	dc.b $FF
-	dc.b 0
+	dc.b   0
 	dc.b $13
 	dc.b $22
 	dc.b $10
 	dc.b $23
 	dc.b $11
 	dc.b $FF
-byte_131EA:	dc.b 3
-	dc.b 5
-	dc.b 0
+
+byte_131EA:
+	dc.b   3
+	dc.b   5
+	dc.b   0
 	dc.b $11
-	dc.b 2
+	dc.b   2
 	dc.b $31
 	dc.b $10
 	dc.b $FF
 	dc.b $11
 	dc.b $22
-	dc.b 0
-	dc.b 1
+	dc.b   0
+	dc.b   1
 	dc.b $23
 	dc.b $FF
-byte_131F8:	dc.b 3
-	dc.b 5
+
+byte_131F8:
+	dc.b   3
+	dc.b   5
 	dc.b $11
 	dc.b $21
-	dc.b 0
-	dc.b 3
+	dc.b   0
+	dc.b   3
 	dc.b $40
 	dc.b $21
 	dc.b $FF
 	dc.b $11
 	dc.b $11
-	dc.b 0
+	dc.b   0
 	dc.b $13
-	dc.b 1
+	dc.b   1
 	dc.b $20
 	dc.b $FF
-byte_13208:	dc.b 3
-	dc.b 5
-	dc.b 0
+
+byte_13208:
+	dc.b   3
+	dc.b   5
+	dc.b   0
 	dc.b $21
-	dc.b 1
-	dc.b 1
+	dc.b   1
+	dc.b   1
 	dc.b $30
 	dc.b $14
 	dc.b $FF
-	dc.b 1
+	dc.b   1
 	dc.b $13
 	dc.b $11
 	dc.b $11
-	dc.b 2
-	dc.b 0
+	dc.b   2
+	dc.b   0
 	dc.b $FF
-byte_13218:	dc.b 3
-	dc.b 5
-	dc.b 1
+
+byte_13218:
+	dc.b   3
+	dc.b   5
+	dc.b   1
 	dc.b $22
 	dc.b $10
-	dc.b 1
+	dc.b   1
 	dc.b $10
 	dc.b $FF
 	dc.b $23
 	dc.b $22
-	dc.b 1
+	dc.b   1
 	dc.b $13
-	dc.b 0
+	dc.b   0
 	dc.b $FF
-byte_13226:	dc.b 2
-	dc.b 6
-	dc.b 1
-	dc.b 1
-	dc.b 0
+
+byte_13226:
+	dc.b   2
+	dc.b   6
+	dc.b   1
+	dc.b   1
+	dc.b   0
 	dc.b $11
 	dc.b $FF
-	dc.b 0
-	dc.b 1
-	dc.b 0
+	dc.b   0
+	dc.b   1
+	dc.b   0
 	dc.b $10
 	dc.b $FF
-byte_13232:	dc.b 2
-	dc.b 6
+
+byte_13232:
+	dc.b   2
+	dc.b   6
 	dc.b $20
 	dc.b $10
-	dc.b 1
-	dc.b 1
+	dc.b   1
+	dc.b   1
 	dc.b $13
 	dc.b $FF
 	dc.b $12
 	dc.b $13
-	dc.b 1
-	dc.b 2
+	dc.b   1
+	dc.b   2
 	dc.b $13
 	dc.b $FF
-byte_13240:	dc.b 2
-	dc.b 6
-	dc.b 0
-	dc.b 1
-	dc.b $12
-	dc.b $13
-	dc.b $10
-	dc.b $FF
-	dc.b 2
-	dc.b 0
+
+byte_13240:
+	dc.b   2
+	dc.b   6
+	dc.b   0
+	dc.b   1
 	dc.b $12
 	dc.b $13
 	dc.b $10
 	dc.b $FF
-byte_1324E:	dc.b 2
-	dc.b 6
-	dc.b 0
+	dc.b   2
+	dc.b   0
+	dc.b $12
+	dc.b $13
+	dc.b $10
+	dc.b $FF
+
+byte_1324E:
+	dc.b   2
+	dc.b   6
+	dc.b   0
 	dc.b $11
-	dc.b 0
+	dc.b   0
 	dc.b $21
 	dc.b $13
 	dc.b $FF
-	dc.b 1
+	dc.b   1
 	dc.b $10
 	dc.b $13
 	dc.b $13
-	dc.b 0
+	dc.b   0
 	dc.b $FF
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1325C:
 	lea	(sub_13274).l,a1
@@ -28781,9 +25443,7 @@ sub_1325C:
 	jmp	(FindActorSlot).l
 ; End of function sub_1325C
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_13274:
 	move.b	#$80,6(a0)
@@ -28794,7 +25454,7 @@ sub_13274:
 	jsr	(ActorBookmark).l
 	clr.w	d0
 	move.b	(byte_FF1D0D).l,d0
-	beq.w	loc_132B6
+	beq.s	loc_132B6
 	andi.b	#$7F,d0
 	move.l	off_132C0(pc,d0.w),$32(a0)
 	clr.b	(byte_FF1D0D).l
@@ -28804,27 +25464,38 @@ loc_132B6:
 ; End of function sub_13274
 
 ; ---------------------------------------------------------------------------
-byte_132BC:	dc.b 0
-	dc.b 2
+; TODO: Document animation code
+
+byte_132BC:
+	dc.b   0
+	dc.b   2
 	dc.b $FE
-	dc.b 0
-off_132C0:	dc.l byte_132CC
+	dc.b   0
+
+off_132C0:
+	dc.l byte_132CC
 	dc.l byte_132D4
 	dc.l byte_132DC
-byte_132CC:	dc.b 2
-	dc.b 4
+
+byte_132CC:
+	dc.b   2
+	dc.b   4
 	dc.b $FF
-	dc.b 0
+	dc.b   0
 	dc.l byte_132BC
-byte_132D4:	dc.b 8
-	dc.b 3
+
+byte_132D4:
+	dc.b   8
+	dc.b   3
 	dc.b $FF
-	dc.b 0
+	dc.b   0
 	dc.l byte_132BC
-byte_132DC:	dc.b 8
-	dc.b 5
+
+byte_132DC:
+	dc.b   8
+	dc.b   5
 	dc.b $FF
-	dc.b 0
+	dc.b   0
 	dc.l byte_132BC
 ; ---------------------------------------------------------------------------
 
@@ -28836,18 +25507,22 @@ loc_132E4:
 	move.l	#byte_1332C,$32(a0)
 	jsr	(ActorBookmark).l
 	tst.b	(byte_FF1D0C).l
-	beq.w	loc_13322
+	beq.s	loc_13322
 	move.l	#byte_13328,$32(a0)
 	clr.b	(byte_FF1D0C).l
 
 loc_13322:
 	jmp	(ActorAnimate).l
 ; ---------------------------------------------------------------------------
-byte_13328:	dc.b 1
+byte_13328:
+	dc.b 1
 	dc.b 0
 	dc.b 8
 	dc.b 1
-byte_1332C:	dc.b 0
+; TODO: Document animation code
+
+byte_1332C:
+	dc.b 0
 	dc.b 0
 	dc.b $FE
 	dc.b 0
@@ -28862,7 +25537,7 @@ loc_1333C:
 	bpl.s	loc_1333C
 	rts
 ; ---------------------------------------------------------------------------
-unk_13342:	
+unk_13342:	; Bean Colour Combinations
 
 	; 0 = Red
 	; 1 = Yellow
@@ -29026,7 +25701,7 @@ loc_1339C:
 ; ---------------------------------------------------------------------------
 
 loc_133FA:
-	clr.l	d0
+	moveq	#0,d0
 	jsr	(sub_9C4A).l
 	jsr	(ResetPuyoField).l
 	move.w	#0,d3
@@ -29044,7 +25719,7 @@ loc_133FA:
 loc_13442:
 	clr.w	(puyos_popping).l
 	cmpi.b	#9,(word_FF196E+1).l
-	bcs.w	loc_13476
+	bcs.s	loc_13476
 	move.w	#$20,d0
 	jsr	(ActorBookmark_SetDelay).l
 	jsr	(ActorBookmark).l
@@ -29060,7 +25735,7 @@ loc_13476:
 	jsr	(SpawnGarbage).l
 	jsr	(ActorBookmark).l
 	btst	#2,7(a0)
-	beq.w	loc_1349A
+	beq.s	loc_1349A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -29070,9 +25745,9 @@ loc_1349A:
 	jsr	(ActorBookmark).l
 	move.b	7(a0),d0
 	andi.b	#3,d0
-	beq.w	loc_134D0
+	beq.s	loc_134D0
 	btst	#3,7(a0)
-	bne.w	loc_134C2
+	bne.s	loc_134C2
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -29111,14 +25786,14 @@ loc_134D0:
 	bset	#4,7(a0)
 	jsr	(ActorBookmark).l
 	btst	#4,7(a0)
-	beq.w	loc_13572
+	beq.s	loc_13572
 	jmp	(loc_4E14).l
 ; ---------------------------------------------------------------------------
 
 loc_13572:
 	jsr	(sub_9BBA).l
 	addq.b	#1,9(a0)
-	bcc.w	loc_13586
+	bcc.s	loc_13586
 	move.b	#$FF,9(a0)
 
 loc_13586:
@@ -29133,7 +25808,7 @@ loc_1358A:
 	jsr	(PlaySound_ChkPCM).l
 	jsr	(ActorBookmark).l
 	tst.w	$26(a0)
-	beq.w	loc_135BA
+	beq.s	loc_135BA
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -29162,10 +25837,9 @@ loc_135E2:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_13610:
 	tst.b	(word_FF196E).l
-	beq.w	loc_1361C
+	beq.s	loc_1361C
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -29176,9 +25850,7 @@ loc_1361C:
 	jmp	(sub_FF4A).l
 ; End of function sub_13610
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1362C:
 	clr.w	d0
@@ -29190,7 +25862,8 @@ sub_1362C:
 ; End of function sub_1362C
 
 ; ---------------------------------------------------------------------------
-off_13642:	dc.l loc_13666
+off_13642:
+	dc.l loc_13666
 	dc.l loc_136B6
 	dc.l loc_13712
 	dc.l loc_13756
@@ -29204,7 +25877,7 @@ off_13642:	dc.l loc_13666
 loc_13666:
 	lea	(loc_13686).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_13678
+	bcc.s	loc_13678
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -29216,7 +25889,7 @@ loc_13678:
 
 loc_13686:
 	jsr	(ActorAnimate).l
-	bcc.w	loc_13696
+	bcc.s	loc_13696
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
 
@@ -29225,7 +25898,10 @@ loc_13696:
 	move.b	9(a0),$20(a1)
 	rts
 ; ---------------------------------------------------------------------------
-unk_136A2:	dc.b $40
+; TODO: Document animation code
+
+unk_136A2:
+	dc.b $40
 	dc.b   2
 	dc.b $10
 	dc.b   1
@@ -29251,7 +25927,7 @@ loc_136B6:
 	move.b	#2,$20(a0)
 	lea	(loc_136DC).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_136CE
+	bcc.s	loc_136CE
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -29263,7 +25939,7 @@ loc_136CE:
 
 loc_136DC:
 	jsr	(ActorAnimate).l
-	bcc.w	loc_136EC
+	bcc.s	loc_136EC
 	jmp	(ActorDeleteSelf).l
 ; ---------------------------------------------------------------------------
 
@@ -29272,7 +25948,10 @@ loc_136EC:
 	move.b	9(a0),$21(a1)
 	rts
 ; ---------------------------------------------------------------------------
-unk_136F8:	dc.b $40
+; TODO: Document animation code
+
+unk_136F8:
+	dc.b $40
 	dc.b   0
 	dc.b $10
 	dc.b   1
@@ -29307,7 +25986,7 @@ loc_13712:
 loc_1371E:
 	lea	(loc_1373C).l,a1
 	jsr	(FindActorSlot).l
-	bcc.w	loc_13730
+	bcc.s	loc_13730
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -29319,7 +25998,7 @@ loc_13730:
 
 loc_1373C:
 	subq.w	#1,$26(a0)
-	beq.w	loc_13746
+	beq.s	loc_13746
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -29411,7 +26090,7 @@ loc_137FE:
 	lsl.b	#2,d0
 	addq.b	#1,(word_FF196E).l
 	cmpi.b	#$1A,(word_FF196E).l
-	bcs.w	loc_1382A
+	bcs.s	loc_1382A
 	move.w	#7,(word_FF196E).l
 
 loc_1382A:
@@ -29420,7 +26099,7 @@ loc_1382A:
 	move.b	#0,$27(a0)
 	lea	(loc_138D2).l,a1
 	jsr	(FindActorSlotQuick).l
-	bcs.w	loc_13856
+	bcs.s	loc_13856
 	move.l	a0,$2E(a1)
 	move.b	byte_1386C(pc,d0.w),$27(a1)
 
@@ -29435,9 +26114,13 @@ locret_13868:
 	rts
 ; ---------------------------------------------------------------------------
 byte_1386A:	dc.b 4
+
 byte_1386B:	dc.b 0
+
 byte_1386C:	dc.b $20
-byte_1386D:	dc.b $10
+
+byte_1386D:
+	dc.b $10
 	dc.b 4
 	dc.b 0
 	dc.b $20
@@ -29542,7 +26225,7 @@ byte_1386D:	dc.b $10
 
 loc_138D2:
 	tst.w	$26(a0)
-	beq.w	loc_138E0
+	beq.s	loc_138E0
 	subq.w	#1,$26(a0)
 	rts
 ; ---------------------------------------------------------------------------
@@ -29563,7 +26246,7 @@ loc_138F6:
 	lsl.b	#1,d0
 	addq.b	#1,(word_FF196E).l
 	cmpi.b	#4,(word_FF196E).l
-	bcs.w	loc_13922
+	bcs.s	loc_13922
 	move.b	#9,(word_FF196E+1).l
 
 loc_13922:
@@ -29573,7 +26256,9 @@ loc_13922:
 	rts
 ; ---------------------------------------------------------------------------
 byte_13936:	dc.b 1
-byte_13937:	dc.b 1
+
+byte_13937:
+	dc.b 1
 	dc.b 2
 	dc.b 1
 	dc.b 2
@@ -29583,8 +26268,8 @@ byte_13937:	dc.b 1
 ; ---------------------------------------------------------------------------
 	nop
 ; ---------------------------------------------------------------------------
-SpriteMappings:	
-	dc.l off_14F9C
+SpriteMappings:		; TODO: Split these into individual files and find what each mapping is used for
+	dc.l off_14F9C		; $00
 	dc.l off_15042
 	dc.l off_150E8
 	dc.l off_153C2
@@ -29593,23 +26278,23 @@ SpriteMappings:
 	dc.l off_155B4
 	dc.l off_14814
 	dc.l off_19084
-	dc.l off_17748
-	dc.l off_178EA
-	dc.l off_17DFA
-	dc.l off_18048
-	dc.l off_17748
-	dc.l off_18916
-	dc.l off_17BF2
-	dc.l off_17748
-	dc.l off_18396
-	dc.l off_18608
-	dc.l off_184D6
-	dc.l off_18C66
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_1875A
-	dc.l off_18AE0
-	dc.l off_15908
+	dc.l IntroCoconuts_Mappings	; Intro Skeleton Tea - Puyo Leftover
+	dc.l IntroFrankly_Mappings	; Intro Frankly
+	dc.l IntroDynamight_Mappings	; Intro Dynamight
+	dc.l IntroArms_Mappings		; Intro Arms
+	dc.l IntroCoconuts_Mappings	; Intro Nasu Grave - Puyo Leftover
+	dc.l IntroGrounder_Mappings	; Intro Grounder
+	dc.l IntroDavy_Mappings		; Intro Davy Sprocket
+	dc.l IntroCoconuts_Mappings	; Intro Coconuts
+	dc.l IntroSpike_Mappings	; Intro Spike
+	dc.l IntroSirFfuzzy_Mappings	; Intro Sir Ffuzzy-Logik
+	dc.l IntroDragonBreath_Mappings	; Intro Dragon Breath
+	dc.l IntroScratch_Mappings	; Intro Scratch
+	dc.l IntroCoconuts_Mappings	; <Blank> (Robotnik is loaded elsewhere)
+	dc.l IntroCoconuts_Mappings	; Intro Mummy - Puyo Leftover
+	dc.l IntroHumpty_Mappings	; Intro Humpty
+	dc.l IntroSkweel_Mappings	; Intro Skweel
+	dc.l HasBean_Mappings		; Has Bean
 	dc.l off_15CB0
 	dc.l off_15D04
 	dc.l off_14E00
@@ -29624,46 +26309,106 @@ SpriteMappings:
 	dc.l off_1476C
 	dc.l off_14658
 	dc.l off_142AC
-	dc.l off_13B08
+	dc.l OpeningBadniks_Mappings	; Badniks in Opening Sequence/Robotnik Intro
 	dc.l off_14F2A
 	dc.l off_13A44
-	dc.l off_168B8
+	dc.l IntroRobotnik_Mappings	; Robotnik
 	dc.l off_176D8
 	dc.l off_17AFE
-	dc.l off_182CA
+	dc.l DifficultyFaces_Mappings	; Faces for Difficulty Options in VS/Exercise
 	dc.l off_1801E
-	dc.l off_182CA
+	dc.l DifficultyFaces_Mappings
 	dc.l off_191D0
 	dc.l off_19368
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_17748
-	dc.l off_17748
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
+	dc.l IntroCoconuts_Mappings
 	dc.l off_19610
-off_13A44:	dc.l word_13A5C
+
+; ---------------------------------------------------------------------------
+
+	include	"resource/mapsprite/0A - Intro Frankly.asm"
+	even
+
+	include	"resource/mapsprite/0B - Intro Dynamight.asm"
+	even
+
+	include	"resource/mapsprite/0C - Intro Arms.asm"
+	even
+
+	include	"resource/mapsprite/0E - Intro Grounder.asm"
+	even
+
+	include	"resource/mapsprite/0F - Intro Davy Sprocket.asm"
+	even
+
+	include	"resource/mapsprite/10 - Intro Coconuts.asm"
+	even
+
+	include	"resource/mapsprite/11 - Intro Spike.asm"
+	even
+
+	include	"resource/mapsprite/12 - Intro Sir Ffuzzy-Logik.asm"
+	even
+
+	include	"resource/mapsprite/13 - Intro Dragon Breath.asm"
+	even
+
+	include	"resource/mapsprite/14 - Intro Scratch.asm"
+	even
+
+	include	"resource/mapsprite/2B - Intro Robotnik.asm"
+	even
+
+	include	"resource/mapsprite/17 - Intro Humpty.asm"
+	even
+
+	include	"resource/mapsprite/18 - Intro Skweel.asm"
+	even
+
+	include	"resource/mapsprite/28 - Opening Badniks.asm"
+	even
+
+; ---------------------------------------------------------------------------
+
+	include	"resource/mapsprite/19 - Has Bean.asm"
+	even
+
+	include	"resource/mapsprite/30 - Difficulty Faces.asm"
+	even
+
+; ---------------------------------------------------------------------------
+
+off_13A44:
+	dc.l word_13A5C
 	dc.l word_13A6E
 	dc.l word_13A80
 	dc.l word_13A92
 	dc.l word_13AC4
 	dc.l word_13AF6
+
 word_13A5C:	dc.w 2
 	dc.w $FFF8, $101, $2318, $FFF8
 	dc.w $FFF8, $101, $2B18, 0
+
 word_13A6E:	dc.w 2
 	dc.w $FFF8, $101, $231A, $FFF8
 	dc.w $FFF8, $101, $2B1A, 0
+
 word_13A80:	dc.w 2
 	dc.w $FFF8, $101, $2328, $FFF8
 	dc.w $FFF8, $101, $2B28, 0
+
 word_13A92:	dc.w 6
 	dc.w 0,	$D00, $80, $FFD0
 	dc.w 0,	$D00, $88, $FFF0
@@ -29671,6 +26416,7 @@ word_13A92:	dc.w 6
 	dc.w $18, $D00,	$C0, $FFD4
 	dc.w $18, $D00,	$C8, $FFF4
 	dc.w $18, $D00,	$D0, $14
+
 word_13AC4:	dc.w 6
 	dc.w 0,	$D00, $80, $FFD0
 	dc.w 0,	$D00, $88, $FFF0
@@ -29678,46 +26424,15 @@ word_13AC4:	dc.w 6
 	dc.w $18, $D00,	$C0, $FFD0
 	dc.w $18, $D00,	$C8, $FFF0
 	dc.w $18, $D00,	$D0, $10
+
 word_13AF6:	dc.w 2
 	dc.w $FFF8, $103, $A318, $FFF8
 	dc.w $FFF8, $103, $AB18, 0
-off_13B08:	dc.l word_13B18
-	dc.l word_13B5A
-	dc.l word_13B9C
-	dc.l word_13BCE
-word_13B18:	dc.w 8
-	dc.w 0,	$A02, $C090, $18
-	dc.w 8,	$102, $C099, $10
-	dc.w $10, $302,	$C09B, $30
-	dc.w $18, 2, $C09F, $38
-	dc.w $18, $F02,	$C0A0, $10
-	dc.w $38, $802,	$C0B0, $18
-	dc.w $40, $802,	$C0B3, $10
-	dc.w $40, $402,	$C0B6, $28
-word_13B5A:	dc.w 8
-	dc.w 0,	$A02, $C0B8, $18
-	dc.w 8,	$102, $C099, $10
-	dc.w $10, $302,	$C09B, $30
-	dc.w $18, 2, $C09F, $38
-	dc.w $18, $F02,	$C0A0, $10
-	dc.w $38, $802,	$C0B0, $18
-	dc.w $40, $802,	$C0B3, $10
-	dc.w $40, $402,	$C0B6, $28
-word_13B9C:	dc.w 6
-	dc.w 0,	$E02, $A0C1, $10
-	dc.w 8,	2, $A0CD, 8
-	dc.w $10, $502,	$A0CE, 0
-	dc.w $18, $C02,	$A0D2, $10
-	dc.w $20, $502,	$A0D6, 8
-	dc.w $20, $902,	$A0DA, $18
-word_13BCE:	dc.w 6
-	dc.w 0,	$E02, $A0E0, $10
-	dc.w 8,	2, $A0EC, 8
-	dc.w $10, $502,	$A0CE, 0
-	dc.w $18, $802,	$A0ED, $10
-	dc.w $20, $502,	$A0D6, 8
-	dc.w $20, $902,	$A0DA, $18
-off_13C00:	dc.l word_13D28
+
+; ---------------------------------------------------------------------------
+
+off_13C00:	; That's a lot of sprites
+	dc.l word_13D28
 	dc.l word_13D32
 	dc.l word_13D3C
 	dc.l word_13D46
@@ -29791,140 +26506,198 @@ off_13C00:	dc.l word_13D28
 	dc.l word_1424E
 	dc.l word_14258
 	dc.l word_14262
+
 word_13D28:	dc.w 1
 	dc.w 0,	$A02, $423B, 0
+
 word_13D32:	dc.w 1
 	dc.w 0,	$A02, $4244, 0
+
 word_13D3C:	dc.w 1
 	dc.w 0,	$A02, $424D, 0
+
 word_13D46:	dc.w 1
 	dc.w 0,	$A02, $4256, 0
+
 word_13D50:	dc.w 1
 	dc.w 0,	$A02, $425F, 0
+
 word_13D5A:	dc.w 1
 	dc.w 0,	$A02, $4268, 0
+
 word_13D64:	dc.w 2
 	dc.w 0,	$602, $4271, 0
 	dc.w 8,	$102, $4277, $10
+
 word_13D76:	dc.w 1
 	dc.w 8,	$902, $4279, 0
+
 word_13D80:	dc.w 1
 	dc.w 0,	$A02, $427F, 0
+
 word_13D8A:	dc.w 1
 	dc.w 0,	$A02, $4288, 0
+
 word_13D94:	dc.w 1
 	dc.w 0,	$A02, $4291, 0
+
 word_13D9E:	dc.w 1
 	dc.w 0,	$A02, $429A, 0
+
 word_13DA8:	dc.w 1
 	dc.w 8,	$902, $42A3, 0
+
 word_13DB2:	dc.w 1
 	dc.w 8,	$902, $42A9, 0
+
 word_13DBC:	dc.w 1
 	dc.w 0,	$A02, $42AF, 0
+
 word_13DC6:	dc.w 1
 	dc.w 0,	$402, $22B8, 0
+
 word_13DD0:	dc.w 1
 	dc.w 0,	$502, $22BA, 0
+
 word_13DDA:	dc.w 1
 	dc.w 8,	2, $22BE, 0
+
 word_13DE4:	dc.w 1
 	dc.w 0,	$102, $22BF, 0
+
 word_13DEE:	dc.w 1
 	dc.w 0,	$102, $22C1, 0
+
 word_13DF8:	dc.w 1
 	dc.w 8,	2, $22C3, 0
+
 word_13E02:	dc.w 2
 	dc.w 0,	$A02, $42C4, 0
 	dc.w 8,	$102, $42CD, $18
+
 word_13E14:	dc.w 2
 	dc.w 0,	$A02, $42CF, 0
 	dc.w 8,	$102, $42D8, $18
+
 word_13E26:	dc.w 1
 	dc.w 0,	$A02, $42DA, 0
+
 word_13E30:	dc.w 1
 	dc.w 0,	$302, $2E3, 0
+
 word_13E3A:	dc.w 1
 	dc.w 0,	$302, $2E7, 0
+
 word_13E44:	dc.w 1
 	dc.w 0,	$302, $2EB, 0
+
 word_13E4E:	dc.w 1
 	dc.w 0,	$302, $2EF, 0
+
 word_13E58:	dc.w 1
 	dc.w 0,	$A02, $62F3, 0
+
 word_13E62:	dc.w 1
 	dc.w 0,	$A02, $62FC, 0
+
 word_13E6C:	dc.w 1
 	dc.w 0,	$A02, $6305, 0
+
 word_13E76:	dc.w 2
 	dc.w $10, $902,	$30E, 8
 	dc.w $18, 2, $314, 0
+
 word_13E88:	dc.w 1
 	dc.w $10, $D02,	$315, 0
+
 word_13E92:	dc.w 3
 	dc.w 8,	$C02, $31D, 0
 	dc.w $10, $902,	$321, 0
 	dc.w $18, 2, $31C, $18
+
 word_13EAC:	dc.w 5
 	dc.w 0,	$C02, $31D, 0
 	dc.w 8,	$802, $327, 0
 	dc.w $10, $502,	$32A, 8
 	dc.w $18, 2, $322, 0
 	dc.w $18, 2, $31C, $18
+
 word_13ED6:	dc.w 5
 	dc.w 0,	$502, $32E, $10
 	dc.w 8,	$402, $332, 0
 	dc.w $10, $502,	$334, 8
 	dc.w $18, 2, $322, 0
 	dc.w $18, 2, $31C, $18
+
 word_13F00:	dc.w 2
 	dc.w $10, $502,	$338, $10
 	dc.w $18, $402,	$33C, 0
+
 word_13F12:	dc.w 1
 	dc.w 8,	$902, $633E, 0
+
 word_13F1C:	dc.w 1
 	dc.w 8,	$902, $6344, 0
+
 word_13F26:	dc.w 1
 	dc.w 0,	$A02, $634A, 0
+
 word_13F30:	dc.w 1
 	dc.w 0,	2, $238D, 0
+
 word_13F3A:	dc.w 1
 	dc.w 0,	2, $238E, 0
+
 word_13F44:	dc.w 1
 	dc.w 0,	2, $238F, 0
+
 word_13F4E:	dc.w 1
 	dc.w 0,	2, $2390, 0
+
 word_13F58:	dc.w 1
 	dc.w 0,	2, $2B8D, 0
+
 word_13F62:	dc.w 1
 	dc.b 0,	0, 0, 2
 	dc.b $23, $91, 0, 0
+
 word_13F6C:	dc.w 1
 	dc.w 8,	2, $392, 0
+
 word_13F76:	dc.w 1
 	dc.w 0,	$102, $393, 0
+
 word_13F80:	dc.w 1
 	dc.w 0,	$502, $395, 0
+
 word_13F8A:	dc.w 1
 	dc.w 0,	$502, $399, 0
+
 word_13F94:	dc.w 1
 	dc.w 0,	$502, $39D, 0
+
 word_13F9E:	dc.w 3
 	dc.w 0,	$602, $3A1, 8
 	dc.w 8,	2, $3A7, 0
 	dc.w 8,	$102, $3A8, $18
+
 word_13FB8:	dc.w 3
 	dc.w 0,	$602, $3AA, 8
 	dc.w 8,	$102, $3B0, 0
 	dc.w 8,	$102, $3B2, $18
+
 word_13FD2:	dc.w 1
 	dc.w 0,	$E02, $3B4, 0
+
 word_13FDC:	dc.w 1
 	dc.w 8,	$902, $43C0, 0
+
 word_13FE6:	dc.w 1
 	dc.w 8,	$902, $43C6, 0
+
 word_13FF0:	dc.w 1
 	dc.w 0,	$A02, $43CC, 0
+
 word_13FFA:	dc.w 9
 	dc.w $18, $302,	$3D5, 8
 	dc.w $20, $302,	$3D9, 0
@@ -29935,6 +26708,7 @@ word_13FFA:	dc.w 9
 	dc.w $40, $202,	$3F6, $38
 	dc.w $48, $D02,	$3F9, $18
 	dc.w $50, 2, $401, $10
+
 word_14044:	dc.w $C
 	dc.w $18, $302,	$402, 8
 	dc.w $20, $302,	$406, 0
@@ -29948,6 +26722,7 @@ word_14044:	dc.w $C
 	dc.w $40, $902,	$426, $18
 	dc.w $48, 2, $42C, $10
 	dc.w $48, 2, $42D, $30
+
 word_140A6:	dc.w $C
 	dc.w $10, $702,	$42E, $18
 	dc.w $18, $702,	$436, 8
@@ -29961,6 +26736,7 @@ word_140A6:	dc.w $C
 	dc.w $40, $102,	$424, 0
 	dc.w $40, 2, $45A, $10
 	dc.w $40, 2, $44D, $30
+
 word_14108:	dc.w 7
 	dc.w 0,	$B02, $45B, $20
 	dc.w 8,	$F02, $467, 0
@@ -29969,6 +26745,7 @@ word_14108:	dc.w 7
 	dc.w $28, 2, $482, $20
 	dc.w $38, $402,	$483, 0
 	dc.w $40, $102,	$424, 0
+
 word_14142:	dc.w 9
 	dc.w 0,	$B02, $485, $20
 	dc.w 8,	$B02, $467, 0
@@ -29979,6 +26756,7 @@ word_14142:	dc.w 9
 	dc.w $30, 2, $481, $18
 	dc.w $38, $402,	$483, 0
 	dc.w $40, $102,	$424, 0
+
 word_1418C:	dc.w 8
 	dc.w 8,	$B02, $467, 0
 	dc.w 8,	$B02, $498, $20
@@ -29988,6 +26766,7 @@ word_1418C:	dc.w 8
 	dc.w $30, 2, $481, $18
 	dc.w $38, $402,	$483, 0
 	dc.w $40, $102,	$424, 0
+
 word_141CE:	dc.w 7
 	dc.w 0,	$F01, $4A4, $18
 	dc.w 8,	$B01, $467, 0
@@ -29996,24 +26775,34 @@ word_141CE:	dc.w 7
 	dc.w $28, 1, $482, $20
 	dc.w $38, $401,	$483, 0
 	dc.w $40, $101,	$424, 0
+
 word_14208:	dc.w 1
 	dc.w $FFFC, 1, $44B4, $FFFC
+
 word_14212:	dc.w 1
 	dc.w $FFFC, 1, $44B5, $FFFC
+
 word_1421C:	dc.w 1
 	dc.w $FFFC, 1, $4CB4, $FFFC
+
 word_14226:	dc.w 1
 	dc.w $FFFC, 1, $4CB5, $FFFC
+
 word_14230:	dc.w 1
 	dc.w $FFFC, 1, $54B4, $FFFC
+
 word_1423A:	dc.w 1
 	dc.w $FFFC, 1, $54B5, $FFFC
+
 word_14244:	dc.w 1
 	dc.w $FFFC, 1, $5CB4, $FFFC
+
 word_1424E:	dc.w 1
 	dc.w $FFFC, 1, $5CB5, $FFFC
+
 word_14258:	dc.w 1
 	dc.w 0,	$402, $4B6, 0
+
 word_14262:	dc.w 9
 	dc.w 0,	$B03, $6353, $50
 	dc.w 8,	$303, $635F, $48
@@ -30024,7 +26813,11 @@ word_14262:	dc.w 9
 	dc.w $18, $103,	$637D, $40
 	dc.w $28, $B03,	$637F, 8
 	dc.w $38, $103,	$638B, $20
-off_142AC:	dc.l word_144E4
+
+; ---------------------------------------------------------------------------
+
+off_142AC:
+	dc.l word_144E4
 	dc.l word_1453E
 	dc.l word_145A8
 	dc.l word_145C2
@@ -30062,16 +26855,22 @@ off_142AC:	dc.l word_144E4
 	dc.l word_144BE
 	dc.l word_144C8
 	dc.l word_144D2
+
 word_14344:	dc.w 1
 	dc.w 0,	$502, $8142, 0
+
 word_1434E:	dc.w 1
 	dc.w 0,	$502, $8146, 0
+
 word_14358:	dc.w 1
 	dc.w 0,	$502, $814A, 0
+
 word_14362:	dc.w 1
 	dc.w 0,	$501, $814E, 0
+
 word_1436C:	dc.w 1
 	dc.w 0,	$501, $8152, 0
+
 word_14376:	dc.w $E
 	dc.w 0,	$B02, $E156, $20
 	dc.w 8,	$B02, $E19F, 8
@@ -30087,6 +26886,7 @@ word_14376:	dc.w $E
 	dc.w $30, $102,	$E1D0, $40
 	dc.w $30, 2, $E1D2, $50
 	dc.w $38, 2, $E193, $48
+
 word_143E8:	dc.w $D
 	dc.w 0,	$B02, $E156, $20
 	dc.w 8,	$B02, $E162, 8
@@ -30101,34 +26901,48 @@ word_143E8:	dc.w $D
 	dc.w $28, $202,	$E19A, $38
 	dc.w $30, 2, $E19D, $50
 	dc.w $38, 2, $E19E, $40
+
 word_14452:	dc.w 1
 	dc.w 0,	$502, $E1E6, 0
+
 word_1445C:	dc.w 1
 	dc.w 0,	$502, $E1EA, 0
+
 word_14466:	dc.w 1
 	dc.w 0,	$502, $E1EE, 0
+
 word_14470:	dc.w 1
 	dc.w 0,	$502, $E1F2, 0
+
 word_1447A:	dc.w 1
 	dc.w 0,	$502, $E1F6, 0
+
 word_14484:	dc.w 1
 	dc.w 0,	$501, $E1FA, 0
+
 word_1448E:	dc.w 1
 	dc.w 0,	$501, $E1FE, 0
+
 word_14498:	dc.w 1
 	dc.w 0,	$501, $E202, 0
+
 word_144A2:	dc.w 2
 	dc.w 0,	$401, $E206, 0
 	dc.w 8,	1, $E208, 0
+
 word_144B4:	dc.w 1
 	dc.w 0,	$501, $F1FA, 0
+
 word_144BE:	dc.w 1
 	dc.w 0,	$501, $F1FE, 0
+
 word_144C8:	dc.w 1
 	dc.w 0,	$501, $F202, 0
+
 word_144D2:	dc.w 2
 	dc.w 8,	$401, $F206, 0
 	dc.w 0,	1, $F208, 0
+
 word_144E4:	dc.w $B
 	dc.w 0,	$B02, $8100, $18
 	dc.w 8,	$702, $810C, 8
@@ -30141,6 +26955,7 @@ word_144E4:	dc.w $B
 	dc.w $28, $602,	$8138, 8
 	dc.w $28, $102,	$813E, $30
 	dc.w $38, $402,	$8140, $18
+
 word_1453E:	dc.w $D
 	dc.w 0,	$B02, $E156, $20
 	dc.w 8,	$B02, $E162, 8
@@ -30155,54 +26970,77 @@ word_1453E:	dc.w $D
 	dc.w $28, $202,	$E19A, $38
 	dc.w $30, 2, $E19D, $50
 	dc.w $38, 2, $E19E, $40
+
 word_145A8:	dc.w 3
 	dc.w 0,	$E01, $8254, $FFE4
 	dc.w 0,	$E01, $8260, 4
 	dc.w 0,	$601, $826C, $24
+
 word_145C2:	dc.w 1
 	dc.w $FFFC, 3, $82E2, $FFFC
+
 word_145CC:	dc.w 1
 	dc.w $FFFC, 3, $82E3, $FFFC
+
 word_145D6:	dc.w 1
 	dc.w $FFFC, 3, $82E4, $FFFC
+
 word_145E0:	dc.w 1
 	dc.w $FFFC, 3, $82E5, $FFFC
+
 word_145EA:	dc.w 1
 	dc.w $FFFC, 3, $82E6, $FFFC
+
 word_145F4:	dc.w 1
 	dc.w $FFFC, 3, $82E7, $FFFC
+
 word_145FE:	dc.w 1
 	dc.w $FFFC, 3, $82E8, $FFFC
+
 word_14608:	dc.w 1
 	dc.w $FFFC, 3, $82E9, $FFFC
+
 word_14612:	dc.w 1
 	dc.w $FFFC, 3, $82EA, $FFFC
+
 word_1461C:	dc.w 1
 	dc.w $FFFC, 3, $82EB, $FFFC
+
 word_14626:	dc.w 1
 	dc.w $FFFC, 3, $82EC, $FFFC
+
 word_14630:	dc.w 1
 	dc.w $FFFC, 3, $82ED, $FFFC
+
 word_1463A:	dc.w 1
 	dc.w $FFFC, 3, $82EE, $FFFC
+
 word_14644:	dc.w 1
 	dc.w $FFFC, 3, $82EF, $FFFC
+
 word_1464E:	dc.w 1
 	dc.w $FFFC, 3, $82F0, $FFFC
-off_14658:	dc.l word_14670
+
+; ---------------------------------------------------------------------------
+
+off_14658:
+	dc.l word_14670
 	dc.l word_1468A
 	dc.l word_146A4
 	dc.l word_146D6
 	dc.l word_14708
 	dc.l word_1473A
+
 word_14670:	dc.w 3
 	dc.w $FFE4, $600, $A4C0, $FFF0
 	dc.w $FFE4, $600, $ACC0, 0
 	dc.w $FFD8, $400, $E4CC, $FFF8
+
 word_1468A:	dc.w 3
 	dc.w $FFE4, $600, $A4C6, $FFF0
 	dc.w $FFE4, $600, $ACC6, 0
 	dc.w $FFD8, $400, $E4CE, $FFF8
+
 word_146A4:	dc.w 6
 	dc.w $FFE3, $503, $E4FC, $FFF8
 	dc.w $FFF0, $502, $E4F4, $FFF8
@@ -30210,6 +27048,7 @@ word_146A4:	dc.w 6
 	dc.w $FFE4, $502, $ECEC, 8
 	dc.w $FFDC, $201, $E4E6, $FFFC
 	dc.w $FFC5, $F00, $E4D0, $FFF0
+
 word_146D6:	dc.w 6
 	dc.w $FFE3, $503, $E4FC, $FFF8
 	dc.w $FFF0, $502, $E4F4, $FFF8
@@ -30217,6 +27056,7 @@ word_146D6:	dc.w 6
 	dc.w $FFE4, $502, $ECEC, 8
 	dc.w $FFDC, $601, $E4E0, $FFF8
 	dc.w $FFC5, $F00, $E4D0, $FFE8
+
 word_14708:	dc.w 6
 	dc.w $FFE3, $503, $E4FC, $FFF8
 	dc.w $FFF0, $502, $E4F8, $FFF8
@@ -30224,6 +27064,7 @@ word_14708:	dc.w 6
 	dc.w $FFE4, $502, $ECEC, 8
 	dc.w $FFDC, $201, $E4E9, $FFFC
 	dc.w $FFC9, $F00, $E4D0, $FFF0
+
 word_1473A:	dc.w 6
 	dc.w $FFE3, $503, $E4FC, $FFF8
 	dc.w $FFF0, $502, $E4F4, $FFF8
@@ -30231,7 +27072,11 @@ word_1473A:	dc.w 6
 	dc.w $FFE4, $502, $ECF0, 8
 	dc.w $FFDC, $601, $ECE0, $FFF8
 	dc.w $FFC7, $F00, $E4D0, $FFF8
-off_1476C:	dc.l word_1479C
+
+; ---------------------------------------------------------------------------
+
+off_1476C:
+	dc.l word_1479C
 	dc.l word_147BA
 	dc.l word_147D8
 	dc.l word_147F6
@@ -30243,42 +27088,51 @@ off_1476C:	dc.l word_1479C
 	dc.l word_147CE
 	dc.l word_147EC
 	dc.l word_1480A
+
 word_1479C:	dc.w 1
 	dc.w $FFF8, $502, $831C, $FFF8
+
 word_147A6:	dc.w 1
 	dc.w $FFFC, 2, $8324, $FFFC
+
 word_147B0:	dc.w 1
 	dc.w $FFFC, 2, $8326, $FFFC
+
 word_147BA:	dc.w 1
 	dc.w $FFF8, $502, $8320, $FFF8
+
 word_147C4:	dc.w 1
 	dc.w $FFFC, 2, $8325, $FFFC
+
 word_147CE:	dc.w 1
 	dc.w $FFFC, 2, $8327, $FFFC
+
 word_147D8:	dc.w 1
 	dc.w $FFF8, $502, $A31C, $FFF8
+
 word_147E2:	dc.w 1
 	dc.w $FFFC, 2, $A324, $FFFC
+
 word_147EC:	dc.w 1
 	dc.w $FFFC, 2, $A326, $FFFC
+
 word_147F6:	dc.w 1
 	dc.w $FFF8, $502, $A320, $FFF8
+
 word_14800:	dc.w 1
 	dc.w $FFFC, 2, $A325, $FFFC
+
 word_1480A:	dc.w 1
 	dc.w $FFFC, 2, $A327, $FFFC
-off_14814:	dc.l byte_FF1446
-	dc.l byte_FF14E8
-	dc.l byte_FF158A
-	dc.l byte_FF162C
-	dc.l byte_FF16CE
-	dc.l byte_FF1770
-	dc.l byte_FF1812
-	dc.l byte_FF18B4
-off_14834:	dc.l word_14844
+
+; ---------------------------------------------------------------------------
+
+off_14834:
 	dc.l word_14844
 	dc.l word_14844
 	dc.l word_14844
+	dc.l word_14844
+
 word_14844:	dc.w 6
 	dc.w 0,	$F00, $E4F0, 0
 	dc.w 0,	$F00, $E4F0, $20
@@ -30286,11 +27140,16 @@ word_14844:	dc.w 6
 	dc.w $20, $E00,	$E4F0, 0
 	dc.w $20, $E00,	$E4F0, $20
 	dc.w $20, $600,	$E4F0, $40
-off_14876:	dc.l word_1488A
+
+; ---------------------------------------------------------------------------
+
+off_14876:
+	dc.l word_1488A
 	dc.l word_148C4
 	dc.l word_148E6
 	dc.l word_14918
 	dc.l word_1493A
+
 word_1488A:	dc.w 7
 	dc.w $FFF8, $102, $8588, $FFE4
 	dc.w $FFF8, $102, $8580, $FFEC
@@ -30299,11 +27158,13 @@ word_1488A:	dc.w 7
 	dc.w $FFF8, $102, $8588, 4
 	dc.w $FFF8, $102, $85A4, $C
 	dc.w $FFF8, $102, $85A6, $14
+
 word_148C4:	dc.w 4
 	dc.w $FFF8, $102, $8588, $FFF0
 	dc.w $FFF8, $102, $8580, $FFF8
 	dc.w $FFF8, $102, $85A4, 0
 	dc.w $FFF8, $102, $85B0, 8
+
 word_148E6:	dc.w 6
 	dc.w $FFF8, $102, $859A, $FFE8
 	dc.w $FFF8, $102, $859C, $FFF0
@@ -30311,11 +27172,13 @@ word_148E6:	dc.w 6
 	dc.w $FFF8, $102, $8598, 0
 	dc.w $FFF8, $102, $8580, 8
 	dc.w $FFF8, $102, $8596, $10
+
 word_14918:	dc.w 4
 	dc.w $FFF8, $102, $858E, $FFF0
 	dc.w $FFF8, $102, $8580, $FFF8
 	dc.w $FFF8, $102, $85A2, 0
 	dc.w $FFF8, $102, $8586, 8
+
 word_1493A:	dc.w 7
 	dc.w $FFF8, $102, $858E, $FFE4
 	dc.w $FFF8, $102, $8580, $FFEC
@@ -30324,7 +27187,11 @@ word_1493A:	dc.w 7
 	dc.w $FFF8, $102, $8588, 4
 	dc.w $FFF8, $102, $85A4, $C
 	dc.w $FFF8, $102, $85A6, $14
-off_14974:	dc.l word_1499C
+
+; ---------------------------------------------------------------------------
+
+off_14974:
+	dc.l word_1499C
 	dc.l word_149A6
 	dc.l word_149B0
 	dc.l word_149BA
@@ -30334,27 +27201,41 @@ off_14974:	dc.l word_1499C
 	dc.l word_149E2
 	dc.l word_149EC
 	dc.l word_149F6
+
 word_1499C:	dc.w 1
 	dc.w 0,	0, $E3F7, 0
+
 word_149A6:	dc.w 1
 	dc.w 0,	0, $E3F9, 0
+
 word_149B0:	dc.w 1
 	dc.w 0,	0, $E3FD, 0
+
 word_149BA:	dc.w 1
 	dc.w 0,	0, $E3FF, 0
+
 word_149C4:	dc.w 1
 	dc.w 0,	$100, $E3F5, 0
+
 word_149CE:	dc.w 1
 	dc.w 0,	1, $E1F7, 0
+
 word_149D8:	dc.w 1
 	dc.w 0,	1, $E1F9, 0
+
 word_149E2:	dc.w 1
 	dc.w 0,	1, $E1FD, 0
+
 word_149EC:	dc.w 1
 	dc.w 0,	1, $E1FF, 0
+
 word_149F6:	dc.w 1
 	dc.w 0,	$100, $E1F5, 0
-off_14A00:	dc.l word_14A20
+
+; ---------------------------------------------------------------------------
+
+off_14A00:
+	dc.l word_14A20
 	dc.l word_14A2A
 	dc.l word_14A34
 	dc.l word_14A3E
@@ -30362,23 +27243,35 @@ off_14A00:	dc.l word_14A20
 	dc.l word_14A52
 	dc.l word_14A5C
 	dc.l word_14A66
+
 word_14A20:	dc.w 1
 	dc.w $FFF0, $A00, $E252, $FFF4
+
 word_14A2A:	dc.w 1
 	dc.w $FFF0, $A01, $E25B, $FFF4
+
 word_14A34:	dc.w 1
 	dc.w $FFF0, $A02, $E264, $FFF4
+
 word_14A3E:	dc.w 1
 	dc.w $FFF0, $A03, $E26D, $FFF4
+
 word_14A48:	dc.w 1
 	dc.w $FFF0, $A00, $E276, $FFF4
+
 word_14A52:	dc.w 1
 	dc.w $FFF0, $A01, $E27F, $FFF4
+
 word_14A5C:	dc.w 1
 	dc.w $FFF0, $A02, $E26D, $FFF4
+
 word_14A66:	dc.w 1
 	dc.w $FFF0, $A03, $E288, $FFF4
-off_14A70:	dc.l word_14A98
+
+; ---------------------------------------------------------------------------
+
+off_14A70:
+	dc.l word_14A98
 	dc.l word_14AA2
 	dc.l word_14AAC
 	dc.l word_14AB6
@@ -30388,182 +27281,62 @@ off_14A70:	dc.l word_14A98
 	dc.l word_14ADE
 	dc.l word_14AE8
 	dc.l word_14AF2
+
 word_14A98:	dc.w 1
 	dc.w $FFFC, $100, $856C, 0
+
 word_14AA2:	dc.w 1
 	dc.w $FFFC, $100, $856E, 0
+
 word_14AAC:	dc.w 1
 	dc.w $FFFC, $100, $8570, 0
+
 word_14AB6:	dc.w 1
 	dc.w $FFFC, $100, $8572, 0
+
 word_14AC0:	dc.w 1
 	dc.w $FFFC, $100, $8574, 0
+
 word_14ACA:	dc.w 1
 	dc.w $FFFC, $100, $8576, 0
+
 word_14AD4:	dc.w 1
 	dc.w $FFFC, $100, $8578, 0
+
 word_14ADE:	dc.w 1
 	dc.w $FFFC, $100, $857A, 0
+
 word_14AE8:	dc.w 1
 	dc.w $FFFC, $100, $857C, 0
+
 word_14AF2:	dc.w 1
 	dc.w $FFFC, $100, $857E, 0
-	dc.l word_14BB4
-	dc.l word_14BB4
-	dc.l word_14BB4
-	dc.l word_14BB4
-	dc.l word_14BB4
-	dc.l word_14BD6
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14BF8
-	dc.l word_14C22
-	dc.l word_14C44
-	dc.l word_14C44
-	dc.l word_14C44
-	dc.l word_14C44
-	dc.l word_14C44
-	dc.l word_14C66
-	dc.l word_14C70
-	dc.l word_14C7A
-	dc.l word_14C84
-	dc.l word_14C96
-	dc.l word_14CA8
-	dc.l word_14CC2
-	dc.l word_14CDC
-	dc.l word_14CF6
-	dc.l word_14D10
-	dc.l word_14D22
-	dc.l word_14D3C
-	dc.l word_14D4E
-	dc.l word_14D68
-	dc.l word_14D82
-	dc.l word_14D9C
-	dc.l word_14DB6
-	dc.l word_14DD0
-	dc.l word_14DDA
-	dc.l word_14DE4
-	dc.l word_14DEE
-word_14BB4:	dc.w 4
-	dc.w $FFC8, $F02, $8300, $FFE8
-	dc.w $FFC8, $302, $8310, 8
-	dc.w $FFE8, $E02, $8314, $FFE8
-	dc.w $FFE8, $202, $8320, 8
-word_14BD6:	dc.w 4
-	dc.w $FFC8, $B02, $8323, $FFD8
-	dc.w $FFC8, $B02, $832F, $FFF0
-	dc.w $FFE8, 2, $833B, $FFE8
-	dc.w $FFE8, $E02, $833C, $FFF0
-word_14BF8:	dc.w 5
-	dc.w $FFC8, $E02, $83A6, $FFE0
-	dc.w $FFC8, $202, $83B2, 0
-	dc.w $FFE0, $202, $83B5, $FFE0
-	dc.w $FFF8, $802, $83C4, $FFE0
-	dc.w $FFF0, $902, $83C7, $FFF8
-word_14C22:	dc.w 4
-	dc.w $FFC8, $F02, $836B, $FFE0
-	dc.w $FFC8, $702, $837B, 0
-	dc.w $FFE8, $E02, $8383, $FFE0
-	dc.w $FFE8, $602, $838F, 0
-word_14C44:	dc.w 4
-	dc.w $FFC8, $F02, $8348, $FFE8
-	dc.w $FFC8, $702, $8358, 8
-	dc.w $FFE8, $D02, $8360, $FFF0
-	dc.w $FFF8, $802, $8368, $FFF0
-word_14C66:	dc.w 1
-	dc.w $FFD8, $101, $8397, 0
-word_14C70:	dc.w 1
-	dc.w $FFD8, $401, $8399, $FFF8
-word_14C7A:	dc.w 1
-	dc.w $FFD8, $401, $839B, $FFF8
-word_14C84:	dc.w 2
-	dc.w $FFD8, $100, $8395, 0
-	dc.w $FFD8, 1, $839B, $FFF8
-word_14C96:	dc.w 2
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83BE, $FFF8
-word_14CA8:	dc.w 3
-	dc.w $FFE0, 1, $83F2, $FFF8
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83BE, $FFF8
-word_14CC2:	dc.w 3
-	dc.w $FFD8, $401, $83E3, $FFF0
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83BE, $FFF8
-word_14CDC:	dc.w 3
-	dc.w $FFD8, $901, $83D7, $FFF0
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83BE, $FFF8
-word_14CF6:	dc.w 3
-	dc.w $FFD8, $901, $83DD, $FFF0
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83BE, $FFF8
-word_14D10:	dc.w 2
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83EB, $FFF8
-word_14D22:	dc.w 3
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83EB, $FFF8
-	dc.w $FFE0, 1, $83F1, $FFF8
-word_14D3C:	dc.w 2
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83E5, $FFF8
-word_14D4E:	dc.w 3
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83E5, $FFF8
-	dc.w $FFE0, 1, $83F1, $FFF8
-word_14D68:	dc.w 3
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83EB, $FFF8
-	dc.w $FFD8, $401, $83E3, $FFF0
-word_14D82:	dc.w 3
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83E5, $FFF8
-	dc.w $FFD8, $401, $83E3, $FFF0
-word_14D9C:	dc.w 3
-	dc.w $FFE0, $602, $83B8, $FFE8
-	dc.w $FFE0, $902, $83EB, $FFF8
-	dc.w $FFD8, $501, $83CD, $FFF0
-word_14DB6:	dc.w 3
-	dc.w $FFE0, $602, $83D1, $FFE8
-	dc.w $FFE0, $902, $83EB, $FFF8
-	dc.w $FFD8, $501, $83CD, $FFF0
-word_14DD0:	dc.w 1
-	dc.w $FFD8, $101, $83A3, 0
-word_14DDA:	dc.w 1
-	dc.w $FFD8, $801, $83A0, $FFF8
-word_14DE4:	dc.w 1
-	dc.w $FFD8, $801, $839D, $FFF8
-word_14DEE:	dc.w 2
-	dc.w $FFD8, $101, $83A3, 0
-	dc.w $FFD8, 0, $83A5, 0
-off_14E00:	dc.l word_14E96
+
+; ---------------------------------------------------------------------------
+
+off_14E00:
+	dc.l word_14E96
 	dc.l word_14EF0
 	dc.l word_14E30
 	dc.l word_14E42
 	dc.l word_14E54
 	dc.l word_14E1C
 	dc.l word_14E26
+
 word_14E1C:	dc.w 1
 	dc.w $FFF8, 0, $C560, $FFF8
+
 word_14E26:	dc.w 1
 	dc.w $FFF8, 0, $AD60, $FFF8
+
 word_14E30:	dc.w 2
 	dc.w 1,	$C00, $85BA, 4
 	dc.w 1,	0, $85BE, $24
+
 word_14E42:	dc.w 2
 	dc.w 1,	$C00, $85BA, 0
 	dc.w 1,	0, $85BF, $20
+
 word_14E54:	dc.w 8
 	dc.w $FFFC, $100, $858A, $FFE8
 	dc.w $FFFC, $100, $85A2, $FFF0
@@ -30573,6 +27346,7 @@ word_14E54:	dc.w 8
 	dc.w $FFFC, $100, $8596, $14
 	dc.w $FFFC, $100, $8580, $1C
 	dc.w $FFFC, $100, $85B0, $24
+
 word_14E96:	dc.w $B
 	dc.w $FFFC, $100, $8590, 0
 	dc.w $FFFC, $100, $859A, 8
@@ -30585,6 +27359,7 @@ word_14E96:	dc.w $B
 	dc.w $FFFC, $100, $8590, $44
 	dc.w $FFFC, $100, $859A, $4C
 	dc.w 0,	$400, $85B8, $54
+
 word_14EF0:	dc.w 7
 	dc.w $FFF8, $100, $8524, $FFE0
 	dc.w $FFF8, $100, $853E, $FFE8
@@ -30593,9 +27368,14 @@ word_14EF0:	dc.w 7
 	dc.w $FFF8, $100, $8546, 0
 	dc.w $FFF8, $100, $853E, $10
 	dc.w $FFF8, $100, $8534, $18
-off_14F2A:	dc.l word_14F36
+
+; ---------------------------------------------------------------------------
+
+off_14F2A:
+	dc.l word_14F36
 	dc.l word_14F78
 	dc.l word_14F8A
+
 word_14F36:	dc.w 8
 	dc.w $FFF8, $100, $A522, $FFDC
 	dc.w $FFF8, $100, $A516, $FFE4
@@ -30605,13 +27385,19 @@ word_14F36:	dc.w 8
 	dc.w $FFF8, $100, $A540, $C
 	dc.w $FFF8, $100, $A51E, $14
 	dc.w $FFF8, $100, $A538, $1C
+
 word_14F78:	dc.w 2
 	dc.w $FFF8, $D00, $A54C, $FFDC
 	dc.w $FFF8, $D00, $A554, 4
+
 word_14F8A:	dc.w 2
 	dc.w $FFF8, $D00, $A55C, $FFDC
 	dc.w $FFF8, $D00, $A564, 4
-off_14F9C:	dc.l word_14FC0
+
+; ---------------------------------------------------------------------------
+
+off_14F9C:
+	dc.l word_14FC0
 	dc.l word_14FD2
 	dc.l word_14FE4
 	dc.l word_14FF6
@@ -30620,30 +27406,43 @@ off_14F9C:	dc.l word_14FC0
 	dc.l word_1501C
 	dc.l word_15026
 	dc.l word_15030
+
 word_14FC0:	dc.w 2
 	dc.w $FFF8, $501, $100,	$FFF8
 	dc.w $FFFE, $503, $614C, $FFFE
+
 word_14FD2:	dc.w 2
 	dc.w $FFF8, $501, $148,	$FFF8
 	dc.w $FFFE, $503, $614C, $FFFE
+
 word_14FE4:	dc.w 2
 	dc.w $FFF8, $501, $140,	$FFF8
 	dc.w $FFFE, $503, $614C, $FFFE
+
 word_14FF6:	dc.w 2
 	dc.w $FFF8, $501, $144,	$FFF8
 	dc.w $FFFE, $503, $614C, $FFFE
+
 word_15008:	dc.w 1
 	dc.w $FFF8, $502, $31C,	$FFF8
+
 word_15012:	dc.w 1
 	dc.w $FFFC, 2, $324, $FFFC
+
 word_1501C:	dc.w 1
 	dc.w $FFFC, 2, $326, $FFFC
+
 word_15026:	dc.w 1
 	dc.w $FFFE, $503, $614C, $FFFE
+
 word_15030:	dc.w 2
 	dc.w $FFF8, $501, $150,	$FFF8
 	dc.w $FFFE, $503, $614C, $FFFE
-off_15042:	dc.l word_15066
+
+; ---------------------------------------------------------------------------
+
+off_15042:
+	dc.l word_15066
 	dc.l word_15078
 	dc.l word_1508A
 	dc.l word_1509C
@@ -30652,30 +27451,43 @@ off_15042:	dc.l word_15066
 	dc.l word_150C2
 	dc.l word_150CC
 	dc.l word_150D6
+
 word_15066:	dc.w 2
 	dc.w $FFF8, $501, $154,	$FFF8
 	dc.w $FFFE, $503, $61A0, $FFFE
+
 word_15078:	dc.w 2
 	dc.w $FFF8, $501, $19C,	$FFF8
 	dc.w $FFFE, $503, $61A0, $FFFE
+
 word_1508A:	dc.w 2
 	dc.w $FFF8, $501, $194,	$FFF8
 	dc.w $FFFE, $503, $61A0, $FFFE
+
 word_1509C:	dc.w 2
 	dc.w $FFF8, $501, $198,	$FFF8
 	dc.w $FFFE, $503, $61A0, $FFFE
+
 word_150AE:	dc.w 1
 	dc.w $FFF8, $502, $320,	$FFF8
+
 word_150B8:	dc.w 1
 	dc.w $FFFC, 2, $325, $FFFC
+
 word_150C2:	dc.w 1
 	dc.w $FFFC, 2, $327, $FFFC
+
 word_150CC:	dc.w 1
 	dc.w $FFFE, $503, $61A0, $FFFE
+
 word_150D6:	dc.w 2
 	dc.w $FFF8, $501, $1A4,	$FFF8
 	dc.w $FFFE, $503, $61A0, $FFFE
-off_150E8:	dc.l word_1535C
+
+; ---------------------------------------------------------------------------
+
+off_150E8:
+	dc.l word_1535C
 	dc.l word_15366
 	dc.l word_15370
 	dc.l word_15382
@@ -30702,105 +27514,136 @@ off_150E8:	dc.l word_1535C
 	dc.l word_15326
 	dc.l word_15338
 	dc.l word_1534A
+
 word_15154:	dc.w 4
 	dc.w $FFF8, 0, $81A8, $FFF8
 	dc.w 0,	0, $91A8, $FFF8
 	dc.w $FFF8, 0, $89A8, 0
 	dc.w 0,	0, $99A8, 0
+
 word_15176:	dc.w 4
 	dc.w $FFF8, $400, $81A9, $FFF0
 	dc.w 0,	$400, $91A9, $FFF0
 	dc.w $FFF8, $400, $89A9, 0
 	dc.w 0,	$400, $99A9, 0
+
 word_15198:	dc.w 4
 	dc.w $FFF0, $500, $81AB, $FFF0
 	dc.w 0,	$500, $91AB, $FFF0
 	dc.w $FFF0, $500, $89AB, 0
 	dc.w 0,	$500, $99AB, 0
+
 word_151BA:	dc.w 4
 	dc.w $FFF0, $500, $81AF, $FFF0
 	dc.w 0,	$500, $91AF, $FFF0
 	dc.w $FFF0, $500, $89AF, 0
 	dc.w 0,	$500, $99AF, 0
+
 word_151DC:	dc.w 4
 	dc.w $FFF8, 0, $81B3, $FFF8
 	dc.w 0,	0, $91B3, $FFF8
 	dc.w $FFF8, 0, $89B3, 0
 	dc.w 0,	0, $99B3, 0
+
 word_151FE:	dc.w 2
 	dc.w $FFF8, $400, $81B4, $FFF8
 	dc.w 0,	$400, $99B4, $FFF8
+
 word_15210:	dc.w 2
 	dc.w $FFF0, $D00, $81B6, $FFF0
 	dc.w 0,	$D00, $99B6, $FFF0
+
 word_15222:	dc.w 2
 	dc.w $FFF0, $D00, $81BE, $FFF0
 	dc.w 0,	$D00, $99BE, $FFF0
+
 word_15234:	dc.w 2
 	dc.w $FFF0, $D00, $81C6, $FFF0
 	dc.w 0,	$D00, $99C6, $FFF0
+
 word_15246:	dc.w 2
 	dc.w $FFF0, $D00, $81CE, $FFF0
 	dc.w 0,	$D00, $99CE, $FFF0
+
 word_15258:	dc.w 4
 	dc.w $FFF8, 0, $A1A8, $FFF8
 	dc.w 0,	0, $B1A8, $FFF8
 	dc.w $FFF8, 0, $A9A8, 0
 	dc.w 0,	0, $B9A8, 0
+
 word_1527A:	dc.w 4
 	dc.w $FFF8, $400, $A1A9, $FFF0
 	dc.w 0,	$400, $B1A9, $FFF0
 	dc.w $FFF8, $400, $A9A9, 0
 	dc.w 0,	$400, $B9A9, 0
+
 word_1529C:	dc.w 4
 	dc.w $FFF0, $500, $A1AB, $FFF0
 	dc.w 0,	$500, $B1AB, $FFF0
 	dc.w $FFF0, $500, $A9AB, 0
 	dc.w 0,	$500, $B9AB, 0
+
 word_152BE:	dc.w 4
 	dc.w $FFF0, $500, $A1AF, $FFF0
 	dc.w 0,	$500, $B1AF, $FFF0
 	dc.w $FFF0, $500, $A9AF, 0
 	dc.w 0,	$500, $B9AF, 0
+
 word_152E0:	dc.w 4
 	dc.w $FFF8, 0, $A1B3, $FFF8
 	dc.w 0,	0, $B1B3, $FFF8
 	dc.w $FFF8, 0, $A9B3, 0
 	dc.w 0,	0, $B9B3, 0
+
 word_15302:	dc.w 2
 	dc.w $FFF8, $400, $A1B4, $FFF8
 	dc.w 0,	$400, $B9B4, $FFF8
+
 word_15314:	dc.w 2
 	dc.w $FFF0, $D00, $A1B6, $FFF0
 	dc.w 0,	$D00, $B9B6, $FFF0
+
 word_15326:	dc.w 2
 	dc.w $FFF0, $D00, $A1BE, $FFF0
 	dc.w 0,	$D00, $B9BE, $FFF0
+
 word_15338:	dc.w 2
 	dc.w $FFF0, $D00, $A1C6, $FFF0
 	dc.w 0,	$D00, $B9C6, $FFF0
+
 word_1534A:	dc.w 2
 	dc.w $FFF0, $D00, $A1CE, $FFF0
 	dc.w 0,	$D00, $B9CE, $FFF0
+
 word_1535C:	dc.w 1
 	dc.w $FFF8, $500, $81DE, 0
+
 word_15366:	dc.w 1
 	dc.w $FFF8, $900, $81E2, 0
+
 word_15370:	dc.w 2
 	dc.w $FFF8, $900, $81E2, 0
 	dc.w $FFF8, $500, $81DE, $18
+
 word_15382:	dc.w 2
 	dc.w $FFF8, $900, $81E2, 0
 	dc.w $FFF8, $900, $81E2, $18
+
 word_15394:	dc.w 3
 	dc.w $FFF8, $900, $81E2, 0
 	dc.w $FFF8, $900, $81E2, $18
 	dc.w $FFF8, $500, $81DE, $30
+
 word_153AE:	dc.w 1
 	dc.w $FFF8, $500, $81DA, 0
+
 word_153B8:	dc.w 1
 	dc.w $FFF8, $500, $81D6, 0
-off_153C2:	dc.l word_153E6
+
+; ---------------------------------------------------------------------------
+
+off_153C2:
+	dc.l word_153E6
 	dc.l word_153F8
 	dc.l word_1540A
 	dc.l word_1541C
@@ -30809,30 +27652,43 @@ off_153C2:	dc.l word_153E6
 	dc.l word_15442
 	dc.l word_1544C
 	dc.l word_15456
+
 word_153E6:	dc.w 2
 	dc.w $FFF8, $501, $41FC, $FFF8
 	dc.w $FFFE, $503, $6248, $FFFE
+
 word_153F8:	dc.w 2
 	dc.w $FFF8, $501, $4244, $FFF8
 	dc.w $FFFE, $503, $6248, $FFFE
+
 word_1540A:	dc.w 2
 	dc.w $FFF8, $501, $423C, $FFF8
 	dc.w $FFFE, $503, $6248, $FFFE
+
 word_1541C:	dc.w 2
 	dc.w $FFF8, $501, $4240, $FFF8
 	dc.w $FFFE, $503, $6248, $FFFE
+
 word_1542E:	dc.w 1
 	dc.w $FFF8, $502, $431C, $FFF8
+
 word_15438:	dc.w 1
 	dc.w $FFFC, 2, $4324, $FFFC
+
 word_15442:	dc.w 1
 	dc.w $FFFC, 2, $4326, $FFFC
+
 word_1544C:	dc.w 1
 	dc.w $FFFE, $503, $6248, $FFFE
+
 word_15456:	dc.w 2
 	dc.w $FFF8, $501, $424C, $FFF8
 	dc.w $FFFE, $503, $6248, $FFFE
-off_15468:	dc.l word_1548C
+
+; ---------------------------------------------------------------------------
+
+off_15468:
+	dc.l word_1548C
 	dc.l word_1549E
 	dc.l word_154B0
 	dc.l word_154C2
@@ -30841,30 +27697,43 @@ off_15468:	dc.l word_1548C
 	dc.l word_154E8
 	dc.l word_154F2
 	dc.l word_154FC
+
 word_1548C:	dc.w 2
 	dc.w $FFF8, $501, $2250, $FFF8
 	dc.w $FFFE, $503, $629C, $FFFE
+
 word_1549E:	dc.w 2
 	dc.w $FFF8, $501, $2298, $FFF8
 	dc.w $FFFE, $503, $629C, $FFFE
+
 word_154B0:	dc.w 2
 	dc.w $FFF8, $501, $2290, $FFF8
 	dc.w $FFFE, $503, $629C, $FFFE
+
 word_154C2:	dc.w 2
 	dc.w $FFF8, $501, $2294, $FFF8
 	dc.w $FFFE, $503, $629C, $FFFE
+
 word_154D4:	dc.w 1
 	dc.w $FFF8, $502, $2320, $FFF8
+
 word_154DE:	dc.w 1
 	dc.w $FFFC, 2, $2325, $FFFC
+
 word_154E8:	dc.w 1
 	dc.w $FFFC, 2, $2327, $FFFC
+
 word_154F2:	dc.w 1
 	dc.w $FFFE, $503, $629C, $FFFE
+
 word_154FC:	dc.w 2
 	dc.w $FFF8, $501, $22A0, $FFF8
 	dc.w $FFFE, $503, $629C, $FFFE
-off_1550E:	dc.l word_15532
+
+; ---------------------------------------------------------------------------
+
+off_1550E:
+	dc.l word_15532
 	dc.l word_15544
 	dc.l word_15556
 	dc.l word_15568
@@ -30873,30 +27742,43 @@ off_1550E:	dc.l word_15532
 	dc.l word_1558E
 	dc.l word_15598
 	dc.l word_155A2
+
 word_15532:	dc.w 2
 	dc.w $FFF8, $501, $22A4, $FFF8
 	dc.w $FFFE, $503, $62F0, $FFFE
+
 word_15544:	dc.w 2
 	dc.w $FFF8, $501, $22EC, $FFF8
 	dc.w $FFFE, $503, $62F0, $FFFE
+
 word_15556:	dc.w 2
 	dc.w $FFF8, $501, $22E4, $FFF8
 	dc.w $FFFE, $503, $62F0, $FFFE
+
 word_15568:	dc.w 2
 	dc.w $FFF8, $501, $22E8, $FFF8
 	dc.w $FFFE, $503, $62F0, $FFFE
+
 word_1557A:	dc.w 1
 	dc.w $FFF8, $502, $231C, $FFF8
+
 word_15584:	dc.w 1
 	dc.w $FFFC, 2, $2324, $FFFC
+
 word_1558E:	dc.w 1
 	dc.w $FFFC, 2, $2326, $FFFC
+
 word_15598:	dc.w 1
 	dc.w $FFFE, $503, $62F0, $FFFE
+
 word_155A2:	dc.w 2
 	dc.w $FFF8, $501, $22F4, $FFF8
 	dc.w $FFFE, $503, $62F0, $FFFE
-off_155B4:	dc.l word_15866
+
+; ---------------------------------------------------------------------------
+
+off_155B4:
+	dc.l word_15866
 	dc.l word_15878
 	dc.l word_1588A
 	dc.l word_1589C
@@ -30930,6 +27812,7 @@ off_155B4:	dc.l word_15866
 	dc.l 0
 	dc.l word_1563C
 	dc.l word_1566E
+
 word_1563C:	dc.w 6
 	dc.w $FFFC, $100, $8534, $FFE8
 	dc.w $FFFC, $100, $8516, $FFF0
@@ -30937,6 +27820,7 @@ word_1563C:	dc.w 6
 	dc.w $FFFC, $100, $853A, 0
 	dc.w $FFFC, $100, $851E, 8
 	dc.w $FFFC, $100, $851C, $10
+
 word_1566E:	dc.w 6
 	dc.w $FFFC, $100, $A534, $FFE8
 	dc.w $FFFC, $100, $A516, $FFF0
@@ -30944,6 +27828,7 @@ word_1566E:	dc.w 6
 	dc.w $FFFC, $100, $A53A, 0
 	dc.w $FFFC, $100, $A51E, 8
 	dc.w $FFFC, $100, $A51C, $10
+
 word_156A0:	dc.w 9
 	dc.w $FFFC, 0, $8201, $24
 	dc.w 0,	$F01, $8220, 0
@@ -30954,313 +27839,154 @@ word_156A0:	dc.w 9
 	dc.w $20, $E01,	$826C, $20
 	dc.w $20, $E01,	$8278, $40
 	dc.w $20, $A01,	$8284, $60
+
 word_156EA:	dc.w 1
 	dc.w 0,	$D00, $E488, 0
+
 word_156F4:	dc.w 4
 	dc.w $FFF4, 0, $4314, $FFF8
 	dc.w $FFF4, 0, $4B14, 0
 	dc.w $FFFC, 3, $4315, $FFF0
 	dc.w $FFFC, 3, $4B15, 8
+
 word_15716:	dc.w 4
 	dc.w $FFF4, 0, $4314, $FFF8
 	dc.w $FFF4, 0, $4B14, 0
 	dc.w $FFFE, 3, $4316, $FFF0
 	dc.w $FFFE, 3, $4B16, 8
+
 word_15738:	dc.w 4
 	dc.w $FFF4, 0, $4314, $FFF8
 	dc.w $FFF4, 0, $4B14, 0
 	dc.w 0,	3, $4317, $FFF0
 	dc.w 0,	3, $4B17, 8
+
 word_1575A:	dc.w 2
 	dc.w $FFF8, $502, $42F8, $FFF8
 	dc.w $FFFE, $503, $6310, $FFFE
+
 word_1576C:	dc.w 2
 	dc.w $FFF8, $502, $42F8, $FFF8
 	dc.w $FFE8, $502, $42F8, $FFF8
+
 word_1577E:	dc.w 3
 	dc.w $FFF8, $502, $42F8, $FFF8
 	dc.w $FFE8, $502, $42F8, $FFF8
 	dc.w $FFD8, $502, $42F8, $FFF8
+
 word_15798:	dc.w 4
 	dc.w $FFF8, $502, $42F8, $FFF8
 	dc.w $FFE8, $502, $42F8, $FFF8
 	dc.w $FFD8, $502, $42F8, $FFF8
 	dc.w $FFC8, $502, $42F8, $FFF8
+
 word_157BA:	dc.w 5
 	dc.w $FFF8, $502, $42F8, $FFF8
 	dc.w $FFE8, $502, $42F8, $FFF8
 	dc.w $FFD8, $502, $42F8, $FFF8
 	dc.w $FFC8, $502, $42F8, $FFF8
 	dc.w $FFB8, $502, $42F8, $FFF8
+
 word_157E4:	dc.w 2
 	dc.w $FFFE, $503, $6310, $FFFE
+
 word_157EE:	dc.w 2
 	dc.w $FFFE, $503, $6310, $FFFE
 	dc.w $FFEE, $503, $6310, $FFFE
+
 word_15800:	dc.w 3
 	dc.w $FFFE, $503, $6310, $FFFE
 	dc.w $FFEE, $503, $6310, $FFFE
 	dc.w $FFDE, $503, $6310, $FFFE
+
 word_1581A:	dc.w 4
 	dc.w $FFFE, $503, $6310, $FFFE
 	dc.w $FFEE, $503, $6310, $FFFE
 	dc.w $FFDE, $503, $6310, $FFFE
 	dc.w $FFCE, $503, $6310, $FFFE
+
 word_1583C:	dc.w 5
 	dc.w $FFFE, $503, $6310, $FFFE
 	dc.w $FFEE, $503, $6310, $FFFE
 	dc.w $FFDE, $503, $6310, $FFFE
 	dc.w $FFCE, $503, $6310, $FFFE
 	dc.w $FFBE, $503, $6310, $FFFE
+
 word_15866:	dc.w 2
 	dc.w $FFF8, $502, $42F8, $FFF8
 	dc.w $FFFE, $503, $6310, $FFFE
+
 word_15878:	dc.w 2
 	dc.w $FFF8, $502, $42FC, $FFF8
 	dc.w $FFFE, $503, $6310, $FFFE
+
 word_1588A:	dc.w 2
 	dc.w $FFF8, $502, $4300, $FFF8
 	dc.w $FFFE, $503, $6310, $FFFE
+
 word_1589C:	dc.w 2
 	dc.w $FFF8, $502, $4304, $FFF8
 	dc.w $FFFE, $503, $6310, $FFFE
+
 word_158AE:	dc.w 1
 	dc.w $FFFE, $503, $6310, $FFFE
+
 word_158B8:	dc.w 1
 	dc.w $FFFE, $503, $6310, $FFFE
+
 word_158C2:	dc.w 1
 	dc.w $FFFE, $503, $6310, $FFFE
+
 word_158CC:	dc.w 1
 	dc.w $FFFE, $503, $6310, $FFFE
+
 word_158D6:	dc.w 1
 	dc.w $FFF8, $500, $E0F8, $FFF8
+
 word_158E0:	dc.w 1
 	dc.w $FFF8, $500, $E0FC, $FFF8
+
 word_158EA:	dc.w 1
 	dc.w $FFFC, 0, $832A, $FFFC
+
 word_158F4:	dc.w 1
 	dc.w $FFFC, 3, $832A, $FFFC
+
 word_158FE:	dc.w 1
 	dc.w $FFFC, 3, $32A, $FFFC
-off_15908:	dc.l word_15A2A
-	dc.l word_15A34
-	dc.l word_15A3E
-	dc.l word_15A48
-	dc.l word_15A52
-	dc.l word_15A5C
-	dc.l word_15A66
-	dc.l word_15A70
-	dc.l word_15A7A
-	dc.l word_15A84
-	dc.l word_15A8E
-	dc.l word_15A98
-	dc.l word_15AA2
-	dc.l word_15AAC
-	dc.l word_15AB6
-	dc.l word_15AC0
-	dc.l word_15ACA
-	dc.l word_15AD4
-	dc.l word_15ADE
-	dc.l word_15AE8
-	dc.l word_15AF2
-	dc.l word_15AFC
-	dc.l word_15B06
-	dc.l word_15B10
-	dc.l word_15B10
-	dc.l word_15B1A
-	dc.l word_15B24
-	dc.l word_15B2E
-	dc.l word_15B38
-	dc.l word_15B42
-	dc.l word_15B4C
-	dc.l word_15B56
-	dc.l word_15B60
-	dc.l word_15B6A
-	dc.l word_15B74
-	dc.l word_15B86
-	dc.l word_15B98
-	dc.l word_15BA2
-	dc.l word_15BAC
-	dc.l word_15BB6
-	dc.l word_15BC0
-	dc.l word_15BCA
-	dc.l word_15BD4
-	dc.l word_15BDE
-	dc.l word_15BE8
-	dc.l word_15BF2
-	dc.l word_15BFC
-	dc.l word_15C06
-	dc.l word_15C10
-	dc.l word_15C1A
-	dc.l word_15C24
-	dc.l word_15C2E
-	dc.l word_15C38
-	dc.l word_15C42
-	dc.l word_15C4C
-	dc.l word_15C56
-	dc.l word_15C60
-	dc.l word_15C6A
-	dc.l word_15C74
-	dc.l word_15C7E
-	dc.l word_15C88
-	dc.l word_15C92
-	dc.l word_15C9C
-	dc.l word_15CA6
-	dc.l word_15AAC
-	dc.l word_15A48
-	dc.l word_15A66
-	dc.l word_15A84
-	dc.l word_15A84
-	dc.l word_15A20
-word_15A20:	dc.w 1
-	dc.w $FFF8, $500, $400,	$FFF8
-word_15A2A:	dc.w 1
-	dc.w $FFF8, $500, $8400, $FFF8
-word_15A34:	dc.w 1
-	dc.w $FFF8, $500, $8404, $FFF8
-word_15A3E:	dc.w 1
-	dc.w $FFF8, $500, $8408, $FFF8
-word_15A48:	dc.w 1
-	dc.w $FFF8, $500, $840C, $FFF8
-word_15A52:	dc.w 1
-	dc.w $FFF8, $500, $8410, $FFF8
-word_15A5C:	dc.w 1
-	dc.w $FFF8, $500, $8414, $FFF8
-word_15A66:	dc.w 1
-	dc.w $FFF8, $500, $8C0C, $FFF8
-word_15A70:	dc.w 1
-	dc.w $FFF8, $500, $8C10, $FFF8
-word_15A7A:	dc.w 1
-	dc.w $FFF8, $500, $8C14, $FFF8
-word_15A84:	dc.w 1
-	dc.w $FFF8, $500, $8330, $FFF8
-word_15A8E:	dc.w 1
-	dc.w $FFF8, $500, $8334, $FFF8
-word_15A98:	dc.w 1
-	dc.w $FFF8, $500, $8338, $FFF8
-word_15AA2:	dc.w 1
-	dc.w $FFF8, $500, $833C, $FFF8
-word_15AAC:	dc.w 1
-	dc.w $FFF8, $500, $8340, $FFF8
-word_15AB6:	dc.w 1
-	dc.w $FFF8, $500, $8344, $FFF8
-word_15AC0:	dc.w 1
-	dc.w $FFF8, $500, $8348, $FFF8
-word_15ACA:	dc.w 1
-	dc.w $FFF8, $900, $834C, $FFF0
-word_15AD4:	dc.w 1
-	dc.w $FFF8, $900, $8352, $FFF0
-word_15ADE:	dc.w 1
-	dc.w $FFF8, $900, $8358, $FFF0
-word_15AE8:	dc.w 1
-	dc.w $FFF8, $900, $835E, $FFF0
-word_15AF2:	dc.w 1
-	dc.w $FFF8, $900, $8364, $FFF0
-word_15AFC:	dc.w 1
-	dc.w $FFF8, $D00, $836A, $FFE8
-word_15B06:	dc.w 1
-	dc.w $FFF8, $D00, $8372, $FFE8
-word_15B10:	dc.w 1
-	dc.w $FFF8, $500, $837A, $FFF8
-word_15B1A:	dc.w 1
-	dc.w $FFF8, $500, $837E, $FFF8
-word_15B24:	dc.w 1
-	dc.w $FFF8, $500, $8382, $FFF8
-word_15B2E:	dc.w 1
-	dc.w $FFF8, $500, $8386, $FFF8
-word_15B38:	dc.w 1
-	dc.w $FFF8, $500, $838A, $FFF8
-word_15B42:	dc.w 1
-	dc.w $FFF8, $500, $838E, $FFF8
-word_15B4C:	dc.w 1
-	dc.w $FFF8, $500, $8392, $FFF8
-word_15B56:	dc.w 1
-	dc.w $FFF8, $500, $8396, $FFF8
-word_15B60:	dc.w 1
-	dc.w $FFF8, $500, $839A, $FFF8
-word_15B6A:	dc.w 1
-	dc.w $FFF8, $500, $839E, $FFF8
-word_15B74:	dc.w 2
-	dc.w $FFF0, $100, $83A2, $FFF0
-	dc.w $FFF8, $500, $839A, $FFF8
-word_15B86:	dc.w 2
-	dc.w $FFF0, $100, $83A4, $FFF0
-	dc.w $FFF8, $500, $839A, $FFF8
-word_15B98:	dc.w 1
-	dc.w $FFF8, $500, $83A6, $FFF8
-word_15BA2:	dc.w 1
-	dc.w $FFF8, $500, $8BA6, $FFF8
-word_15BAC:	dc.w 1
-	dc.w $FFF8, $500, $83AA, $FFF8
-word_15BB6:	dc.w 1
-	dc.w $FFF8, $500, $83AE, $FFF8
-word_15BC0:	dc.w 1
-	dc.w $FFF8, $900, $83B2, $FFF0
-word_15BCA:	dc.w 1
-	dc.w $FFF8, $900, $83B8, $FFF0
-word_15BD4:	dc.w 1
-	dc.w $FFF8, $500, $83BE, $FFF8
-word_15BDE:	dc.w 1
-	dc.w $FFF8, $A00, $83C2, $FFF8
-word_15BE8:	dc.w 1
-	dc.w $FFF8, $A00, $83CB, $FFF8
-word_15BF2:	dc.w 1
-	dc.w $FFF8, $500, $83D4, $FFF8
-word_15BFC:	dc.w 1
-	dc.w $FFF8, $900, $83D8, $FFF0
-word_15C06:	dc.w 1
-	dc.w $FFF8, $900, $83DE, $FFF0
-word_15C10:	dc.w 1
-	dc.w $FFF8, $500, $83E4, $FFF8
-word_15C1A:	dc.w 1
-	dc.w $FFF8, $500, $83E8, $FFF8
-word_15C24:	dc.w 1
-	dc.w $FFF8, $500, $83EC, $FFF8
-word_15C2E:	dc.w 1
-	dc.w $FFF8, $500, $83F0, $FFF8
-word_15C38:	dc.w 1
-	dc.w 0,	$400, $83F4, $FFF8
-word_15C42:	dc.w 1
-	dc.w $FFF8, $500, $83F6, $FFF8
-word_15C4C:	dc.w 1
-	dc.w $FFF8, $500, $83FA, $FFF8
-word_15C56:	dc.w 1
-	dc.w $FFF8, $500, $8418, $FFF8
-word_15C60:	dc.w 1
-	dc.w $FFF8, $900, $841C, $FFF8
-word_15C6A:	dc.w 1
-	dc.w $FFF8, $900, $8422, $FFF8
-word_15C74:	dc.w 1
-	dc.w $FFF8, $900, $8428, $FFF8
-word_15C7E:	dc.w 1
-	dc.w $FFF8, $500, $842E, $FFF8
-word_15C88:	dc.w 1
-	dc.w $FFF8, $900, $8432, $FFF0
-word_15C92:	dc.w 1
-	dc.w $FFF8, $900, $8C22, $FFF0
-word_15C9C:	dc.w 1
-	dc.w $FFF8, $900, $8C28, $FFF0
-word_15CA6:	dc.w 1
-	dc.w $FFF8, $500, $8BAA, $FFF8
-off_15CB0:	dc.l word_15CC8
+
+; ---------------------------------------------------------------------------
+
+off_15CB0:
+	dc.l word_15CC8
 	dc.l word_15CD2
 	dc.l word_15CDC
 	dc.l word_15CE6
 	dc.l word_15CF0
 	dc.l word_15CFA
+
 word_15CC8:	dc.w 1
 	dc.w $FFF0, $E01, $C438, $FFF0
+
 word_15CD2:	dc.w 1
 	dc.w $FFF0, $E01, $C444, $FFF0
+
 word_15CDC:	dc.w 1
 	dc.w $FFE8, $F01, $C450, $FFF0
+
 word_15CE6:	dc.w 1
 	dc.w $FFF0, $E01, $4438, $FFF0
+
 word_15CF0:	dc.w 1
 	dc.w $FFF0, $E01, $4444, $FFF0
+
 word_15CFA:	dc.w 1
 	dc.w $FFE8, $F01, $4450, $FFF0
-off_15D04:	dc.l word_15D64
+
+; ---------------------------------------------------------------------------
+
+off_15D04:
+	dc.l word_15D64
 	dc.l word_15DCE
 	dc.l word_15E28
 	dc.l word_15EB2
@@ -31284,6 +28010,7 @@ off_15D04:	dc.l word_15D64
 	dc.l word_1658E
 	dc.l word_16618
 	dc.l word_1667A
+
 word_15D64:	dc.w $D
 	dc.w $18, $B04,	$4100, $28
 	dc.w $20, $704,	$410C, $18
@@ -31298,6 +28025,7 @@ word_15D64:	dc.w $D
 	dc.w $58, $104,	$413D, $48
 	dc.w $60, $C04,	$413F, $18
 	dc.w $60, 4, $4143, $40
+
 word_15DCE:	dc.w $B
 	dc.w $18, $704,	$4100, $28
 	dc.w $20, $704,	$4108, $18
@@ -31310,6 +28038,7 @@ word_15DCE:	dc.w $B
 	dc.w $50, $604,	$413A, $38
 	dc.w $58, $104,	$4140, $48
 	dc.w $60, $C04,	$4142, $18
+
 word_15E28:	dc.w $11
 	dc.w $18, $F04,	$4100, $20
 	dc.w $20, $304,	$4110, $18
@@ -31328,6 +28057,7 @@ word_15E28:	dc.w $11
 	dc.w $60, 4, $4152, $18
 	dc.w $60, $404,	$4153, $28
 	dc.w $60, 4, $4155, $40
+
 word_15EB2:	dc.w $11
 	dc.w $18, $304,	$4100, $38
 	dc.w $18, $604,	$4104, $58
@@ -31346,6 +28076,7 @@ word_15EB2:	dc.w $11
 	dc.w $58, $104,	$4152, $38
 	dc.w $60, $404,	$4154, $28
 	dc.w $60, $404,	$4156, $40
+
 word_15F3C:	dc.w $10
 	dc.w $10, $404,	$4100, $40
 	dc.w $18, $704,	$4102, $48
@@ -31363,6 +28094,7 @@ word_15F3C:	dc.w $10
 	dc.w $58, $504,	$414C, $18
 	dc.w $58, $104,	$4150, $48
 	dc.w $60, $C04,	$4152, $28
+
 word_15FBE:	dc.w $11
 	dc.w $20, $F04,	$4100, $20
 	dc.w $20, $304,	$4110, $40
@@ -31381,6 +28113,7 @@ word_15FBE:	dc.w $11
 	dc.w $58, $104,	$414C, $38
 	dc.w $60, $404,	$414E, $28
 	dc.w $60, $404,	$4150, $40
+
 word_16048:	dc.w $10
 	dc.w 0,	$604, $4100, $38
 	dc.w $10, $304,	$4106, $48
@@ -31398,6 +28131,7 @@ word_16048:	dc.w $10
 	dc.w $58, $904,	$4144, $10
 	dc.w $58, $504,	$414A, $38
 	dc.w $60, $404,	$414E, $28
+
 word_160CA:	dc.w $D
 	dc.w $18, $F04,	$4100, $30
 	dc.w $20, $704,	$4110, $20
@@ -31412,6 +28146,7 @@ word_160CA:	dc.w $D
 	dc.w $58, $104,	$4144, $20
 	dc.w $58, $904,	$4146, $38
 	dc.w $60, $404,	$414C, $28
+
 word_16134:	dc.w $10
 	dc.w 8,	$204, $4100, $40
 	dc.w $10, $304,	$4103, $38
@@ -31429,6 +28164,7 @@ word_16134:	dc.w $10
 	dc.w $58, $D04,	$4142, 0
 	dc.w $60, $804,	$414A, $20
 	dc.w $60, 4, $414D, $40
+
 word_161B6:	dc.w $11
 	dc.w 0,	$704, $4100, $38
 	dc.w 8,	$304, $4108, $30
@@ -31447,6 +28183,7 @@ word_161B6:	dc.w $11
 	dc.w $50, $204,	$4146, $40
 	dc.w $58, $504,	$4149, $10
 	dc.w $60, $C04,	$414D, $20
+
 word_16240:	dc.w $F
 	dc.w 8,	$F04, $4100, $18
 	dc.w $10, $304,	$4110, $38
@@ -31463,6 +28200,7 @@ word_16240:	dc.w $F
 	dc.w $58, $904,	$4149, $10
 	dc.w $58, $104,	$414F, $40
 	dc.w $60, $404,	$4151, $28
+
 word_162BA:	dc.w $10
 	dc.w $18, $F04,	$4100, $18
 	dc.w $18, $304,	$4110, $38
@@ -31480,6 +28218,7 @@ word_162BA:	dc.w $10
 	dc.w $60, 4, $4144, $10
 	dc.w $60, $804,	$4145, $20
 	dc.w $60, 4, $4148, $40
+
 word_1633C:	dc.w $10
 	dc.w $18, $F04,	$4100, $18
 	dc.w $18, $304,	$4110, $38
@@ -31497,6 +28236,7 @@ word_1633C:	dc.w $10
 	dc.w $60, 4, $4146, $10
 	dc.w $60, $804,	$4147, $20
 	dc.w $60, 4, $414A, $40
+
 word_163BE:	dc.w $D
 	dc.w $20, $F04,	$4100, $20
 	dc.w $20, $304,	$4110, $40
@@ -31511,6 +28251,7 @@ word_163BE:	dc.w $D
 	dc.w $58, $104,	$413F, $48
 	dc.w $60, $C04,	$4141, $20
 	dc.w $60, 4, $4145, $40
+
 word_16428:	dc.w $D
 	dc.w $10, $F04,	$4100, $18
 	dc.w $10, $B04,	$4110, $38
@@ -31525,6 +28266,7 @@ word_16428:	dc.w $D
 	dc.w $50, 4, $4141, $18
 	dc.w $50, $804,	$4142, $38
 	dc.w $58, 4, $4145, $10
+
 word_16492:	dc.w $10
 	dc.w 0,	$504, $4100, $40
 	dc.w 8,	$E04, $4104, $18
@@ -31542,6 +28284,7 @@ word_16492:	dc.w $10
 	dc.w $48, $404,	$4141, $18
 	dc.w $48, $404,	$4143, $30
 	dc.w $50, 4, $4145, $18
+
 word_16514:	dc.w $F
 	dc.w 0,	$704, $4100, $38
 	dc.w 8,	$D04, $4108, 0
@@ -31558,6 +28301,7 @@ word_16514:	dc.w $F
 	dc.w $48, $104,	$4144, $48
 	dc.w $50, $404,	$4146, $28
 	dc.w $50, 4, $4148, $40
+
 word_1658E:	dc.w $11
 	dc.w $18, $F04,	$4100, $18
 	dc.w $18, $304,	$4110, $38
@@ -31576,6 +28320,7 @@ word_1658E:	dc.w $11
 	dc.w $60, 4, $4147, $10
 	dc.w $60, $404,	$4148, $28
 	dc.w $60, 4, $414A, $40
+
 word_16618:	dc.w $C
 	dc.w $18, $704,	$4100, $28
 	dc.w $20, $B04,	$4108, $10
@@ -31589,6 +28334,7 @@ word_16618:	dc.w $C
 	dc.w $48, $304,	$413F, $48
 	dc.w $60, $C04,	$4143, $10
 	dc.w $60, $804,	$4147, $30
+
 word_1667A:	dc.w $B
 	dc.w $20, $F04,	$4100, $10
 	dc.w $20, $704,	$4110, $30
@@ -31601,7 +28347,11 @@ word_1667A:	dc.w $B
 	dc.w $50, $204,	$4141, 8
 	dc.w $60, $C04,	$4144, $10
 	dc.w $60, $404,	$4148, $30
-off_166D4:	dc.l word_166FC
+
+; ---------------------------------------------------------------------------
+
+off_166D4:
+	dc.l word_166FC
 	dc.l word_16706
 	dc.l word_16710
 	dc.l word_1671A
@@ -31611,23 +28361,30 @@ off_166D4:	dc.l word_166FC
 	dc.l word_167D2
 	dc.l word_16814
 	dc.l word_16876
+
 word_166FC:	dc.w 1
 	dc.w 0,	$402, $2510, 0
+
 word_16706:	dc.w 1
 	dc.w 0,	$402, $2512, 0
+
 word_16710:	dc.w 1
 	dc.w $FFFA, $501, $514,	$FFF8
+
 word_1671A:	dc.w 4
 	dc.w 0,	$502, $518, 0
 	dc.w 0,	$502, $D18, $10
 	dc.w $10, $502,	$1518, 0
 	dc.w $10, $502,	$1D18, $10
+
 word_1673C:	dc.w 2
 	dc.w $FFF9, $501, $51C,	$FFF8
 	dc.w $FFFE, $503, $6520, $FFFD
+
 word_1674E:	dc.w 2
 	dc.w $FFF9, $501, $D1C,	$FFF8
 	dc.w $FFFE, $503, $6D20, $FFFD
+
 word_16760:	dc.w $E
 	dc.w 0,	$501, $2548, 0
 	dc.w 0,	$501, $2528, $10
@@ -31643,6 +28400,7 @@ word_16760:	dc.w $E
 	dc.w 5,	$503, $6554, $45
 	dc.w 5,	$503, $655C, $55
 	dc.w 5,	$503, $6580, $65
+
 word_167D2:	dc.w 8
 	dc.w 0,	$501, $2548, 0
 	dc.w 0,	$501, $2528, $10
@@ -31652,6 +28410,7 @@ word_167D2:	dc.w 8
 	dc.w 5,	$503, $6558, $15
 	dc.w 5,	$503, $656C, $25
 	dc.w 5,	$503, $657C, $35
+
 word_16814:	dc.w $C
 	dc.w 0,	$501, $2534, 0
 	dc.w 0,	$501, $2538, $10
@@ -31665,6 +28424,7 @@ word_16814:	dc.w $C
 	dc.w 5,	$503, $6570, $35
 	dc.w 5,	$503, $6558, $45
 	dc.w 5,	$503, $6574, $55
+
 word_16876:	dc.w 8
 	dc.w 0,	$501, $2524, 0
 	dc.w 0,	$501, $2528, $10
@@ -31674,499 +28434,11 @@ word_16876:	dc.w 8
 	dc.w 5,	$503, $6558, $15
 	dc.w 5,	$503, $655C, $25
 	dc.w 5,	$503, $6560, $35
-off_168B8:	dc.l word_16938
-	dc.l word_169A2
-	dc.l word_169FC
-	dc.l word_16A86
-	dc.l word_16B10
-	dc.l word_16B92
-	dc.l word_16C1C
-	dc.l word_16C9E
-	dc.l word_16D08
-	dc.l word_16D8A
-	dc.l word_16E14
-	dc.l word_16E8E
-	dc.l word_16F10
-	dc.l word_16F92
-	dc.l word_16FFC
-	dc.l word_17066
-	dc.l word_170E8
-	dc.l word_17162
-	dc.l word_17194
-	dc.l word_171CE
-	dc.l word_17200
-	dc.l word_1724A
-	dc.l word_172D4
-	dc.l word_17336
-	dc.l word_174CE
-	dc.l word_17538
-	dc.l word_175A2
-	dc.l word_17624
-	dc.l word_1769E
-	dc.l word_17390
-	dc.l word_173FA
-	dc.l word_17464
-word_16938:	dc.w $D
-	dc.w $18, $B00,	$E100, $28
-	dc.w $20, $700,	$E10C, $18
-	dc.w $20, $300,	$E114, $40
-	dc.w $30, $300,	$E118, $10
-	dc.w $38, $B00,	$E11C, $28
-	dc.w $40, $700,	$E128, $18
-	dc.w $40, $300,	$E130, $40
-	dc.w $48, $300,	$E134, 8
-	dc.w $50, $200,	$E138, $10
-	dc.w $58, $100,	$E13B, $38
-	dc.w $58, $100,	$E13D, $48
-	dc.w $60, $C00,	$E13F, $18
-	dc.w $60, 0, $E143, $40
-word_169A2:	dc.w $B
-	dc.w $18, $700,	$E100, $28
-	dc.w $20, $700,	$E108, $18
-	dc.w $20, $900,	$E110, $38
-	dc.w $28, $300,	$E116, $10
-	dc.w $30, $700,	$E11A, $38
-	dc.w $38, $700,	$E122, $28
-	dc.w $40, $700,	$E12A, $18
-	dc.w $48, $700,	$E132, 8
-	dc.w $50, $600,	$E13A, $38
-	dc.w $58, $100,	$E140, $48
-	dc.w $60, $C00,	$E142, $18
-word_169FC:	dc.w $11
-	dc.w $18, $F00,	$E100, $20
-	dc.w $20, $300,	$E110, $18
-	dc.w $20, $300,	$E114, $40
-	dc.w $28, $700,	$E118, 8
-	dc.w $28, $300,	$E120, $48
-	dc.w $30, $200,	$E124, 0
-	dc.w $30, $300,	$E127, $50
-	dc.w $38, $F00,	$E12B, $20
-	dc.w $40, $300,	$E13B, $18
-	dc.w $40, $300,	$E13F, $40
-	dc.w $48, $700,	$E143, 8
-	dc.w $50, $200,	$E14B, $48
-	dc.w $58, $100,	$E14E, $20
-	dc.w $58, $100,	$E150, $38
-	dc.w $60, 0, $E152, $18
-	dc.w $60, $400,	$E153, $28
-	dc.w $60, 0, $E155, $40
-word_16A86:	dc.w $11
-	dc.w $18, $300,	$E100, $38
-	dc.w $18, $600,	$E104, $58
-	dc.w $20, $F00,	$E10A, $18
-	dc.w $20, $700,	$E11A, $40
-	dc.w $28, $700,	$E122, 8
-	dc.w $28, $100,	$E12A, $50
-	dc.w $30, 0, $E12C, $58
-	dc.w $38, $300,	$E12D, $38
-	dc.w $40, $E00,	$E131, $18
-	dc.w $40, $700,	$E13D, $40
-	dc.w $48, $300,	$E145, $10
-	dc.w $50, $200,	$E149, 8
-	dc.w $58, $100,	$E14C, 0
-	dc.w $58, $500,	$E14E, $18
-	dc.w $58, $100,	$E152, $38
-	dc.w $60, $400,	$E154, $28
-	dc.w $60, $400,	$E156, $40
-word_16B10:	dc.w $10
-	dc.w $10, $400,	$E100, $40
-	dc.w $18, $700,	$E102, $48
-	dc.w $20, $F00,	$E10A, $18
-	dc.w $20, $700,	$E11A, $38
-	dc.w $20, $100,	$E122, $58
-	dc.w $28, $300,	$E124, $10
-	dc.w $30, $200,	$E128, 8
-	dc.w $38, $300,	$E12B, $48
-	dc.w $40, $E00,	$E12F, $18
-	dc.w $40, $700,	$E13B, $38
-	dc.w $48, $300,	$E143, $10
-	dc.w $50, $200,	$E147, 8
-	dc.w $58, $100,	$E14A, 0
-	dc.w $58, $500,	$E14C, $18
-	dc.w $58, $100,	$E150, $48
-	dc.w $60, $C00,	$E152, $28
-word_16B92:	dc.w $11
-	dc.w $20, $F00,	$E100, $20
-	dc.w $20, $300,	$E110, $40
-	dc.w $28, $300,	$E114, $18
-	dc.w $28, $A00,	$E118, $48
-	dc.w $30, $100,	$E121, $10
-	dc.w $30, $200,	$E123, $60
-	dc.w $38, $400,	$E126, $68
-	dc.w $40, $E00,	$E128, $20
-	dc.w $40, $700,	$E134, $40
-	dc.w $40, 0, $E13C, $68
-	dc.w $48, $700,	$E13D, $10
-	dc.w $50, $200,	$E145, 8
-	dc.w $58, $100,	$E148, 0
-	dc.w $58, $100,	$E14A, $20
-	dc.w $58, $100,	$E14C, $38
-	dc.w $60, $400,	$E14E, $28
-	dc.w $60, $400,	$E150, $40
-word_16C1C:	dc.w $10
-	dc.w 0,	$600, $E100, $38
-	dc.w $10, $300,	$E106, $48
-	dc.w $18, $300,	$E10A, $40
-	dc.w $20, $F00,	$E10E, $18
-	dc.w $20, $300,	$E11E, $38
-	dc.w $28, $100,	$E122, $10
-	dc.w $30, 0, $E124, $48
-	dc.w $38, $300,	$E125, $40
-	dc.w $40, $E00,	$E129, $10
-	dc.w $40, $600,	$E135, $30
-	dc.w $48, $300,	$E13B, $48
-	dc.w $50, $200,	$E13F, 8
-	dc.w $58, $100,	$E142, 0
-	dc.w $58, $900,	$E144, $10
-	dc.w $58, $500,	$E14A, $38
-	dc.w $60, $400,	$E14E, $28
-word_16C9E:	dc.w $D
-	dc.w $18, $F00,	$E100, $30
-	dc.w $20, $700,	$E110, $20
-	dc.w $20, $200,	$E118, $50
-	dc.w $28, $300,	$E11B, $18
-	dc.w $30, $100,	$E11F, $10
-	dc.w $38, $F00,	$E121, $30
-	dc.w $40, $600,	$E131, $20
-	dc.w $48, $700,	$E137, $10
-	dc.w $50, $200,	$E13F, 8
-	dc.w $58, $100,	$E142, 0
-	dc.w $58, $100,	$E144, $20
-	dc.w $58, $900,	$E146, $38
-	dc.w $60, $400,	$E14C, $28
-word_16D08:	dc.w $10
-	dc.w 8,	$200, $E100, $40
-	dc.w $10, $300,	$E103, $38
-	dc.w $18, $300,	$E107, $30
-	dc.w $20, $F00,	$E10B, 8
-	dc.w $20, $300,	$E11B, $28
-	dc.w $28, $100,	$E11F, 0
-	dc.w $30, $300,	$E121, $38
-	dc.w $38, $300,	$E125, $30
-	dc.w $40, $E00,	$E129, 8
-	dc.w $40, $200,	$E135, $28
-	dc.w $40, $300,	$E138, $40
-	dc.w $50, $200,	$E13C, $38
-	dc.w $50, $200,	$E13F, $48
-	dc.w $58, $D00,	$E142, 0
-	dc.w $60, $800,	$E14A, $20
-	dc.w $60, 0, $E14D, $40
-word_16D8A:	dc.w $11
-	dc.w 0,	$700, $E100, $38
-	dc.w 8,	$300, $E108, $30
-	dc.w $18, $300,	$E10C, $28
-	dc.w $20, $B00,	$E110, $10
-	dc.w $20, $300,	$E11C, $38
-	dc.w $28, $200,	$E120, 8
-	dc.w $28, $300,	$E123, $30
-	dc.w $30, $300,	$E127, $40
-	dc.w $38, $300,	$E12B, $28
-	dc.w $40, $A00,	$E12F, $10
-	dc.w $40, $300,	$E138, $38
-	dc.w $48, $300,	$E13C, 8
-	dc.w $48, $100,	$E140, $30
-	dc.w $48, $300,	$E142, $48
-	dc.w $50, $200,	$E146, $40
-	dc.w $58, $500,	$E149, $10
-	dc.w $60, $C00,	$E14D, $20
-word_16E14:	dc.w $F
-	dc.w 8,	$F00, $E100, $18
-	dc.w $10, $300,	$E110, $38
-	dc.w $18, $100,	$E114, $10
-	dc.w $18, $300,	$E116, $40
-	dc.w $28, $F00,	$E11A, $18
-	dc.w $30, $300,	$E12A, $38
-	dc.w $38, $300,	$E12E, $10
-	dc.w $38, $300,	$E132, $40
-	dc.w $48, $300,	$E136, 8
-	dc.w $48, $D00,	$E13A, $18
-	dc.w $48, $300,	$E142, $48
-	dc.w $50, $200,	$E146, $38
-	dc.w $58, $900,	$E149, $10
-	dc.w $58, $100,	$E14F, $40
-	dc.w $60, $400,	$E151, $28
-word_16E8E:	dc.w $10
-	dc.w $18, $F00,	$E100, $18
-	dc.w $18, $300,	$E110, $38
-	dc.w $20, $300,	$E114, $40
-	dc.w $28, 0, $E118, $10
-	dc.w $30, $300,	$E119, $48
-	dc.w $38, $F00,	$E11D, $18
-	dc.w $38, $300,	$E12D, $38
-	dc.w $40, $300,	$E131, $10
-	dc.w $40, $300,	$E135, $40
-	dc.w $48, $300,	$E139, 8
-	dc.w $50, $200,	$E13D, $48
-	dc.w $58, $100,	$E140, $18
-	dc.w $58, $100,	$E142, $38
-	dc.w $60, 0, $E144, $10
-	dc.w $60, $800,	$E145, $20
-	dc.w $60, 0, $E148, $40
-word_16F10:	dc.w $10
-	dc.w $18, $F00,	$E100, $18
-	dc.w $18, $300,	$E110, $38
-	dc.w $20, $200,	$E114, $10
-	dc.w $20, $300,	$E117, $40
-	dc.w $30, $300,	$E11B, $48
-	dc.w $38, $F00,	$E11F, $18
-	dc.w $38, $300,	$E12F, $38
-	dc.w $40, $300,	$E133, $10
-	dc.w $40, $300,	$E137, $40
-	dc.w $48, $300,	$E13B, 8
-	dc.w $50, $200,	$E13F, $48
-	dc.w $58, $100,	$E142, $18
-	dc.w $58, $100,	$E144, $38
-	dc.w $60, 0, $E146, $10
-	dc.w $60, $800,	$E147, $20
-	dc.w $60, 0, $E14A, $40
-word_16F92:	dc.w $D
-	dc.w $20, $F00,	$E100, $20
-	dc.w $20, $300,	$E110, $40
-	dc.w $28, $300,	$E114, $18
-	dc.w $30, $300,	$E118, $10
-	dc.w $38, $300,	$E11C, $48
-	dc.w $40, $F00,	$E120, $20
-	dc.w $40, $300,	$E130, $40
-	dc.w $48, $300,	$E134, 8
-	dc.w $48, $300,	$E138, $18
-	dc.w $50, $200,	$E13C, $10
-	dc.w $58, $100,	$E13F, $48
-	dc.w $60, $C00,	$E141, $20
-	dc.w $60, 0, $E145, $40
-word_16FFC:	dc.w $D
-	dc.w $10, $F00,	$E100, $18
-	dc.w $10, $B00,	$E110, $38
-	dc.w $18, $100,	$E11C, $10
-	dc.w $18, $100,	$E11E, $50
-	dc.w $30, $E00,	$E120, $18
-	dc.w $30, $B00,	$E12C, $38
-	dc.w $38, $300,	$E138, $10
-	dc.w $48, $400,	$E13C, $18
-	dc.w $48, 0, $E13E, $30
-	dc.w $50, $100,	$E13F, 8
-	dc.w $50, 0, $E141, $18
-	dc.w $50, $800,	$E142, $38
-	dc.w $58, 0, $E145, $10
-word_17066:	dc.w $10
-	dc.w 0,	$500, $E100, $40
-	dc.w 8,	$E00, $E104, $18
-	dc.w 8,	$300, $E110, $38
-	dc.w $10, $300,	$E114, $40
-	dc.w $18, $600,	$E118, 8
-	dc.w $20, $B00,	$E11E, $20
-	dc.w $20, $300,	$E12A, $48
-	dc.w $28, $300,	$E12E, $18
-	dc.w $28, $300,	$E132, $38
-	dc.w $30, $300,	$E136, $40
-	dc.w $40, $200,	$E13A, $10
-	dc.w $40, $800,	$E13D, $20
-	dc.w $40, 0, $E140, $48
-	dc.w $48, $400,	$E141, $18
-	dc.w $48, $400,	$E143, $30
-	dc.w $50, 0, $E145, $18
-word_170E8:	dc.w $F
-	dc.w 0,	$702, $E100, $38
-	dc.w 8,	$D02, $E108, 0
-	dc.w 8,	$B02, $E110, $20
-	dc.w $18, $402,	$E11C, $10
-	dc.w $20, $302,	$E11E, $18
-	dc.w $20, $702,	$E122, $38
-	dc.w $28, $B02,	$E12A, $20
-	dc.w $28, $302,	$E136, $48
-	dc.w $40, 2, $E13A, $18
-	dc.w $40, $502,	$E13B, $38
-	dc.w $40, $102,	$E13F, $50
-	dc.w $48, $802,	$E141, $20
-	dc.w $48, $102,	$E144, $48
-	dc.w $50, $402,	$E146, $28
-	dc.w $50, 2, $E148, $40
-word_17162:	dc.w 6
-	dc.w $10, $F00,	$E100, $18
-	dc.w $10, $A00,	$E110, $38
-	dc.w $18, $200,	$E119, $10
-	dc.w $18, $100,	$E11C, $50
-	dc.w $28, $500,	$E11E, $38
-	dc.w $30, $800,	$E122, $20
-word_17194:	dc.w 7
-	dc.w $10, $F00,	$E100, $28
-	dc.w $18, $600,	$E110, $18
-	dc.w $18, 0, $E116, $48
-	dc.w $28, 0, $E117, $10
-	dc.w $28, 0, $E118, $48
-	dc.w $30, $C00,	$E119, $20
-	dc.w $30, 0, $E11D, $40
-word_171CE:	dc.w 6
-	dc.w $10, $F00,	$E100, $20
-	dc.w $10, $700,	$E110, $40
-	dc.w $20, $100,	$E118, $18
-	dc.w $30, $C00,	$E11A, $28
-	dc.w $30, $100,	$E11E, $48
-	dc.w $38, $400,	$E120, $38
-word_17200:	dc.w 9
-	dc.w 0,	$B00, $E100, $20
-	dc.w 8,	$700, $E10C, $10
-	dc.w 8,	$300, $E114, $38
-	dc.w $18, $300,	$E118, $40
-	dc.w $20, $900,	$E11C, $20
-	dc.w $20, $200,	$E122, $48
-	dc.w $28, $500,	$E125, $10
-	dc.w $28, $100,	$E129, $38
-	dc.w $30, $400,	$E12B, $28
-word_1724A:	dc.w $11
-	dc.w $18, $F00,	$E100, $18
-	dc.w $18, $300,	$E110, $38
-	dc.w $20, $300,	$E114, $10
-	dc.w $20, $300,	$E118, $40
-	dc.w $30, 0, $E11C, 8
-	dc.w $30, $100,	$E11D, $48
-	dc.w $38, $F00,	$E11F, $18
-	dc.w $38, $300,	$E12F, $38
-	dc.w $40, $300,	$E133, $10
-	dc.w $40, $300,	$E137, $40
-	dc.w $48, $300,	$E13B, 8
-	dc.w $58, $500,	$E13F, $18
-	dc.w $58, $100,	$E143, $38
-	dc.w $58, $100,	$E145, $48
-	dc.w $60, 0, $E147, $10
-	dc.w $60, $400,	$E148, $28
-	dc.w $60, 0, $E14A, $40
-word_172D4:	dc.w $C
-	dc.w $18, $700,	$E100, $28
-	dc.w $20, $B00,	$E108, $10
-	dc.w $20, $700,	$E114, $38
-	dc.w $30, $100,	$E11C, 8
-	dc.w $38, $700,	$E11E, $28
-	dc.w $38, 0, $E126, $48
-	dc.w $40, $B00,	$E127, $10
-	dc.w $40, $700,	$E133, $38
-	dc.w $48, $300,	$E13B, 8
-	dc.w $48, $300,	$E13F, $48
-	dc.w $60, $C00,	$E143, $10
-	dc.w $60, $800,	$E147, $30
-word_17336:	dc.w $B
-	dc.w $20, $F00,	$E100, $10
-	dc.w $20, $700,	$E110, $30
-	dc.w $28, $300,	$E118, $40
-	dc.w $30, $300,	$E11C, 8
-	dc.w $38, 0, $E120, $48
-	dc.w $40, $F00,	$E121, $10
-	dc.w $40, $700,	$E131, $30
-	dc.w $48, $700,	$E139, $40
-	dc.w $50, $200,	$E141, 8
-	dc.w $60, $C00,	$E144, $10
-	dc.w $60, $400,	$E148, $30
-word_17390:	dc.w $D
-	dc.w $28, $B01,	$8180, $20
-	dc.w $28, $B01,	$818C, $40
-	dc.w $30, $301,	$8198, $18
-	dc.w $30, $301,	$819C, $38
-	dc.w $30, $301,	$81A0, $58
-	dc.w $38, $101,	$81A4, $10
-	dc.w $48, $901,	$81A6, $20
-	dc.w $48, $901,	$81AC, $40
-	dc.w $50, 1, $81B2, $18
-	dc.w $50, $201,	$81B3, $38
-	dc.w $58, $501,	$81B6, $28
-	dc.w $58, $401,	$81BA, $40
-	dc.w $60, 1, $81BC, $40
-word_173FA:	dc.w $D
-	dc.w $28, $B01,	$8980, $38
-	dc.w $28, $B01,	$898C, $18
-	dc.w $30, $301,	$8998, $50
-	dc.w $30, $301,	$899C, $30
-	dc.w $30, $301,	$89A0, $10
-	dc.w $38, $101,	$89A4, $58
-	dc.w $48, $901,	$89A6, $38
-	dc.w $48, $901,	$89AC, $18
-	dc.w $50, 1, $89B2, $50
-	dc.w $50, $201,	$89B3, $30
-	dc.w $58, $501,	$89B6, $38
-	dc.w $58, $401,	$89BA, $20
-	dc.w $60, 1, $89BC, $28
-word_17464:	dc.w $D
-	dc.w $18, $B00,	$E900, $10
-	dc.w $20, $700,	$E90C, $28
-	dc.w $20, $300,	$E914, 8
-	dc.w $30, $300,	$E918, $38
-	dc.w $38, $B00,	$E91C, $10
-	dc.w $40, $700,	$E928, $28
-	dc.w $40, $300,	$E930, 8
-	dc.w $48, $300,	$E934, $40
-	dc.w $50, $200,	$E938, $38
-	dc.w $58, $100,	$E93B, $10
-	dc.w $58, $100,	$E93D, 0
-	dc.w $60, $C00,	$E93F, $18
-	dc.w $60, 0, $E943, 8
-word_174CE:	dc.w $D
-	dc.w $20, $F00,	$E900, $10
-	dc.w $20, $300,	$E910, 8
-	dc.w $28, $300,	$E914, $30
-	dc.w $30, $300,	$E918, $38
-	dc.w $38, $300,	$E91C, 0
-	dc.w $40, $F00,	$E920, $10
-	dc.w $40, $300,	$E930, 8
-	dc.w $48, $300,	$E934, $40
-	dc.w $48, $300,	$E938, $30
-	dc.w $50, $200,	$E93C, $38
-	dc.w $58, $100,	$E93F, 0
-	dc.w $60, $C00,	$E941, $10
-	dc.w $60, 0, $E945, 8
-word_17538:	dc.w $D
-	dc.w $10, $F02,	$E900, $20
-	dc.w $10, $B02,	$E910, 8
-	dc.w $18, $102,	$E91C, $40
-	dc.w $18, $102,	$E91E, 0
-	dc.w $30, $E02,	$E920, $20
-	dc.w $30, $B02,	$E92C, 8
-	dc.w $38, $302,	$E938, $40
-	dc.w $48, $402,	$E93C, $30
-	dc.w $48, 2, $E93E, $20
-	dc.w $50, $102,	$E93F, $48
-	dc.w $50, 2, $E941, $38
-	dc.w $50, $802,	$E942, 8
-	dc.w $58, 2, $E945, $40
-word_175A2:	dc.w $10
-	dc.w 0,	$500, $E900, 8
-	dc.w 8,	$E00, $E904, $20
-	dc.w 8,	$300, $E910, $18
-	dc.w $10, $300,	$E914, $10
-	dc.w $18, $600,	$E918, $40
-	dc.w $20, $B00,	$E91E, $20
-	dc.w $20, $300,	$E92A, 8
-	dc.w $28, $300,	$E92E, $38
-	dc.w $28, $300,	$E932, $18
-	dc.w $30, $300,	$E936, $10
-	dc.w $40, $200,	$E93A, $40
-	dc.w $40, $800,	$E93D, $20
-	dc.w $40, 0, $E940, 8
-	dc.w $48, $400,	$E941, $30
-	dc.w $48, $400,	$E943, $18
-	dc.w $50, 0, $E945, $38
-word_17624:	dc.w $F
-	dc.w 0,	$700, $E900, $10
-	dc.w 8,	$D00, $E908, $38
-	dc.w 8,	$B00, $E910, $20
-	dc.w $18, $400,	$E91C, $38
-	dc.w $20, $300,	$E91E, $38
-	dc.w $20, $700,	$E922, $10
-	dc.w $28, $B00,	$E92A, $20
-	dc.w $28, $300,	$E936, 8
-	dc.w $40, 0, $E93A, $38
-	dc.w $40, $500,	$E93B, $10
-	dc.w $40, $100,	$E93F, 0
-	dc.w $48, $800,	$E941, $20
-	dc.w $48, $100,	$E944, 8
-	dc.w $50, $400,	$E946, $20
-	dc.w $50, 0, $E948, $10
-word_1769E:	dc.w 7
-	dc.w $10, $F00,	$E900, $18
-	dc.w $18, $600,	$E910, $38
-	dc.w $18, 0, $E916, $10
-	dc.w $28, 0, $E917, $48
-	dc.w $28, 0, $E918, $10
-	dc.w $30, $C00,	$E919, $20
-	dc.w $30, 0, $E91D, $18
-off_176D8:	dc.l word_176F8
+
+; ---------------------------------------------------------------------------
+
+off_176D8:
+	dc.l word_176F8
 	dc.l word_17702
 	dc.l word_1770C
 	dc.l word_17716
@@ -32174,158 +28446,35 @@ off_176D8:	dc.l word_176F8
 	dc.l word_1772A
 	dc.l word_17734
 	dc.l word_1773E
+
 word_176F8:	dc.w 1
 	dc.w 0,	$102, $E0F0, 0
+
 word_17702:	dc.w 1
 	dc.w 0,	$102, $E0F2, 0
+
 word_1770C:	dc.w 1
 	dc.w 0,	$102, $E0F4, 0
+
 word_17716:	dc.w 1
 	dc.w 0,	$102, $E0F6, 0
+
 word_17720:	dc.w 1
 	dc.w 0,	$100, $C0F0, 0
+
 word_1772A:	dc.w 1
 	dc.w 0,	$100, $C0F2, 0
+
 word_17734:	dc.w 1
 	dc.w 0,	$100, $C0F4, 0
+
 word_1773E:	dc.w 1
 	dc.w 0,	$100, $C0F6, 0
-off_17748:	dc.l word_17764
-	dc.l word_1779E
-	dc.l word_177D8
-	dc.l word_1780A
-	dc.l word_17844
-	dc.l word_1787E
-	dc.l word_178B0
-word_17764:	dc.w 7
-	dc.w 0,	$B02, $E400, 8
-	dc.w 8,	$102, $E40C, 0
-	dc.w 8,	$302, $E40E, $20
-	dc.w $10, 2, $E412, $28
-	dc.w $20, $902,	$E413, 8
-	dc.w $28, 2, $E419, 0
-	dc.w $28, $402,	$E41A, $20
-word_1779E:	dc.w 7
-	dc.w 0,	$B02, $E41C, 8
-	dc.w 8,	$102, $E428, 0
-	dc.w 8,	$302, $E42A, $20
-	dc.w $10, 2, $E42E, $28
-	dc.w $20, $902,	$E42F, 8
-	dc.w $28, 2, $E419, 0
-	dc.w $28, $402,	$E435, $20
-word_177D8:	dc.w 6
-	dc.w 0,	$F02, $E437, 8
-	dc.w 8,	$102, $E447, 0
-	dc.w 8,	2, $E449, $28
-	dc.w $20, $D02,	$E44A, 8
-	dc.w $28, 2, $E419, 0
-	dc.w $28, 2, $E41B, $28
-word_1780A:	dc.w 7
-	dc.w 0,	$B02, $E452, 8
-	dc.w 8,	$302, $E45E, 0
-	dc.w 8,	$302, $E462, $20
-	dc.w $10, 2, $E412, $28
-	dc.w $20, $902,	$E466, 8
-	dc.w $28, 2, $E419, 0
-	dc.w $28, $402,	$E41A, $20
-word_17844:	dc.w 7
-	dc.w 0,	$B02, $E46C, 8
-	dc.w 8,	$102, $E40C, 0
-	dc.w 8,	$302, $E462, $20
-	dc.w $10, 2, $E412, $28
-	dc.w $20, $902,	$E478, 8
-	dc.w $28, 2, $E419, 0
-	dc.w $28, $402,	$E41A, $20
-word_1787E:	dc.w 6
-	dc.w 0,	$E02, $E47E, 0
-	dc.w 8,	$302, $E462, $20
-	dc.w $10, 2, $E412, $28
-	dc.w $18, $A02,	$E48A, 8
-	dc.w $28, 2, $E419, 0
-	dc.w $28, $402,	$E41A, $20
-word_178B0:	dc.w 7
-	dc.w 0,	$B02, $E493, 8
-	dc.w 8,	$102, $E49F, 0
-	dc.w 8,	$302, $E462, $20
-	dc.w $10, 2, $E412, $28
-	dc.w $20, $902,	$E4A1, 8
-	dc.w $28, 2, $E419, 0
-	dc.w $28, $402,	$E41A, $20
-off_178EA:	dc.l word_17902
-	dc.l word_1794C
-	dc.l word_1799E
-	dc.l word_179F0
-	dc.l word_17A4A
-	dc.l word_17AA4
-word_17902:	dc.w 9
-	dc.w 0,	$902, $E400, 8
-	dc.w 0,	$902, $E406, $20
-	dc.w $10, $902,	$E40C, 0
-	dc.w $10, $902,	$E412, $18
-	dc.w $20, $A02,	$E418, 0
-	dc.w $20, $E02,	$E421, $18
-	dc.w $38, $C02,	$E42D, 8
-	dc.w $40, $802,	$E431, 0
-	dc.w $40, $402,	$E434, $18
-word_1794C:	dc.w $A
-	dc.w 0,	$902, $E436, $20
-	dc.w 0,	$902, $E43C, 8
-	dc.w 8,	2, $E442, 0
-	dc.w $10, $902,	$E443, 0
-	dc.w $10, $902,	$E449, $18
-	dc.w $20, $E02,	$E44F, 0
-	dc.w $20, $A02,	$E45B, $20
-	dc.w $38, $C02,	$E42D, 8
-	dc.w $40, $802,	$E431, 0
-	dc.w $40, $402,	$E434, $18
-word_1799E:	dc.w $A
-	dc.w 0,	$902, $E464, 0
-	dc.w 0,	$902, $E46A, $18
-	dc.w $10, $902,	$E470, 0
-	dc.w $10, $902,	$E476, $18
-	dc.w $20, $A02,	$E47C, 0
-	dc.w $20, $602,	$E485, $18
-	dc.w $20, $502,	$E48B, $28
-	dc.w $38, $C02,	$E42D, 8
-	dc.w $40, $802,	$E431, 0
-	dc.w $40, $402,	$E434, $18
-word_179F0:	dc.w $B
-	dc.w 0,	$902, $E48F, 0
-	dc.w 0,	$802, $E495, $18
-	dc.w 8,	$402, $E498, $18
-	dc.w $10, $902,	$E49A, 0
-	dc.w $10, $902,	$E4A0, $18
-	dc.w $20, $E02,	$E4A6, 0
-	dc.w $20, $902,	$E4B2, $20
-	dc.w $30, 2, $E4B8, $20
-	dc.w $38, $C02,	$E42D, 8
-	dc.w $40, $802,	$E431, 0
-	dc.w $40, $402,	$E434, $18
-word_17A4A:	dc.w $B
-	dc.w 0,	$902, $E4B9, 0
-	dc.w 0,	$802, $E4BF, $18
-	dc.w 8,	$402, $E4C2, $18
-	dc.w $10, $902,	$E4C4, 0
-	dc.w $10, $902,	$E4CA, $18
-	dc.w $20, $E02,	$E4D0, 0
-	dc.w $20, $202,	$E4DC, $20
-	dc.w $20, $502,	$E4DF, $28
-	dc.w $38, $C02,	$E42D, 8
-	dc.w $40, $802,	$E431, 0
-	dc.w $40, $402,	$E434, $18
-word_17AA4:	dc.w $B
-	dc.w 0,	$902, $E4E3, 0
-	dc.w 0,	$802, $E4BF, $18
-	dc.w 8,	$402, $E4E9, $18
-	dc.w $10, $902,	$E4C4, 0
-	dc.w $10, $902,	$E4CA, $18
-	dc.w $20, $E02,	$E4D0, 0
-	dc.w $20, $202,	$E4DC, $20
-	dc.w $20, $502,	$E4DF, $28
-	dc.w $38, $C02,	$E42D, 8
-	dc.w $40, $802,	$E431, 0
-	dc.w $40, $402,	$E434, $18
-off_17AFE:	dc.l word_17B32
+
+; ---------------------------------------------------------------------------
+
+off_17AFE:
+	dc.l word_17B32
 	dc.l word_17B3C
 	dc.l word_17B46
 	dc.l word_17B50
@@ -32338,810 +28487,68 @@ off_17AFE:	dc.l word_17B32
 	dc.l word_17BA6
 	dc.l word_17BB0
 	dc.l word_17BBA
+
 word_17B32:	dc.w 1
 	dc.w 0,	$802, $E4DE, 0
+
 word_17B3C:	dc.w 1
 	dc.w 0,	$802, $E4E1, 0
+
 word_17B46:	dc.w 1
 	dc.w 0,	$102, $E4E4, 0
+
 word_17B50:	dc.w 1
 	dc.w 0,	$102, $E4E6, 0
+
 word_17B5A:	dc.w 1
 	dc.w 0,	$102, $E4E8, 0
+
 word_17B64:	dc.w 2
 	dc.w 0,	$802, $E4EA, 0
 	dc.w 8,	$402, $E4ED, 8
+
 word_17B76:	dc.w 1
 	dc.w 0,	$902, $E4EF, 0
+
 word_17B80:	dc.w 2
 	dc.w 0,	$502, $E4F5, 8
 	dc.w 8,	2, $E4F9, 0
+
 word_17B92:	dc.w 1
 	dc.w 0,	$802, $C3DE, 0
+
 word_17B9C:	dc.w 1
 	dc.w 0,	$802, $C3E1, 0
+
 word_17BA6:	dc.w 1
 	dc.w 0,	$102, $C3E4, 0
+
 word_17BB0:	dc.w 1
 	dc.w 0,	$102, $C3E6, 0
+
 word_17BBA:	dc.w 1
 	dc.w 0,	$102, $C3E8, 0
-	dc.w 2
-	dc.w 0,	$802, $C3EA, 0
-	dc.w 8,	$402, $C3ED, 8
-	dc.w 1
-	dc.w 0,	$902, $C3EF, 0
-	dc.w 2
-	dc.w 0,	$502, $C3F5, 8
-	dc.w 8,	2, $C3F9, 0
-off_17BF2:	dc.l word_17C12
-	dc.l word_17C5C
-	dc.l word_17CA6
-	dc.l word_17CE8
-	dc.l word_17D22
-	dc.l word_17D64
-	dc.l word_17D96
-	dc.l word_17DC8
-word_17C12:	dc.w 9
-	dc.w 8,	$D02, $E400, 8
-	dc.w $10, $302,	$E408, $28
-	dc.w $18, $B02,	$E40C, $10
-	dc.w $20, $302,	$E418, $30
-	dc.w $28, $202,	$E41C, 8
-	dc.w $30, $102,	$E41F, $28
-	dc.w $38, 2, $E421, 0
-	dc.w $38, $802,	$E422, $10
-	dc.w $38, 2, $E425, $38
-word_17C5C:	dc.w 9
-	dc.w 8,	$D02, $E426, 8
-	dc.w $10, $302,	$E408, $28
-	dc.w $18, $B02,	$E42E, $10
-	dc.w $20, $302,	$E418, $30
-	dc.w $28, $202,	$E41C, 8
-	dc.w $30, $102,	$E41F, $28
-	dc.w $38, 2, $E421, 0
-	dc.w $38, $802,	$E422, $10
-	dc.w $38, 2, $E425, $38
-word_17CA6:	dc.w 8
-	dc.w 8,	$F02, $E43A, $10
-	dc.w $10, 2, $E44A, 8
-	dc.w $18, $302,	$E44B, $30
-	dc.w $20, $202,	$E44F, 8
-	dc.w $28, $102,	$E452, 0
-	dc.w $28, $C02,	$E454, $10
-	dc.w $30, $902,	$E458, $18
-	dc.w $38, $402,	$E45E, $30
-word_17CE8:	dc.w 7
-	dc.w 0,	$B02, $E460, $18
-	dc.w 8,	$602, $E46C, 8
-	dc.w $10, $302,	$E472, $30
-	dc.w $18, $202,	$E476, $38
-	dc.w $20, $B02,	$E479, $18
-	dc.w $30, $102,	$E41A, $30
-	dc.w $38, 2, $E425, $38
-word_17D22:	dc.w 8
-	dc.w 0,	$B02, $E485, $18
-	dc.w 8,	$602, $E491, 8
-	dc.w 8,	$302, $E497, $30
-	dc.w $10, $102,	$E49B, 0
-	dc.w $18, $202,	$E476, $38
-	dc.w $20, $B02,	$E479, $18
-	dc.w $28, $202,	$E49D, $30
-	dc.w $38, 2, $E425, $38
-word_17D64:	dc.w 6
-	dc.w 0,	$B02, $E4A0, $18
-	dc.w 8,	$602, $E4AC, 8
-	dc.w $18, $602,	$E4B2, $30
-	dc.w $20, $B02,	$E479, $18
-	dc.w $30, $102,	$E41A, $30
-	dc.w $38, 2, $E425, $38
-word_17D96:	dc.w 6
-	dc.w 0,	$B02, $E4B8, $18
-	dc.w 8,	$602, $E4C4, 8
-	dc.w $18, $602,	$E4B2, $30
-	dc.w $20, $B02,	$E479, $18
-	dc.w $30, $102,	$E41A, $30
-	dc.w $38, 2, $E425, $38
-word_17DC8:	dc.w 6
-	dc.w 0,	$B02, $E4CA, $18
-	dc.w 8,	$602, $E4C4, 8
-	dc.w $18, $602,	$E4B2, $30
-	dc.w $20, $B02,	$E479, $18
-	dc.w $30, $102,	$E41A, $30
-	dc.w $38, 2, $E425, $38
-off_17DFA:	dc.l word_17E22
-	dc.l word_17E4C
-	dc.l word_17E7E
-	dc.l word_17EB0
-	dc.l word_17EEA
-	dc.l word_17F2C
-	dc.l word_17F6E
-	dc.l word_17F90
-	dc.l word_17FCA
-	dc.l word_17FF4
-word_17E22:	dc.w 5
-	dc.w $28, $C02,	$E400, 8
-	dc.w $30, $A02,	$E404, $10
-	dc.w $48, $702,	$E40D, $10
-	dc.w $60, $402,	$E415, 0
-	dc.w $60, 2, $E417, $20
-word_17E4C:	dc.w 6
-	dc.w $38, $C02,	$E418, 0
-	dc.w $40, $802,	$E41C, 8
-	dc.w $48, $702,	$E41F, $10
-	dc.w $58, $102,	$E427, 8
-	dc.w $60, 2, $E415, 0
-	dc.w $60, 2, $E417, $20
-word_17E7E:	dc.w 6
-	dc.w $38, $702,	$E429, $10
-	dc.w $40, 2, $E431, 8
-	dc.w $40, $302,	$E432, $20
-	dc.w $58, $502,	$E436, $10
-	dc.w $60, $402,	$E43A, 0
-	dc.w $60, 2, $E417, $20
-word_17EB0:	dc.w 7
-	dc.w $20, $902,	$E43C, 0
-	dc.w $28, $302,	$E442, $18
-	dc.w $30, $402,	$E446, 8
-	dc.w $38, $302,	$E448, $10
-	dc.w $48, $302,	$E44C, $18
-	dc.w $50, $202,	$E450, 8
-	dc.w $60, 2, $E453, $10
-word_17EEA:	dc.w 8
-	dc.w 0,	$602, $E454, 8
-	dc.w 8,	$302, $E45A, $18
-	dc.w $18, $302,	$E45E, $10
-	dc.w $28, 2, $E462, $18
-	dc.w $30, $202,	$E463, 8
-	dc.w $38, $102,	$E466, 0
-	dc.w $38, $502,	$E468, $10
-	dc.w $60, $802,	$E46C, 8
-word_17F2C:	dc.w 8
-	dc.w 0,	$D02, $E46F, 8
-	dc.w $10, $802,	$E477, 8
-	dc.w $18, $602,	$E47A, 8
-	dc.w $20, $102,	$E480, $18
-	dc.w $28, $102,	$E482, 0
-	dc.w $28, 2, $E484, $20
-	dc.w $30, 2, $EC7F, 8
-	dc.w $60, $802,	$E485, 8
-word_17F6E:	dc.w 4
-	dc.w 0,	$C02, $E488, 8
-	dc.w 8,	$F02, $E48C, 0
-	dc.w $10, $102,	$E49C, $20
-	dc.w $60, $802,	$E485, 8
-word_17F90:	dc.w 7
-	dc.w $20, $802,	$E49E, 0
-	dc.w $28, $702,	$E4A1, 8
-	dc.w $30, $302,	$E4A9, $18
-	dc.w $40, $102,	$E4AD, $20
-	dc.w $48, $802,	$E4AF, 0
-	dc.w $50, $402,	$E4B2, 8
-	dc.w $60, $802,	$E4B4, 8
-word_17FCA:	dc.w 5
-	dc.w $28, $C02,	$E400, 8
-	dc.w $30, $A02,	$E4B7, $10
-	dc.w $48, $702,	$E4C0, $10
-	dc.w $60, $402,	$E415, 0
-	dc.w $60, 2, $E417, $20
-word_17FF4:	dc.w 5
-	dc.w $28, $C02,	$E400, 8
-	dc.w $30, $B02,	$E4C8, $10
-	dc.w $50, $602,	$E4D4, $10
-	dc.w $60, $402,	$E415, 0
-	dc.w $60, 2, $E417, $20
-off_1801E:	dc.l word_1802A
+
+; ---------------------------------------------------------------------------
+
+off_1801E:
+	dc.l word_1802A
 	dc.l word_18034
 	dc.l word_1803E
+
 word_1802A:	dc.w 1
 	dc.w 0,	$E02, $E4D7, 0
+
 word_18034:	dc.w 1
 	dc.w 0,	$E02, $E4E3, 0
+
 word_1803E:	dc.w 1
 	dc.w 0,	$E02, $E4EF, 0
-off_18048:	dc.l word_18064
-	dc.l word_180BE
-	dc.l word_18108
-	dc.l word_18172
-	dc.l word_181CC
-	dc.l word_18216
-	dc.l word_18270
-word_18064:	dc.w $B
-	dc.w 0,	$602, $E400, $28
-	dc.w $10, $302,	$E406, $20
-	dc.w $10, $902,	$E40A, $58
-	dc.w $18, 2, $E410, $28
-	dc.w $18, $502,	$E411, $48
-	dc.w $28, $F02,	$E415, $28
-	dc.w $28, $302,	$E425, $48
-	dc.w $30, $202,	$E429, $20
-	dc.w $38, 2, $E42C, $50
-	dc.w $48, $C02,	$E42D, $28
-	dc.w $48, 2, $E431, $48
-word_180BE:	dc.w 9
-	dc.w 8,	$502, $E432, $48
-	dc.w $10, $602,	$E436, $10
-	dc.w $18, $702,	$E43C, $40
-	dc.w $28, $502,	$E444, $18
-	dc.w $28, $702,	$E448, $30
-	dc.w $30, $302,	$E450, $28
-	dc.w $38, $102,	$E454, $20
-	dc.w $38, $902,	$E456, $40
-	dc.w $48, $C02,	$E45C, $30
-word_18108:	dc.w $D
-	dc.w 8,	$602, $E460, $30
-	dc.w $10, $402,	$E466, $40
-	dc.w $18, $602,	$E460, 0
-	dc.w $18, $302,	$E468, $48
-	dc.w $20, $C02,	$E46C, $10
-	dc.w $20, $302,	$E470, $50
-	dc.w $28, $C02,	$E474, $20
-	dc.w $28, $302,	$E478, $40
-	dc.w $30, $B02,	$E47C, $28
-	dc.w $38, $102,	$E488, $20
-	dc.w $38, $202,	$E48A, $48
-	dc.w $40, 2, $E48D, $50
-	dc.w $48, 2, $E48E, $40
-word_18172:	dc.w $B
-	dc.w 0,	$602, $E48F, $40
-	dc.w $10, $902,	$E495, 8
-	dc.w $10, $302,	$E49B, $50
-	dc.w $18, $502,	$E49F, $20
-	dc.w $18, 2, $E4A3, $48
-	dc.w $28, $F02,	$E4A4, $28
-	dc.w $28, $302,	$E4B4, $48
-	dc.w $30, $202,	$E4B8, $50
-	dc.w $38, 2, $E4BB, $20
-	dc.w $48, $C02,	$E4BC, $28
-	dc.w $48, 2, $E431, $48
-word_181CC:	dc.w 9
-	dc.w 8,	$902, $E4C0, $18
-	dc.w $10, $602,	$E4C6, $58
-	dc.w $18, $702,	$E4CC, $28
-	dc.w $28, $702,	$E4D4, $38
-	dc.w $28, $502,	$E4DC, $50
-	dc.w $30, $302,	$E4E0, $48
-	dc.w $38, $902,	$E4E4, $20
-	dc.w $38, $102,	$E4EA, $50
-	dc.w $48, $C02,	$E4EC, $28
-word_18216:	dc.w $B
-	dc.w 8,	$602, $E300, $38
-	dc.w $10, $402,	$E306, $28
-	dc.w $18, $302,	$E308, $28
-	dc.w $18, $502,	$E30C, $68
-	dc.w $20, $C02,	$E310, $48
-	dc.w $28, $F02,	$E314, $30
-	dc.w $28, 2, $E324, $50
-	dc.w $30, $202,	$E325, $20
-	dc.w $38, $202,	$E328, $28
-	dc.w $38, $102,	$E32B, $50
-	dc.w $48, $C02,	$E32D, $30
-word_18270:	dc.w $B
-	dc.w 8,	$602, $E030, $38
-	dc.w $10, $402,	$E036, $28
-	dc.w $18, $302,	$E038, $28
-	dc.w $18, $502,	$E03C, $68
-	dc.w $20, $C02,	$E040, $48
-	dc.w $28, $F02,	$E044, $30
-	dc.w $28, 2, $E054, $50
-	dc.w $30, $202,	$E055, $20
-	dc.w $38, $202,	$E058, $28
-	dc.w $38, $102,	$E05B, $50
-	dc.w $48, $C02,	$E05D, $30
-off_182CA:	dc.l word_182F2
-	dc.l word_1830C
-	dc.l word_18316
-	dc.l word_18368
-	dc.l word_18320
-	dc.l word_18332
-	dc.l word_1837A
-	dc.l word_1834C
-	dc.l word_18384
-	dc.l word_18356
-word_182F2:	dc.w 3
-	dc.w 0,	$602, $E480, 8
-	dc.w 8,	$102, $E486, 0
-	dc.w 8,	$102, $E488, $18
-word_1830C:	dc.w 1
-	dc.w 0,	$E02, $E48A, 0
-word_18316:	dc.w 1
-	dc.w 0,	$E02, $E496, 0
-word_18320:	dc.w 2
-	dc.w 0,	$D02, $E4A2, 0
-	dc.w $10, $802,	$E4AA, 0
-word_18332:	dc.w 3
-	dc.w 0,	$602, $E4AD, 8
-	dc.w 8,	$102, $E4B3, 0
-	dc.w 8,	$102, $E4B5, $18
-word_1834C:	dc.w 1
-	dc.w 0,	$E02, $E4B7, 0
-word_18356:	dc.w 2
-	dc.w 0,	$D02, $E4C3, 0
-	dc.w $10, $802,	$E4CB, 0
-word_18368:	dc.w 2
-	dc.w 0,	$A02, $E440, 0
-	dc.w 8,	$102, $E449, $18
-word_1837A:	dc.w 1
-	dc.w 0,	$E02, $E44B, 0
-word_18384:	dc.w 2
-	dc.w 0,	$A02, $E457, 0
-	dc.w 8,	$102, $E460, $18
-off_18396:	dc.l word_183A6
-	dc.l word_18408
-	dc.l word_18452
-	dc.l word_184A4
-word_183A6:	dc.w $C
-	dc.w 0,	$702, $E400, $10
-	dc.w 8,	$102, $E408, 8
-	dc.w 8,	$302, $E40A, $20
-	dc.w $10, $302,	$E40E, $28
-	dc.w $18, $202,	$E412, $30
-	dc.w $20, $502,	$E415, $10
-	dc.w $28, $502,	$E419, 0
-	dc.w $28, $202,	$E41D, $20
-	dc.w $30, $102,	$E420, $10
-	dc.w $30, $102,	$E422, $28
-	dc.w $38, 2, $E424, 8
-	dc.w $38, 2, $E425, $18
-word_18408:	dc.w 9
-	dc.w 0,	$302, $E426, $18
-	dc.w 8,	$302, $E42A, $20
-	dc.w $10, $902,	$E42E, 0
-	dc.w $10, $302,	$E434, $28
-	dc.w $18, $202,	$E438, $30
-	dc.w $20, $B02,	$E43B, 8
-	dc.w $28, $202,	$E447, $20
-	dc.w $30, 2, $E44A, 0
-	dc.w $30, $102,	$E44B, $28
-word_18452:	dc.w $A
-	dc.w 8,	$702, $E44D, $18
-	dc.w $10, $302,	$E455, $10
-	dc.w $10, $302,	$E459, $28
-	dc.w $18, $302,	$E45D, 8
-	dc.w $18, $202,	$E461, $30
-	dc.w $20, 2, $E464, $38
-	dc.w $28, $602,	$E465, $18
-	dc.w $30, $102,	$E46B, $10
-	dc.w $30, $102,	$E46D, $28
-	dc.w $38, 2, $E46F, 8
-word_184A4:	dc.w 6
-	dc.w 8,	$702, $E470, $18
-	dc.w $10, $302,	$E478, $10
-	dc.w $10, $602,	$E47C, $28
-	dc.w $28, $202,	$E482, 8
-	dc.w $28, $A02,	$E485, $18
-	dc.w $30, $102,	$E48E, $10
-off_184D6:	dc.l word_184E2
-	dc.l word_18554
-	dc.l word_185AE
-word_184E2:	dc.w $E
-	dc.w 0,	$702, $E400, $18
-	dc.w 8,	$702, $E408, 8
-	dc.w 8,	$302, $E410, $28
-	dc.w $10, $302,	$E414, $30
-	dc.w $18, $102,	$E418, 0
-	dc.w $18, $202,	$E41A, $38
-	dc.w $20, $702,	$E41D, $18
-	dc.w $28, $502,	$E425, 8
-	dc.w $28, $302,	$E429, $28
-	dc.w $30, 2, $E42D, $30
-	dc.w $38, $102,	$E42E, $10
-	dc.w $40, 2, $E430, 8
-	dc.w $40, $402,	$E431, $18
-	dc.w $40, 2, $E433, $30
-word_18554:	dc.w $B
-	dc.w 0,	$702, $E434, $18
-	dc.w 8,	$702, $E43C, 8
-	dc.w 8,	$302, $E444, $28
-	dc.w $10, $202,	$E448, 0
-	dc.w $10, $702,	$E44B, $30
-	dc.w $20, $702,	$E453, $18
-	dc.w $28, $702,	$E45B, 8
-	dc.w $28, $302,	$E463, $28
-	dc.w $30, 2, $E467, $30
-	dc.w $40, $402,	$E468, $18
-	dc.w $40, 2, $E433, $30
-word_185AE:	dc.w $B
-	dc.w 0,	$702, $E46A, $18
-	dc.w 8,	$702, $E472, 8
-	dc.w 8,	$302, $E47A, $28
-	dc.w $10, $202,	$E47E, 0
-	dc.w $10, $702,	$E481, $30
-	dc.w $20, $702,	$E489, $18
-	dc.w $28, $702,	$E491, 8
-	dc.w $28, $302,	$E499, $28
-	dc.w $30, 2, $E49D, $30
-	dc.w $40, $402,	$E49E, $18
-	dc.w $40, 2, $E433, $30
-off_18608:	dc.l word_18624
-	dc.l word_1867E
-	dc.l word_186D8
-	dc.l word_18732
-	dc.l word_1873C
-	dc.l word_18746
-	dc.l word_18750
-word_18624:	dc.w $B
-	dc.w 0,	$F02, $E400, 8
-	dc.w 0,	$A02, $E410, $28
-	dc.w 8,	$302, $E419, 0
-	dc.w $18, $602,	$E41D, $28
-	dc.w $20, $F02,	$E423, 8
-	dc.w $20, $102,	$E433, $38
-	dc.w $28, $102,	$E435, 0
-	dc.w $30, $202,	$E437, $30
-	dc.w $38, $102,	$E43A, $28
-	dc.w $40, $C02,	$E43C, 0
-	dc.w $40, 2, $E440, $20
-word_1867E:	dc.w $B
-	dc.w 0,	$F02, $E441, 8
-	dc.w 0,	$A02, $E451, $28
-	dc.w 8,	$302, $E45A, 0
-	dc.w $18, $602,	$E45E, $28
-	dc.w $20, $F02,	$E464, 8
-	dc.w $20, $102,	$E433, $38
-	dc.w $28, $102,	$E435, 0
-	dc.w $30, $202,	$E437, $30
-	dc.w $38, $102,	$E43A, $28
-	dc.w $40, $C02,	$E43C, 0
-	dc.w $40, 2, $E440, $20
-word_186D8:	dc.w $B
-	dc.w 0,	$F02, $E474, 8
-	dc.w 0,	$A02, $E484, $28
-	dc.w 8,	$302, $E48D, 0
-	dc.w $18, $602,	$E41D, $28
-	dc.w $20, $F02,	$E491, 8
-	dc.w $20, $102,	$E433, $38
-	dc.w $28, $102,	$E435, 0
-	dc.w $30, $202,	$E437, $30
-	dc.w $38, $102,	$E43A, $28
-	dc.w $40, $C02,	$E43C, 0
-	dc.w $40, 2, $E440, $20
-word_18732:	dc.w 1
-	dc.w 0,	1, $84A1, 0
-word_1873C:	dc.w 1
-	dc.w 0,	1, $8CA1, 0
-word_18746:	dc.w 1
-	dc.w 0,	1, $94A1, 0
-word_18750:	dc.w 1
-	dc.w 0,	1, $9CA1, 0
-off_1875A:	dc.l word_18772
-	dc.l word_187A4
-	dc.l word_187E6
-	dc.l word_18848
-	dc.l word_1889A
-	dc.l word_188D4
-word_18772:	dc.w 6
-	dc.w 8,	$B02, $E400, 8
-	dc.w $10, $902,	$E40C, $20
-	dc.w $20, $302,	$E412, 0
-	dc.w $20, $702,	$E416, $20
-	dc.w $28, $A02,	$E41E, 8
-	dc.w $38, 2, $E427, $30
-word_187A4:	dc.w 8
-	dc.w 8,	$B02, $E428, $10
-	dc.w $10, $302,	$E434, 8
-	dc.w $18, $902,	$E438, $28
-	dc.w $20, 2, $E43E, 0
-	dc.w $28, $E02,	$E43F, $10
-	dc.w $30, $102,	$E44B, 8
-	dc.w $38, 2, $E415, 0
-	dc.w $38, 2, $E427, $30
-word_187E6:	dc.w $C
-	dc.w 0,	$302, $E44D, $18
-	dc.w 8,	$302, $E451, $10
-	dc.w 8,	$702, $E455, $20
-	dc.w $10, $302,	$E45D, 8
-	dc.w $18, $202,	$E461, $30
-	dc.w $20, $302,	$E464, $18
-	dc.w $20, $102,	$E468, $38
-	dc.w $28, $202,	$E46A, $10
-	dc.w $28, $602,	$E46D, $20
-	dc.w $30, $102,	$E44B, 8
-	dc.w $38, 2, $E415, 0
-	dc.w $38, 2, $E427, $30
-word_18848:	dc.w $A
-	dc.w 0,	$702, $E473, $18
-	dc.w 8,	$502, $E47B, $28
-	dc.w $10, $702,	$E47F, 8
-	dc.w $18, $302,	$E487, $28
-	dc.w $20, $702,	$E48B, $18
-	dc.w $20, $102,	$E493, $30
-	dc.w $28, 2, $E495, $38
-	dc.w $30, $502,	$E496, 8
-	dc.w $38, 2, $E415, 0
-	dc.w $38, $402,	$E49A, $28
-word_1889A:	dc.w 7
-	dc.w 8,	$F02, $E49C, $10
-	dc.w $10, $302,	$E4AC, $30
-	dc.w $18, $302,	$E4B0, 8
-	dc.w $28, $E02,	$E4B4, $10
-	dc.w $30, $402,	$E4C0, $30
-	dc.w $38, $402,	$E4C2, 0
-	dc.w $38, 2, $E427, $30
-word_188D4:	dc.w 8
-	dc.w 8,	$F02, $E4C4, $10
-	dc.w $10, $302,	$E45D, 8
-	dc.w $18, $202,	$E461, $30
-	dc.w $20, $102,	$E468, $38
-	dc.w $28, $E02,	$E4D4, $10
-	dc.w $30, $102,	$E44B, 8
-	dc.w $38, 2, $E415, 0
-	dc.w $38, 2, $E427, $30
-off_18916:	dc.l word_189D8
-	dc.l word_189FA
-	dc.l word_18A1C
-	dc.l word_18942
-	dc.l word_18974
-	dc.l word_189A6
-	dc.l word_18A3E
-	dc.l word_18A80
-	dc.l word_18AC2
-	dc.l word_18ACC
-	dc.l word_18AD6
-word_18942:	dc.w 6
-	dc.w 0,	$E02, $E400, 0
-	dc.w 0,	$302, $E40C, $20
-	dc.w 8,	$202, $E410, $28
-	dc.w $18, $A02,	$E413, 8
-	dc.w $20, $102,	$E41C, 0
-	dc.w $20, $102,	$E41E, $20
-word_18974:	dc.w 6
-	dc.w 0,	$F02, $E420, 0
-	dc.w 0,	$302, $E430, $28
-	dc.w 8,	$302, $E434, $20
-	dc.w $20, $D02,	$E438, 0
-	dc.w $20, $102,	$E440, $28
-	dc.w $28, 2, $E442, $20
-word_189A6:	dc.w 6
-	dc.w 0,	$F02, $EC20, $10
-	dc.w 0,	$302, $EC30, 0
-	dc.w 8,	$302, $EC34, 8
-	dc.w $20, $D02,	$EC38, $10
-	dc.w $20, $102,	$EC40, 0
-	dc.w $28, 2, $EC42, 8
-word_189D8:	dc.w 4
-	dc.w 0,	$F02, $E443, 8
-	dc.w 8,	$202, $E453, 0
-	dc.w $18, $202,	$E456, $28
-	dc.w $20, $D02,	$E459, 8
-word_189FA:	dc.w 4
-	dc.w 0,	$B00, $E461, $18
-	dc.w 8,	$B00, $E46D, 0
-	dc.w $20, $900,	$E479, $18
-	dc.w $28, $800,	$E47F, 0
-word_18A1C:	dc.w 4
-	dc.w 0,	$B00, $EC61, 0
-	dc.w 8,	$B00, $EC6D, $18
-	dc.w $20, $900,	$EC79, 0
-	dc.w $28, $800,	$EC7F, $18
-word_18A3E:	dc.w 8
-	dc.w 0,	$B02, $E482, 8
-	dc.w 0,	$302, $E48E, $28
-	dc.w 8,	$302, $E492, 0
-	dc.w 8,	$302, $E496, $20
-	dc.w $20, $902,	$E49A, 8
-	dc.w $20, $102,	$E4A0, $28
-	dc.w $28, 2, $E4A2, 0
-	dc.w $28, 2, $E4A3, $20
-word_18A80:	dc.w 8
-	dc.w 0,	$B02, $E4A4, 8
-	dc.w 0,	$302, $E48E, $28
-	dc.w 8,	$302, $E492, 0
-	dc.w 8,	$302, $E496, $20
-	dc.w $20, $902,	$E49A, 8
-	dc.w $20, $102,	$E4A0, $28
-	dc.w $28, 2, $E4A2, 0
-	dc.w $28, 2, $E4A3, $20
-word_18AC2:	dc.w 1
-	dc.w 8,	1, $E4B0, 0
-word_18ACC:	dc.w 1
-	dc.w 8,	$401, $E4B1, 0
-word_18AD6:	dc.w 1
-	dc.w 0,	$501, $E4B3, 0
-off_18AE0:	dc.l word_18AF4
-	dc.l word_18B3E
-	dc.l word_18B88
-	dc.l word_18BDA
-	dc.l word_18C24
-word_18AF4:	dc.w 9
-	dc.w 8,	$702, $E400, $18
-	dc.w $10, $302,	$E408, $10
-	dc.w $18, $302,	$E40C, $28
-	dc.w $20, $302,	$E410, $30
-	dc.w $28, $702,	$E414, $18
-	dc.w $28, $302,	$E41C, $38
-	dc.w $30, $202,	$E420, $10
-	dc.w $38, $102,	$E423, $28
-	dc.w $40, 2, $E425, $30
-word_18B3E:	dc.w 9
-	dc.w 8,	$702, $E426, $18
-	dc.w $10, $302,	$E42E, $10
-	dc.w $10, $302,	$E432, $28
-	dc.w $20, $302,	$E436, $30
-	dc.w $28, $702,	$E43A, $18
-	dc.w $28, $302,	$E442, $38
-	dc.w $30, $202,	$E446, $10
-	dc.w $30, $202,	$E449, $28
-	dc.w $40, 2, $E44C, $30
-word_18B88:	dc.w $A
-	dc.w 0,	$702, $E44D, $18
-	dc.w $10, $302,	$E455, $28
-	dc.w $18, $302,	$E459, $10
-	dc.w $20, $702,	$E45D, $18
-	dc.w $20, $302,	$E465, $30
-	dc.w $28, $302,	$E469, $38
-	dc.w $30, $202,	$E46D, $28
-	dc.w $38, $102,	$E470, $10
-	dc.w $40, $402,	$E472, $18
-	dc.w $40, 2, $E474, $30
-word_18BDA:	dc.w 9
-	dc.w 8,	$702, $E475, $18
-	dc.w $10, $302,	$E47D, $10
-	dc.w $18, $302,	$E481, $28
-	dc.w $20, $302,	$E485, $30
-	dc.w $28, $702,	$E489, $18
-	dc.w $28, $302,	$E491, $38
-	dc.w $30, $202,	$E495, $10
-	dc.w $38, $102,	$E498, $28
-	dc.w $40, 2, $E49A, $30
-word_18C24:	dc.w 8
-	dc.w $10, $702,	$E49B, $18
-	dc.w $18, $302,	$E4A3, $10
-	dc.w $18, $302,	$E4A7, $28
-	dc.w $28, $702,	$E4AB, $30
-	dc.w $30, $602,	$E4B3, $18
-	dc.w $30, $202,	$E4B9, $40
-	dc.w $38, $102,	$E4BC, $10
-	dc.w $38, $102,	$E4BE, $28
-off_18C66:	dc.l word_18C9A
-	dc.l word_18CFC
-	dc.l word_18D36
-	dc.l word_18D80
-	dc.l word_18DD2
-	dc.l word_18E0C
-	dc.l word_18E3E
-	dc.l word_18E88
-	dc.l word_18EEA
-	dc.l word_18F4C
-	dc.l word_18F9E
-	dc.l word_18FF0
-	dc.l word_1903A
-word_18C9A:	dc.w $C
-	dc.w 0,	$802, $E400, $18
-	dc.w 8,	$302, $E403, $10
-	dc.w 8,	$302, $E407, $28
-	dc.w $10, $702,	$E40B, $18
-	dc.w $10, $302,	$E413, $30
-	dc.w $18, $202,	$E417, 8
-	dc.w $18, $102,	$E41A, $38
-	dc.w $28, 2, $E41C, $10
-	dc.w $28, $102,	$E41D, $28
-	dc.w $30, $402,	$E41F, $18
-	dc.w $38, $D02,	$E4D7, $10
-	dc.w 8,	$402, $E4DF, $18
-word_18CFC:	dc.w 7
-	dc.w 0,	$B02, $E421, $10
-	dc.w 8,	$302, $E42D, $28
-	dc.w $10, $202,	$E431, 8
-	dc.w $10, $302,	$E434, $30
-	dc.w $20, $802,	$E438, $10
-	dc.w $28, $902,	$E43B, $18
-	dc.w $38, $D02,	$E4D7, $10
-word_18D36:	dc.w 9
-	dc.w 0,	$302, $E441, $10
-	dc.w 8,	$702, $E445, 0
-	dc.w 8,	$702, $E44D, $18
-	dc.w $10, $702,	$E455, $28
-	dc.w $18, $102,	$E45D, $38
-	dc.w $20, 2, $E45F, $10
-	dc.w $28, $502,	$E43B, $18
-	dc.w $30, 2, $E460, $28
-	dc.w $38, $D02,	$E4D7, $10
-word_18D80:	dc.w $A
-	dc.w 0,	$502, $E461, 0
-	dc.w 8,	2, $E465, $10
-	dc.w $10, $202,	$E466, 0
-	dc.w $10, $F02,	$E469, $18
-	dc.w $18, $302,	$E479, $38
-	dc.w $20, $402,	$E47D, 8
-	dc.w $30, $402,	$E41F, $18
-	dc.w $30, 2, $E47F, $30
-	dc.w $38, $D02,	$E4D7, $10
-	dc.w $10, $502,	$E4E5, 8
-word_18DD2:	dc.w 7
-	dc.w 0,	$B02, $E480, $10
-	dc.w $10, $702,	$E48C, $28
-	dc.w $18, $502,	$E494, 0
-	dc.w $20, $802,	$E498, $10
-	dc.w $28, $502,	$E49B, $18
-	dc.w $30, $402,	$E49F, $28
-	dc.w $38, $D02,	$E4D7, $10
-word_18E0C:	dc.w 6
-	dc.w 0,	$B02, $E4A1, $10
-	dc.w $10, $702,	$E4AD, $28
-	dc.w $18, $102,	$E4B5, 8
-	dc.w $20, $902,	$E4B7, $10
-	dc.w $30, $802,	$E4BD, $18
-	dc.w $38, $D02,	$E4D7, $10
-word_18E3E:	dc.w 9
-	dc.w 8,	$C02, $E4C0, 8
-	dc.w 8,	$302, $E4C4, $28
-	dc.w $10, $702,	$E4C8, $18
-	dc.w $10, $302,	$E4D0, $30
-	dc.w $20, 2, $E4D4, $10
-	dc.w $28, $102,	$E4D5, $28
-	dc.w $30, $402,	$E41F, $18
-	dc.w $38, $D02,	$E4D7, $10
-	dc.w $10, $502,	$E4F1, 8
-word_18E88:	dc.w $C
-	dc.w 0,	$802, $E400, $18
-	dc.w 8,	$302, $E403, $10
-	dc.w 8,	$302, $E407, $28
-	dc.w $10, $702,	$E40B, $18
-	dc.w $10, $302,	$E413, $30
-	dc.w $18, $202,	$E417, 8
-	dc.w $18, $102,	$E41A, $38
-	dc.w $28, 2, $E41C, $10
-	dc.w $28, $102,	$E41D, $28
-	dc.w $30, $402,	$E41F, $18
-	dc.w $38, $D02,	$E4D7, $10
-	dc.w 8,	$402, $E4E1, $18
-word_18EEA:	dc.w $C
-	dc.w 0,	$802, $E400, $18
-	dc.w 8,	$302, $E403, $10
-	dc.w 8,	$302, $E407, $28
-	dc.w $10, $702,	$E40B, $18
-	dc.w $10, $302,	$E413, $30
-	dc.w $18, $202,	$E417, 8
-	dc.w $18, $102,	$E41A, $38
-	dc.w $28, 2, $E41C, $10
-	dc.w $28, $102,	$E41D, $28
-	dc.w $30, $402,	$E41F, $18
-	dc.w $38, $D02,	$E4D7, $10
-	dc.w 8,	$402, $E4E3, $18
-word_18F4C:	dc.w $A
-	dc.w 0,	$502, $E461, 0
-	dc.w 8,	2, $E465, $10
-	dc.w $10, $202,	$E466, 0
-	dc.w $10, $F02,	$E469, $18
-	dc.w $18, $302,	$E479, $38
-	dc.w $20, $402,	$E47D, 8
-	dc.w $30, $402,	$E41F, $18
-	dc.w $30, 2, $E47F, $30
-	dc.w $38, $D02,	$E4D7, $10
-	dc.w $10, $502,	$E4E9, 8
-word_18F9E:	dc.w $A
-	dc.w 0,	$502, $E461, 0
-	dc.w 8,	2, $E465, $10
-	dc.w $10, $202,	$E466, 0
-	dc.w $10, $F02,	$E469, $18
-	dc.w $18, $302,	$E479, $38
-	dc.w $20, $402,	$E47D, 8
-	dc.w $30, $402,	$E41F, $18
-	dc.w $30, 2, $E47F, $30
-	dc.w $38, $D02,	$E4D7, $10
-	dc.w $10, $502,	$E4ED, 8
-word_18FF0:	dc.w 9
-	dc.w 8,	$C02, $E4C0, 8
-	dc.w 8,	$302, $E4C4, $28
-	dc.w $10, $702,	$E4C8, $18
-	dc.w $10, $302,	$E4D0, $30
-	dc.w $20, 2, $E4D4, $10
-	dc.w $28, $102,	$E4D5, $28
-	dc.w $30, $402,	$E41F, $18
-	dc.w $38, $D02,	$E4D7, $10
-	dc.w $10, $502,	$E4F5, 8
-word_1903A:	dc.w 9
-	dc.w 8,	$C02, $E4C0, 8
-	dc.w 8,	$302, $E4C4, $28
-	dc.w $10, $702,	$E4C8, $18
-	dc.w $10, $302,	$E4D0, $30
-	dc.w $20, 2, $E4D4, $10
-	dc.w $28, $102,	$E4D5, $28
-	dc.w $30, $402,	$E41F, $18
-	dc.w $38, $D02,	$E4D7, $10
-	dc.w $10, $502,	$E4F9, 8
-off_19084:	dc.l word_190CC
+
+; ---------------------------------------------------------------------------
+
+off_19084:
+	dc.l word_190CC
 	dc.l word_190D6
 	dc.l word_190E0
 	dc.l word_190EA
@@ -33159,24 +28566,34 @@ off_19084:	dc.l word_190CC
 	dc.l word_191AA
 	dc.l word_191B4
 	dc.l word_191C6
+
 word_190CC:	dc.w 1
 	dc.w $FFF8, $502, $E330, $FFF8
+
 word_190D6:	dc.w 1
 	dc.w $FFF8, $502, $E38A, $FFF8
+
 word_190E0:	dc.w 1
 	dc.w $FFF8, $502, $E38E, $FFF8
+
 word_190EA:	dc.w 1
 	dc.w $FFF8, $502, $E392, $FFF8
+
 word_190F4:	dc.w 1
 	dc.w $FFF8, $502, $E396, $FFF8
+
 word_190FE:	dc.w 1
 	dc.w $FFF8, $502, $E340, $FFF8
+
 word_19108:	dc.w 1
 	dc.w $FFF8, $502, $E3A6, $FFF8
+
 word_19112:	dc.w 1
 	dc.w $FFF8, $502, $E3AA, $FFF8
+
 word_1911C:	dc.w 1
 	dc.w $FFF8, $502, $EBA6, $FFF8
+
 word_19126:	dc.w $A
 	dc.w 0,	$C00, $E014, 0
 	dc.w 0,	$C00, $E814, $30
@@ -33188,24 +28605,36 @@ word_19126:	dc.w $A
 	dc.w $20, $100,	$E018, 0
 	dc.w $30, $400,	$F015, $20
 	dc.w 0,	$400, $E015, $20
+
 word_19178:	dc.w 1
 	dc.w 2,	$403, $C020, $A
+
 word_19182:	dc.w 1
 	dc.w 1,	$403, $C022, 9
+
 word_1918C:	dc.w 1
 	dc.w 1,	$803, $C024, 6
+
 word_19196:	dc.w 1
 	dc.w 1,	$803, $C027, 5
+
 word_191A0:	dc.w 1
 	dc.w 1,	$803, $C02A, 4
+
 word_191AA:	dc.w 1
 	dc.w 1,	$C03, $C02D, 3
+
 word_191B4:	dc.w 2
 	dc.w 0,	$C03, $C031, 2
 	dc.w 8,	$803, $C035, 2
+
 word_191C6:	dc.w 1
 	dc.w 0,	$D03, $C038, 0
-off_191D0:	dc.l word_19240
+
+; ---------------------------------------------------------------------------
+
+off_191D0:
+	dc.l word_19240
 	dc.l word_1924A
 	dc.l word_19254
 	dc.l word_1925E
@@ -33233,65 +28662,97 @@ off_191D0:	dc.l word_19240
 	dc.l word_1934A
 	dc.l word_19354
 	dc.l word_1935E
+
 word_19240:	dc.w 1
 	dc.w 1,	$F03, $C400, 0
+
 word_1924A:	dc.w 1
 	dc.w 1,	$F03, $C410, 0
+
 word_19254:	dc.w 1
 	dc.w 1,	$B03, $C420, 4
+
 word_1925E:	dc.w 1
 	dc.w 0,	$B03, $C42C, 5
+
 word_19268:	dc.w 1
 	dc.w $48, $F03,	$C438, 0
+
 word_19272:	dc.w 1
 	dc.w $50, $E03,	$C448, 0
+
 word_1927C:	dc.w 2
 	dc.w $20, $F03,	$C454, 0
 	dc.w $40, $403,	$C464, $A
+
 word_1928E:	dc.w 1
 	dc.w $10, $F03,	$C466, 0
+
 word_19298:	dc.w 1
 	dc.w 4,	$F03, $C476, 0
+
 word_192A2:	dc.w 2
 	dc.w $23, $B03,	$C486, 3
 	dc.w $43, $403,	$C492, 8
+
 word_192B4:	dc.w 1
 	dc.w $20, $F03,	$E494, 0
+
 word_192BE:	dc.w 1
 	dc.w $20, $F03,	$E4A4, 0
+
 word_192C8:	dc.w 1
 	dc.w $C, $B03, $E4B4, 6
+
 word_192D2:	dc.w 1
 	dc.w 2,	$E03, $E4C0, 0
+
 word_192DC:	dc.w 1
 	dc.w $D, $F03, $E4CC, 0
+
 word_192E6:	dc.w 1
 	dc.w $1F, $F03,	$C4DC, 0
+
 word_192F0:	dc.w 1
 	dc.w $27, $E03,	$C4EC, 0
+
 word_192FA:	dc.w 1
 	dc.w $C, $B03, $C4F8, 2
+
 word_19304:	dc.w 1
 	dc.w $D, $A03, $C504, 3
+
 word_1930E:	dc.w 1
 	dc.w 0,	$A03, $C50D, 2
+
 word_19318:	dc.w 1
 	dc.w 7,	$E03, $C516, 0
+
 word_19322:	dc.w 1
 	dc.w $D, $E03, $C522, 0
+
 word_1932C:	dc.w 1
 	dc.w $C, 4, $E52E, $C
+
 word_19336:	dc.w 1
 	dc.w 4,	$E04, $E52F, 4
+
 word_19340:	dc.w 1
 	dc.w 0,	$F04, $E53B, 0
+
 word_1934A:	dc.w 1
 	dc.w 0,	$F04, $E54B, 0
+
 word_19354:	dc.w 1
 	dc.w 0,	$F04, $855B, 0
+
 word_1935E:	dc.w 1
 	dc.w 0,	$F04, $856B, 0
-off_19368:	dc.l word_193B8
+
+; ---------------------------------------------------------------------------
+
+off_19368:
+	dc.l word_193B8
 	dc.l word_193D2
 	dc.l word_193EC
 	dc.l word_1940E
@@ -33311,97 +28772,121 @@ off_19368:	dc.l word_193B8
 	dc.l word_195B2
 	dc.l word_195CC
 	dc.l word_195E6
+
 word_193B8:	dc.w 3
 	dc.w 0,	$F01, $8131, 0
 	dc.w 0,	$F01, $8141, $20
 	dc.w 0,	$F01, $8151, $40
+
 word_193D2:	dc.w 3
 	dc.w 0,	$F01, $8161, 0
 	dc.w 0,	$F01, $8141, $20
 	dc.w 0,	$F01, $8151, $40
+
 word_193EC:	dc.w 4
 	dc.w 8,	$501, $8171, 0
 	dc.w 0,	$701, $8175, $10
 	dc.w 0,	$F01, $8141, $20
 	dc.w 0,	$F01, $8151, $40
+
 word_1940E:	dc.w 4
 	dc.w 8,	$901, $817D, 0
 	dc.w 0,	$301, $8183, $18
 	dc.w 0,	$F01, $8187, $20
 	dc.w 0,	$F01, $8151, $40
+
 word_19430:	dc.w 4
 	dc.w 8,	$D01, $8197, 0
 	dc.w 0,	$D01, $819F, $20
 	dc.w $10, $D01,	$81A7, $20
 	dc.w 0,	$F01, $8151, $40
+
 word_19452:	dc.w 4
 	dc.w 8,	$D01, $81AF, 0
 	dc.w 0,	$701, $81B7, $20
 	dc.w 0,	$701, $81BF, $30
 	dc.w 0,	$F01, $81C7, $40
+
 word_19474:	dc.w 3
 	dc.w 8,	$501, $81D7, $10
 	dc.w 8,	$D01, $81DB, $20
 	dc.w 0,	$F01, $81E3, $40
+
 word_1948E:	dc.w 3
 	dc.w 8,	$D01, $81F3, 0
 	dc.w 8,	$D01, $81FB, $20
 	dc.w 0,	$F01, $8203, $40
+
 word_194A8:	dc.w 3
 	dc.w 8,	$901, $8213, 0
 	dc.w 8,	$901, $8219, $28
 	dc.w 8,	$D01, $821F, $40
+
 word_194C2:	dc.w 3
 	dc.w 8,	$D01, $8227, 0
 	dc.w 8,	$D01, $822F, $20
 	dc.w 8,	$D01, $8237, $40
+
 word_194DC:	dc.w 3
 	dc.w 8,	$D01, $823F, 0
 	dc.w 8,	$501, $8247, $20
 	dc.w 8,	$D01, $824B, $40
+
 word_194F6:	dc.w 3
 	dc.w 0,	$F01, $8253, 0
 	dc.w 8,	$D01, $8263, $20
 	dc.w 8,	$D01, $826B, $40
+
 word_19510:	dc.w 3
 	dc.w 0,	$F01, $8273, 0
 	dc.w 8,	$D01, $8283, $20
 	dc.w 8,	$101, $828B, $40
+
 word_1952A:	dc.w 4
 	dc.w 0,	$F01, $828D, 0
 	dc.w 0,	$701, $829D, $20
 	dc.w 8,	$501, $91FF, $30
 	dc.w 8,	$D01, $82A5, $40
+
 word_1954C:	dc.w 4
 	dc.w 0,	$F01, $9131, 0
 	dc.w 0,	$701, $82AD, $20
 	dc.w 8,	$501, $91DF, $30
 	dc.w 8,	$D01, $82B5, $40
+
 word_1956E:	dc.w 4
 	dc.w 0,	$F01, $9131, 0
 	dc.w 0,	$F01, $82BD, $20
 	dc.w 0,	$301, $82CD, $40
 	dc.w 8,	$901, $9239, $48
+
 word_19590:	dc.w 4
 	dc.w 0,	$F01, $9131, 0
 	dc.w 0,	$F01, $9141, $20
 	dc.w 0,	$301, $82D1, $40
 	dc.w 8,	$901, $9221, $48
+
 word_195B2:	dc.w 3
 	dc.w 0,	$F01, $9131, 0
 	dc.w 0,	$F01, $9141, $20
 	dc.w 0,	$F01, $82D5, $40
+
 word_195CC:	dc.w 3
 	dc.w 0,	$F01, $9131, 0
 	dc.w 0,	$F01, $9141, $20
 	dc.w 0,	$F01, $9151, $40
+
 word_195E6:	dc.w 5
 	dc.w 0,	$F01, $8100, 0
 	dc.w 0,	$F01, $8110, $20
 	dc.w 0,	$F01, $8120, $40
 	dc.w $18, 1, $8130, $60
 	dc.w 0,	$400, $82E5, $5C
-off_19610:	dc.l word_197AC
+
+; ---------------------------------------------------------------------------
+
+off_19610:
+	dc.l word_197AC
 	dc.l word_197B6
 	dc.l word_197C8
 	dc.l word_197DA
@@ -33504,257 +28989,556 @@ off_19610:	dc.l word_197AC
 	dc.l word_19CAC
 	dc.l word_19CB6
 	dc.l word_19CC8
-word_197AC:	dc.w 2
+
+word_197AC:	dc.w 2		; Calls 2 Sprite pieces, but only one is listed
 	dc.w 0,	3, $3FF, 0
+
 word_197B6:	dc.w 2
 	dc.w $FFE0, $A03, $637B, $FFF8
 	dc.w $FFF8, $403, $6384, $FFF8
+
 word_197C8:	dc.w 2
 	dc.w $FFE0, $A03, $6386, $FFF8
 	dc.w $FFF8, $403, $638F, $FFF8
+
 word_197DA:	dc.w 2
 	dc.w $FFE0, $A03, $391,	$FFF8
 	dc.w $FFF8, $403, $39A,	$FFF8
+
 word_197EC:	dc.w 2
 	dc.w $FFE0, $A03, $370,	$FFF8
 	dc.w $FFF8, $403, $379,	$FFF8
+
 word_197FE:	dc.w 1
 	dc.w $FFFC, 3, $239D, $FFFC
+
 word_19808:	dc.w 1
 	dc.w $FFFC, 3, $639E, $FFFC
+
 word_19812:	dc.w 1
 	dc.w $FFFC, 3, $639C, $FFFC
-	dc.w 1
-	dc.w $FFFC, 3, $1FE, $FFFC
+
 word_19826:	dc.w 1
 	dc.w $FFFC, 3, $1FF, $FFFC
+
 word_19830:	dc.w 1
 	dc.w $FFFC, $F03, $1FB,	$FFF0
+
 word_1983A:	dc.w 1
 	dc.w 0,	$F03, $1FB, 0
+
 word_19844:	dc.w 1
 	dc.w 0,	$F03, $1FB, 0
+
 word_1984E:	dc.w 1
 	dc.w 0,	$F03, $1FB, 0
+
 word_19858:	dc.w 1
 	dc.w 0,	$F03, $1FB, 0
+
 word_19862:	dc.w 1
 	dc.w 0,	$F03, $1FB, 0
+
 word_1986C:	dc.w 1
 	dc.w $FFE0, $303, $3E5,	0
+
 word_19876:	dc.w 1
 	dc.w $FFE0, $303, $3E9,	0
+
 word_19880:	dc.w 1
 	dc.w $FFE0, $303, $3ED,	0
+
 word_1988A:	dc.w 1
 	dc.w $FFE0, $303, $3F1,	0
+
 word_19894:	dc.w 1
 	dc.w $FFE0, $303, $3F5,	0
+
 word_1989E:	dc.w 1
 	dc.w 0,	$F03, $1FB, 0
+
 word_198A8:	dc.w 1
 	dc.w 0,	3, $39F, 0
+
 word_198B2:	dc.w 1
 	dc.w 0,	3, $3A0, 1
+
 word_198BC:	dc.w 1
 	dc.w 1,	3, $3A1, 5
+
 word_198C6:	dc.w 5
 	dc.w 0,	$503, $63A2, 0
 	dc.w 8,	$703, $63A6, $10
 	dc.w $10, $303,	$63AE, 8
 	dc.w $20, $903,	$63B2, $FFF0
 	dc.w $30, $803,	$63B8, $FFF8
+
 word_198F0:	dc.w 5
 	dc.w 0,	$503, $63BB, 0
 	dc.w 8,	$703, $63BF, $10
 	dc.w $10, $303,	$63AE, 8
 	dc.w $20, $903,	$63C7, $FFF0
 	dc.w $30, $803,	$63CD, $FFF8
+
 word_1991A:	dc.w 5
 	dc.w 0,	$503, $63D0, 0
 	dc.w 8,	$703, $63D4, $10
 	dc.w $10, $303,	$63AE, 8
 	dc.w $20, $903,	$63DC, $FFF0
 	dc.w $30, $803,	$63E2, $FFF8
+
 word_19944:	dc.w 1
 	dc.w $FFFC, $403, $3F9,	$FFF0
+
 word_1994E:	dc.w 1
 	dc.w $FFF8, $903, $3FB,	$FFE8
+
 word_19958:	dc.w 1
 	dc.w $FFF4, $E03, $401,	$FFDC
+
 word_19962:	dc.w 1
 	dc.w $FFF4, $E03, $419,	$FFDC
+
 word_1996C:	dc.w 1
 	dc.w $FFF4, $E03, $40D,	$FFDC
+
 word_19976:	dc.w 1
 	dc.w $FFF4, $A03, $425,	$FFDC
+
 word_19980:	dc.w 1
 	dc.w $FFE0, $B03, $644C, $FFF4
+
 word_1998A:	dc.w 1
 	dc.w $FFE0, $B03, $6458, $FFF4
+
 word_19994:	dc.w 1
 	dc.w $FFE0, $B03, $6464, $FFF4
+
 word_1999E:	dc.w 1
 	dc.w $FFE0, $B03, $2470, $FFF4
+
 word_199A8:	dc.w 1
 	dc.w $FFE0, $B03, $247C, $FFF4
+
 word_199B2:	dc.w 1
 	dc.w $FFE0, $B03, $2488, $FFF4
+
 word_199BC:	dc.w 2
 	dc.w $FFF0, $903, $446,	$FFF4
 	dc.w $FFE0, $903, $42E,	$FFF4
+
 word_199CE:	dc.w 2
 	dc.w $FFF0, $903, $446,	$FFF4
 	dc.w $FFE0, $903, $434,	$FFF4
+
 word_199E0:	dc.w 2
 	dc.w $FFF0, $903, $446,	$FFF4
 	dc.w $FFE0, $903, $43A,	$FFF4
+
 word_199F2:	dc.w 2
 	dc.w $FFF0, $903, $446,	$FFF4
 	dc.w $FFE1, $903, $42E,	$FFF4
+
 word_19A04:	dc.w 2
 	dc.w $FFF0, $903, $446,	$FFF4
 	dc.w $FFE1, $903, $434,	$FFF4
+
 word_19A16:	dc.w 2
 	dc.w $FFF0, $903, $446,	$FFF4
 	dc.w $FFE1, $903, $43A,	$FFF4
+
 word_19A28:	dc.w 1
 	dc.w $FFFC, 3, $2495, $FFFC
+
 word_19A32:	dc.w 1
 	dc.w $FFFC, 3, $2494, $FFFC
+
 word_19A3C:	dc.w 1
 	dc.w $FFFC, 3, $2C95, $FFFC
+
 word_19A46:	dc.w 1
 	dc.w $FFFC, 3, $2C94, $FFFC
+
 word_19A50:	dc.w 1
 	dc.w $FFFC, 3, $3495, $FFFC
+
 word_19A5A:	dc.w 1
 	dc.w $FFFC, 3, $3494, $FFFC
+
 word_19A64:	dc.w 1
 	dc.w $FFFC, 3, $3C95, $FFFC
+
 word_19A6E:	dc.w 1
 	dc.w $FFFC, 3, $3C94, $FFFC
+
 word_19A78:	dc.w 2
 	dc.w $FFD0, $603, $2496, 8
 	dc.w $FFE8, $A03, $249C, $FFF8
+
 word_19A8A:	dc.w 2
 	dc.w $FFC8, $A03, $24A5, $FFF8
 	dc.w $FFE0, $B03, $24AE, $FFF8
+
 word_19A9C:	dc.w 2
 	dc.w $FFD0, $603, $2C96, $FFF0
 	dc.w $FFE8, $A03, $2C9C, $FFF8
+
 word_19AAE:	dc.w 2
 	dc.w $FFE0, $F03, $A2E9, $FFEC
 	dc.w $FFF0, $103, $A2F9, $C
+
 word_19AC0:	dc.w 1
 	dc.w $FFE0, $F03, $A2E9, $FFEC
+
 word_19ACA:	dc.w 1
 	dc.w $FFF8, $502, $E383, $FFF8
+
 word_19AD4:	dc.w 1
 	dc.w $FFF8, $502, $E387, $FFF8
+
 word_19ADE:	dc.w 1
 	dc.w $FFF8, $502, $E38B, $FFF8
+
 word_19AE8:	dc.w 1
 	dc.w $FFF8, $502, $E38F, $FFF8
+
 word_19AF2:	dc.w 2
 	dc.w $FFF8, $502, $8383, $FFF8
 	dc.w 0,	$402, $C393, $FFF6
+
 word_19B04:	dc.w 2
 	dc.w $FFF8, $502, $8387, $FFF8
 	dc.w 0,	$402, $C395, $FFF6
+
 word_19B16:	dc.w 2
 	dc.w $FFF8, $502, $838B, $FFF8
 	dc.w 0,	$402, $C397, $FFF6
+
 word_19B28:	dc.w 2
 	dc.w $FFF8, $502, $838F, $FFF8
 	dc.w 0,	$402, $C393, $FFF6
+
 word_19B3A:	dc.w 1
 	dc.w 0,	$402, $C30F, $FFF6
+
 word_19B44:	dc.w 2
 	dc.w $FFD8, $303, $24E0, $FFFC
 	dc.w $FFF8, 3, $24E4, $FFFC
+
 word_19B56:	dc.w 2
 	dc.w $FFD8, $303, $24E5, $FFFC
 	dc.w $FFF8, 3, $24E4, $FFFC
+
 word_19B68:	dc.w 2
 	dc.w $FFD8, $303, $24E9, $FFFC
 	dc.w $FFF8, 3, $24ED, $FFFC
+
 word_19B7A:	dc.w 2
 	dc.w $FFD8, $303, $24EE, $FFFC
 	dc.w $FFF8, 3, $24F2, $FFFC
+
 word_19B8C:	dc.w 2
 	dc.w $FFD8, $303, $24F3, $FFFC
 	dc.w $FFF8, 3, $24F2, $FFFC
+
 word_19B9E:	dc.w 1
 	dc.w $FFFC, 3, $4097, $FFFC
+
 word_19BA8:	dc.w 1
 	dc.w $FFFC, 3, $4098, $FFFC
+
 word_19BB2:	dc.w 1
 	dc.w $FFFC, 3, $4099, $FFFC
+
 word_19BBC:	dc.w 1
 	dc.w $FFFC, 3, $409A, $FFFC
+
 word_19BC6:	dc.w 1
 	dc.w $FFFC, 3, $409B, $FFFC
+
 word_19BD0:	dc.w 1
 	dc.w $FFFC, 3, $409C, $FFFC
+
 word_19BDA:	dc.w 1
 	dc.w $FFFC, 3, $409D, $FFFC
+
 word_19BE4:	dc.w 1
 	dc.w $FFFC, 3, $409E, $FFFC
+
 word_19BEE:	dc.w 1
 	dc.w $FFFC, 3, $409F, $FFFC
+
 word_19BF8:	dc.w 1
 	dc.w $FFFC, 3, $40A0, $FFFC
+
 word_19C02:	dc.w 1
 	dc.w $FFFC, 3, $40A1, $FFFC
+
 word_19C0C:	dc.w 1
 	dc.w $FFFC, 3, $40A2, $FFFC
+
 word_19C16:	dc.w 1
 	dc.w $FFFC, 3, $40A3, $FFFC
+
 word_19C20:	dc.w 1
 	dc.w $FFFC, 3, $40A4, $FFFC
+
 word_19C2A:	dc.w 1
 	dc.w $FFFC, 2, $A080, $FFFC
+
 word_19C34:	dc.w 1
 	dc.w $FFF8, $502, $A081, $FFF8
+
 word_19C3E:	dc.w 1
 	dc.w $FFF8, $502, $A085, $FFF8
+
 word_19C48:	dc.w 1
 	dc.w $FFF8, $502, $A089, $FFF8
+
 word_19C52:	dc.w 1
 	dc.w $FFF8, $502, $E3AE, $FFF8
+
 word_19C5C:	dc.w 1
 	dc.w $FFF8, $902, $E3B2, $FFF0
+
 word_19C66:	dc.w 1
 	dc.w $FFF8, $902, $E3B8, $FFF0
+
 word_19C70:	dc.w 1
 	dc.w $FFF8, $502, $E3BE, $FFF8
+
 word_19C7A:	dc.w 1
 	dc.w $FFF8, $502, $E338, $FFF8
+
 word_19C84:	dc.w 1
 	dc.w $FFF8, $A02, $E3C2, $FFF8
+
 word_19C8E:	dc.w 1
 	dc.w $FFF8, $A02, $E3CB, $FFF8
+
 word_19C98:	dc.w 1
 	dc.w $FFF8, $500, $E396, $FFF8
+
 word_19CA2:	dc.w 1
 	dc.w $FFF8, $500, $E39A, $FFF8
+
 word_19CAC:	dc.w 1
 	dc.w $FFF8, $500, $E39E, $FFF8
+
 word_19CB6:	dc.w 2
 	dc.w $FFF0, $100, $E3A2, $FFF0
 	dc.w $FFF8, $500, $E39A, $FFF8
+
 word_19CC8:	dc.w 2
 	dc.w $FFF0, $100, $E3A4, $FFF0
 	dc.w $FFF8, $500, $E39A, $FFF8
-	
+
+
 ; ---------------------------------------------------------------------------
+
+off_14814:	; what the <quack> is this?
+	dc.l byte_FF1446
+	dc.l byte_FF14E8
+	dc.l byte_FF158A
+	dc.l byte_FF162C
+	dc.l byte_FF16CE
+	dc.l byte_FF1770
+	dc.l byte_FF1812
+	dc.l byte_FF18B4
+
+; ---------------------------------------------------------------------------
+
+Unreferenced_Unk_Mapping:	; figure out what this originally was?
+	dc.l word_14BB4
+	dc.l word_14BB4
+	dc.l word_14BB4
+	dc.l word_14BB4
+	dc.l word_14BB4
+	dc.l word_14BD6
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14BF8
+	dc.l word_14C22
+	dc.l word_14C44
+	dc.l word_14C44
+	dc.l word_14C44
+	dc.l word_14C44
+	dc.l word_14C44
+	dc.l word_14C66
+	dc.l word_14C70
+	dc.l word_14C7A
+	dc.l word_14C84
+	dc.l word_14C96
+	dc.l word_14CA8
+	dc.l word_14CC2
+	dc.l word_14CDC
+	dc.l word_14CF6
+	dc.l word_14D10
+	dc.l word_14D22
+	dc.l word_14D3C
+	dc.l word_14D4E
+	dc.l word_14D68
+	dc.l word_14D82
+	dc.l word_14D9C
+	dc.l word_14DB6
+	dc.l word_14DD0
+	dc.l word_14DDA
+	dc.l word_14DE4
+	dc.l word_14DEE
+
+word_14BB4:	dc.w 4
+	dc.w $FFC8, $F02, $8300, $FFE8
+	dc.w $FFC8, $302, $8310, 8
+	dc.w $FFE8, $E02, $8314, $FFE8
+	dc.w $FFE8, $202, $8320, 8
+
+word_14BD6:	dc.w 4
+	dc.w $FFC8, $B02, $8323, $FFD8
+	dc.w $FFC8, $B02, $832F, $FFF0
+	dc.w $FFE8, 2, $833B, $FFE8
+	dc.w $FFE8, $E02, $833C, $FFF0
+
+word_14BF8:	dc.w 5
+	dc.w $FFC8, $E02, $83A6, $FFE0
+	dc.w $FFC8, $202, $83B2, 0
+	dc.w $FFE0, $202, $83B5, $FFE0
+	dc.w $FFF8, $802, $83C4, $FFE0
+	dc.w $FFF0, $902, $83C7, $FFF8
+
+word_14C22:	dc.w 4
+	dc.w $FFC8, $F02, $836B, $FFE0
+	dc.w $FFC8, $702, $837B, 0
+	dc.w $FFE8, $E02, $8383, $FFE0
+	dc.w $FFE8, $602, $838F, 0
+
+word_14C44:	dc.w 4
+	dc.w $FFC8, $F02, $8348, $FFE8
+	dc.w $FFC8, $702, $8358, 8
+	dc.w $FFE8, $D02, $8360, $FFF0
+	dc.w $FFF8, $802, $8368, $FFF0
+
+word_14C66:	dc.w 1
+	dc.w $FFD8, $101, $8397, 0
+
+word_14C70:	dc.w 1
+	dc.w $FFD8, $401, $8399, $FFF8
+
+word_14C7A:	dc.w 1
+	dc.w $FFD8, $401, $839B, $FFF8
+
+word_14C84:	dc.w 2
+	dc.w $FFD8, $100, $8395, 0
+	dc.w $FFD8, 1, $839B, $FFF8
+
+word_14C96:	dc.w 2
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83BE, $FFF8
+
+word_14CA8:	dc.w 3
+	dc.w $FFE0, 1, $83F2, $FFF8
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83BE, $FFF8
+
+word_14CC2:	dc.w 3
+	dc.w $FFD8, $401, $83E3, $FFF0
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83BE, $FFF8
+
+word_14CDC:	dc.w 3
+	dc.w $FFD8, $901, $83D7, $FFF0
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83BE, $FFF8
+
+word_14CF6:	dc.w 3
+	dc.w $FFD8, $901, $83DD, $FFF0
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83BE, $FFF8
+
+word_14D10:	dc.w 2
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83EB, $FFF8
+
+word_14D22:	dc.w 3
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83EB, $FFF8
+	dc.w $FFE0, 1, $83F1, $FFF8
+
+word_14D3C:	dc.w 2
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83E5, $FFF8
+
+word_14D4E:	dc.w 3
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83E5, $FFF8
+	dc.w $FFE0, 1, $83F1, $FFF8
+
+word_14D68:	dc.w 3
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83EB, $FFF8
+	dc.w $FFD8, $401, $83E3, $FFF0
+
+word_14D82:	dc.w 3
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83E5, $FFF8
+	dc.w $FFD8, $401, $83E3, $FFF0
+
+word_14D9C:	dc.w 3
+	dc.w $FFE0, $602, $83B8, $FFE8
+	dc.w $FFE0, $902, $83EB, $FFF8
+	dc.w $FFD8, $501, $83CD, $FFF0
+
+word_14DB6:	dc.w 3
+	dc.w $FFE0, $602, $83D1, $FFE8
+	dc.w $FFE0, $902, $83EB, $FFF8
+	dc.w $FFD8, $501, $83CD, $FFF0
+
+word_14DD0:	dc.w 1
+	dc.w $FFD8, $101, $83A3, 0
+
+word_14DDA:	dc.w 1
+	dc.w $FFD8, $801, $83A0, $FFF8
+
+word_14DE4:	dc.w 1
+	dc.w $FFD8, $801, $839D, $FFF8
+
+word_14DEE:	dc.w 2
+	dc.w $FFD8, $101, $83A3, 0
+	dc.w $FFD8, 0, $83A5, 0
+
+; ---------------------------------------------------------------------------
+
+Unreferenced_Unk_Sprite_01:	dc.w 2
+	dc.w 0,	$802, $C3EA, 0
+	dc.w 8,	$402, $C3ED, 8
+
+Unreferenced_Unk_Sprite_02:	dc.w 1
+	dc.w 0,	$902, $C3EF, 0
+
+Unreferenced_Unk_Sprite_03:	dc.w 2
+	dc.w 0,	$502, $C3F5, 8
+	dc.w 8,	2, $C3F9, 0
+
+; ---------------------------------------------------------------------------
+
+Unreferenced_Unk_Sprite_04:	dc.w 1
+	dc.w $FFFC, 3, $1FE, $FFFC
+
+; ===========================================================================
 
 StageTextStrings:	
 	include "resource/Text/Stage/Stage.asm"
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ProcPlaneCommands:
 	move.w	(plane_cmd_count).l,d0
@@ -33781,18 +29565,15 @@ locret_19F8E:
 ; End of function ProcPlaneCommands
 
 ; ---------------------------------------------------------------------------
-word_19F90:	dc.w $40
+word_19F90:
+	dc.w $40
 	dc.w $80
 	dc.w $100
 	dc.w $100
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_19F98:
-
-; FUNCTION CHUNK AT 0001B27E SIZE 0000001C BYTES
-
 	move.b	(a2),d2
 	bpl.w	QueueLoadMap
 	andi.w	#$7F,d2
@@ -33800,7 +29581,7 @@ sub_19F98:
 	movea.l	off_19FAA(pc,d2.w),a4
 	jmp	(a4)
 ; ---------------------------------------------------------------------------
-off_19FAA:	
+off_19FAA:
 	dc.l SpecPlane80
 	dc.l SpecPlane81
 	dc.l SpecPlane82
@@ -33841,7 +29622,7 @@ SpecPlane9D:
 	movea.l	(a3,d2.w),a4
 	move.w	(a4)+,d0
 	move.w	2(a2),d4
-	clr.l	d3
+	moveq	#0,d3
 
 loc_1A040:
 	andi.b	#1,d3
@@ -33855,7 +29636,7 @@ loc_1A04E:
 	move.b	(a4)+,d2
 	addq.b	#1,d3
 	cmpi.b	#$FF,d2
-	beq.w	loc_1A078
+	beq.s	loc_1A078
 	bsr.w	SetVRAMWrite
 	add.w	d1,d5
 	move.w	d2,VDP_DATA
@@ -33883,7 +29664,8 @@ SpecPlane9C:
 	move.w	#1,d4
 	bra.w	CopyTilemap
 ; ---------------------------------------------------------------------------
-word_1A0A0:	dc.w $424B
+word_1A0A0:
+	dc.w $424B
 	dc.w $424C
 	dc.w $424D
 	dc.w $4257
@@ -33918,7 +29700,7 @@ word_1A0A0:	dc.w $424B
 SpecPlane9B:
 	move.w	#$C204,d2
 	tst.b	(swap_controls).l
-	beq.w	loc_1A0EE
+	beq.s	loc_1A0EE
 	move.w	#$C234,d2
 
 loc_1A0EE:
@@ -33942,7 +29724,8 @@ loc_1A0EE:
 	move.w	#1,d4
 	bra.w	CopyTilemap
 ; ---------------------------------------------------------------------------
-word_1A12E:	dc.w $C1E8
+word_1A12E:
+	dc.w $C1E8
 	dc.w $C1E9
 	dc.w $C1E9
 	dc.w $C1E9
@@ -33954,7 +29737,9 @@ word_1A12E:	dc.w $C1E8
 	dc.w $C1E9
 	dc.w $C1E9
 	dc.w $C1EA
-word_1A146:	dc.w $C1EB
+
+word_1A146:
+	dc.w $C1EB
 	dc.w $C1AB
 	dc.w $C1AB
 	dc.w $C1AB
@@ -33995,30 +29780,24 @@ Keep1PText:
 	move.w	#$A500,d6
 	move.w	#$C21E,d5
 	tst.b	(swap_controls).l
-	beq.w	loc_1A196
+	beq.s	loc_1A196
 	move.w	#$C22A,d5
 
 loc_1A196:
 	bsr.w	DrawSmallText
 	clr.w	d0
 	move.b	(level).l,d0
-	
-	if OpponentNames=0
-	lea	(Str_DrR).l,a1
-	
-	else	
+
 	subi.b 	#3, d0
 	mulu.w 	#4, d0
 	lea	(Str_DrR), a1
 	adda.w	d0, a1
-	
-	endc
-	
+
 	move.w	#3,d0
 	move.w	#$A500,d6
 	move.w	#$C21E,d5
 	tst.b	(swap_controls).l
-	bne.w	loc_1A1C2
+	bne.s	loc_1A1C2
 	move.w	#$C22A,d5
 
 loc_1A1C2:
@@ -34029,28 +29808,26 @@ loc_1A1C2:
 Str_1P:
 	include	"resource/text/Stage/Scenario 1P.asm"
 	even
-	
+
 Str_DrR:
 	include	"resource/text/Stage/Scenario 2P.asm"
 	even
-	
-	if DemoText=1
+
 Str_Demo:
 	include	"resource/text/Stage/Demo 1P.asm"
 	even
-	endc
-	
+
 ; ---------------------------------------------------------------------------
 
 SpecPlane98:
 	move.w	#$C506,d5
 	move.w	#$A500,d6
-	lea	(byte_1A20C).l,a1
+	lea	(Str_PlayTime).l,a1
 	move.w	#9,d0
 	bsr.w	DrawPlayerText
 	move.w	#$C606,d5
 	move.w	#$A500,d6
-	lea	(byte_1A216).l,a1
+	lea	(Str_PT_Seconds).l,a1
 	move.w	#9,d0
 	bsr.w	DrawPlayerText
 	move.w	2(a2),d2
@@ -34058,40 +29835,40 @@ SpecPlane98:
 	move.w	#$8500,d6
 	bra.w	loc_1A3BA
 ; ---------------------------------------------------------------------------
-byte_1A20C:	
-	dc.b $9E
-	dc.b $96
-	dc.b $80
-	dc.b $B0
+Str_PlayTime:
+	dc.b $9E	; P
+	dc.b $96	; L
+	dc.b $80	; A
+	dc.b $B0	; Y
 	dc.b 0
-	dc.b $A6
-	dc.b $90
-	dc.b $98
-	dc.b $88
+	dc.b $A6	; T
+	dc.b $90	; I
+	dc.b $98	; M
+	dc.b $88	; E
 	dc.b 0
-	
-byte_1A216:	
-	dc.b 0
-	dc.b 0
+
+Str_PT_Seconds:
 	dc.b 0
 	dc.b 0
 	dc.b 0
 	dc.b 0
 	dc.b 0
-	dc.b $A4
-	dc.b $88
-	dc.b $84
+	dc.b 0
+	dc.b 0
+	dc.b $A4	; S
+	dc.b $88	; E
+	dc.b $84	; C
 ; ---------------------------------------------------------------------------
 
 SpecPlane99:
 	move.w	#$C706,d5
 	move.w	#$A500,d6
-	lea	(unk_1A25C).l,a1
+	lea	(Str_Bonus).l,a1
 	move.w	#9,d0
 	bsr.w	DrawPlayerText
 	move.w	#$C806,d5
 	move.w	#$A500,d6
-	lea	(unk_1A266).l,a1
+	lea	(Str_B_Points).l,a1
 	move.w	#9,d0
 	bsr.w	DrawPlayerText
 	move.w	2(a2),d2
@@ -34099,19 +29876,19 @@ SpecPlane99:
 	move.w	#$8500,d6
 	bra.w	loc_1A3BA
 ; ---------------------------------------------------------------------------
-unk_1A25C:	
-	dc.b $82
-	dc.b $9C
-	dc.b $9A
-	dc.b $A8
-	dc.b $A4
+Str_Bonus:
+	dc.b $82	; B
+	dc.b $9C	; O
+	dc.b $9A	; N
+	dc.b $A8	; U
+	dc.b $A4	; S
 	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
-	
-unk_1A266:	
+
+Str_B_Points:
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -34119,15 +29896,15 @@ unk_1A266:
 	dc.b   0
 	dc.b   0
 	dc.b   0
-	dc.b $9E
-	dc.b $A6
-	dc.b $A4
+	dc.b $9E	; P
+	dc.b $A6	; T
+	dc.b $A4	; S
 ; ---------------------------------------------------------------------------
 
 SpecPlane9E:
 	move.w	#$C906,d5
 	move.w	#$A500,d6
-	lea	(unk_1A38E).l,a1
+	lea	(Str_Password).l,a1
 	move.w	#9,d0
 	bsr.w	DrawPlayerText
 	lea	(Passwords).l,a1
@@ -34184,7 +29961,8 @@ loc_1A318:
 ; ---------------------------------------------------------------------------
 	rts
 ; ---------------------------------------------------------------------------
-byte_1A320:	dc.b 0
+byte_1A320:
+	dc.b 0
 	dc.b   1
 	dc.b   5
 	dc.b   4
@@ -34192,7 +29970,9 @@ byte_1A320:	dc.b 0
 	dc.b   6
 	dc.b $19
 	dc.b $FF
-byte_1A328:	dc.b 0
+
+byte_1A328:
+	dc.b 0
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -34200,7 +29980,9 @@ byte_1A328:	dc.b 0
 	dc.b   0
 	dc.b  $A
 	dc.b $FF
-unk_1A330:	dc.b   0
+
+unk_1A330:
+	dc.b   0
 	dc.b $5D
 	dc.b   0
 	dc.b $A8
@@ -34224,14 +30006,19 @@ unk_1A330:	dc.b   0
 	dc.b $D8
 	dc.b   1
 	dc.b $28
-off_1A348:	dc.l unk_1A364
+; TODO: Document Animation Code
+
+off_1A348:
+	dc.l unk_1A364
 	dc.l unk_1A364
 	dc.l unk_1A364
 	dc.l unk_1A364
 	dc.l unk_1A364
 	dc.l unk_1A37A
 	dc.l unk_1A384
-unk_1A364:	dc.b   3
+
+unk_1A364:
+	dc.b   3
 	dc.b   2
 	dc.b   1
 	dc.b   0
@@ -34250,40 +30037,49 @@ unk_1A364:	dc.b   3
 	dc.b $FF
 	dc.b   0
 	dc.l unk_1A364
-unk_1A37A:	dc.b $3C
+
+unk_1A37A:
+	dc.b $3C
 	dc.b   0
 	dc.b $3C
 	dc.b   0
 	dc.b $FF
 	dc.b   0
 	dc.l unk_1A37A
-unk_1A384:	dc.b $23
+
+unk_1A384:
+	dc.b $23
 	dc.b  $A
 	dc.b $23
 	dc.b  $B
 	dc.b $FF
 	dc.b   0
 	dc.l unk_1A384
-unk_1A38E:	dc.b   0
-	dc.b $9E
-	dc.b $80
-	dc.b $A4
-	dc.b $A4
-	dc.b $AC
-	dc.b $9C
-	dc.b $A2
-	dc.b $86
+
+Str_Password:
 	dc.b   0
-unk_1A398:	dc.b   0
-	dc.b $80
-	dc.b $96
-	dc.b $96
+	dc.b $9E	; P
+	dc.b $80	; A
+	dc.b $A4	; S
+	dc.b $A4	; S
+	dc.b $AC	; W
+	dc.b $9C	; O
+	dc.b $A2	; R
+	dc.b $86	; D
 	dc.b   0
-	dc.b $84
-	dc.b $96
-	dc.b $88
-	dc.b $80
-	dc.b $A2
+
+Str_AllClear:
+	dc.b   0
+	dc.b $80	; A
+	dc.b $96	; L
+	dc.b $96	; L
+	dc.b   0
+	dc.b $84	; C
+	dc.b $96	; L
+	dc.b $88	; E
+	dc.b $80	; A
+	dc.b $A2	; R
+; ---------------------------------------------------------------------------
 	dc.b $3A
 	dc.b $3C
 	dc.b $C9
@@ -34293,7 +30089,7 @@ unk_1A398:	dc.b   0
 	dc.b $A5
 	dc.b   0
 ; ---------------------------------------------------------------------------
-	lea	(unk_1A398).l,a1
+	lea	(Str_AllClear).l,a1
 	move.w	#9,d0
 	bsr.w	DrawPlayerText
 	rts
@@ -34301,7 +30097,7 @@ unk_1A398:	dc.b   0
 
 loc_1A3BA:
 	tst.b	(swap_controls).l
-	beq.w	loc_1A3C8
+	beq.s	loc_1A3C8
 	addi.w	#$30,d5
 
 loc_1A3C8:
@@ -34311,7 +30107,7 @@ loc_1A3C8:
 
 loc_1A3DC:
 	andi.l	#$FFFF,d2
-	beq.w	loc_1A3F6
+	beq.s	loc_1A3F6
 	divu.w	#$A,d2
 	swap	d2
 	addq.b	#1,d2
@@ -34370,21 +30166,24 @@ BufferStageNumber:
 	move.b	d0,(a1)
 	rts
 ; ---------------------------------------------------------------------------
-Str_Stage:	dc.b $A4
-	dc.b $A6
-	dc.b $80
-	dc.b $8C
-	dc.b $88
+Str_Stage:
+	dc.b $A4	; S
+	dc.b $A6	; T
+	dc.b $80	; A
+	dc.b $8C	; G
+	dc.b $88	; E
 	dc.b 0
 	dc.b 0
 	dc.b 0
-Str_Stage1:	dc.b $A4
-	dc.b $A6
-	dc.b $80
-	dc.b $8C
-	dc.b $88
+
+Str_Stage1:
+	dc.b $A4	; S
+	dc.b $A6	; T
+	dc.b $80	; A
+	dc.b $8C	; G
+	dc.b $88	; E
 	dc.b 0
-	dc.b $6E
+	dc.b $6E	; 1
 	dc.b 0
 ; ---------------------------------------------------------------------------
 
@@ -34401,16 +30200,41 @@ DrawBGUnderStageText: ; Story Under Tiles
 	move.w	#7,d3
 	move.w	#1,d4
 	move.w	#$C000,d6
-	
-	if BattleBoards=0
-	lea	(StageTextBGTiles).l,a4
-	else
-	jsr LoadUnderTilesScenario
-	endc
-	
+	bsr.s LoadUnderTilesScenario
 	bra.w	CopyTilemap8
 ; ---------------------------------------------------------------------------
-StageTextBGTiles:
+; OUTPUT
+; a4 = under stage text
+LoadUnderTilesScenario:
+	clr.w	d0
+		
+	move.b	(level).l, d0	
+	add.w	d0, d0
+	lea	@first(pc), a4
+	add.w	@level(pc,d0.w), a4
+	rts
+
+@level:
+	dc.w UnderGrassTiles-@first ; Practice Stage 1
+	dc.w UnderGrassTiles-@first ; Practice Stage 2
+	dc.w UnderGrassTiles-@first ; Practice Stage 3
+	dc.w UnderGrassTiles-@first ; Stage 1
+	dc.w UnderGrassTiles-@first ; Stage 2
+	dc.w UnderGrassTiles-@first ; Stage 3
+	dc.w UnderGrassTiles-@first ; Stage 4
+	dc.w UnderGrassTiles-@first ; Stage 5
+	dc.w UnderGrassTiles-@first ; Stage 6
+	dc.w UnderGrassTiles-@first ; Stage 7
+	dc.w UnderGrassTiles-@first ; Stage 8
+	dc.w UnderGrassTiles-@first ; Stage 9
+	dc.w UnderGrassTiles-@first ; Stage 10
+	dc.w UnderGrassTiles-@first ; Stage 11
+	dc.w UnderGrassTiles-@first ; Stage 12
+	dc.w UnderGrassTiles-@first ; Stage 13
+	even
+@first:
+
+UnderGrassTiles:
 	dc.b $11
 	dc.b $12
 	dc.b $13
@@ -34427,6 +30251,34 @@ StageTextBGTiles:
 	dc.b $27
 	dc.b $28
 	dc.b $29
+	even
+
+UnderStoneTiles:
+	dc.b $4F
+	dc.b $4E
+	dc.b $4F
+	dc.b $4E
+	dc.b $4F
+	dc.b $4E
+	dc.b $4F
+	dc.b $4E
+	dc.b $53
+	dc.b $52
+	dc.b $53
+	dc.b $52
+	dc.b $53
+	dc.b $52
+	dc.b $53
+	dc.b $52
+	even
+	; < Insert 8x2 tile map bytes here for alternate undertile mappings >
+	; example:
+
+;UnderGHZTiles:
+;	dc.b $35, $34, $35, $32, $33, $34, $35, $34
+;	dc.b $27, $26, $27, $26, $27, $26, $27, $26
+;	even
+
 ; ---------------------------------------------------------------------------
 
 DrawPlayerText:
@@ -34466,7 +30318,7 @@ SpecPlane93:
 	move.w	#$C71E,d5
 	move.w	#$8500,d6
 	tst.b	1(a2)
-	beq.w	loc_1A53C
+	beq.s	loc_1A53C
 	move.w	#$C72A,d5
 	move.w	#$A500,d6
 
@@ -34571,7 +30423,8 @@ SpecPlane8F:
 	lea	(unk_1A680).l,a4
 	bra.w	CopyTilemap8
 ; ---------------------------------------------------------------------------
-unk_1A66A:	dc.b $FC
+unk_1A66A:
+	dc.b $FC
 	dc.b $FC
 	dc.b $CA
 	dc.b $C8
@@ -34593,7 +30446,9 @@ unk_1A66A:	dc.b $FC
 	dc.b $E0
 	dc.b $E1
 	dc.b   0
-unk_1A680:	dc.b $FC
+
+unk_1A680:
+	dc.b $FC
 	dc.b $C0
 	dc.b $F1
 	dc.b $C8
@@ -34770,7 +30625,7 @@ loc_1A814:
 
 SpecPlane89:
 	lea	(RAM_START).l,a0
-	clr.l	d0
+	moveq	#0,d0
 	move.w	2(a2),d0
 	adda.l	d0,a0
 	bclr	#4,7(a0)
@@ -34787,7 +30642,7 @@ SpecPlane89:
 
 loc_1A85C:
 	move.b	(a3,d2.w),d5
-	beq.w	loc_1A86E
+	beq.s	loc_1A86E
 	bsr.w	loc_1A884
 	bset	#4,7(a0)
 
@@ -34809,7 +30664,7 @@ loc_1A884:
 	lsl.b	#1,d5
 	move.b	1(a3,d2.w),d6
 	cmp.b	d5,d6
-	bcs.w	loc_1A89C
+	bcs.s	loc_1A89C
 	move.b	d6,d7
 	sub.b	d5,d7
 	addq.w	#1,d7
@@ -34835,12 +30690,12 @@ loc_1A8BA:
 	add.w	d0,d1
 	add.b	d4,d6
 	cmpi.b	#3,d6
-	bcs.w	loc_1A8D0
+	bcs.s	loc_1A8D0
 	move.b	#2,d6
 
 loc_1A8D0:
 	tst.w	d7
-	beq.w	loc_1A8DA
+	beq.s	loc_1A8DA
 	move.b	#1,d6
 
 loc_1A8DA:
@@ -34852,7 +30707,7 @@ loc_1A8DA:
 	move.b	d0,d7
 	andi.b	#$70,d7
 	cmpi.b	#$60,d7
-	beq.w	loc_1A8FC
+	beq.s	loc_1A8FC
 	or.b	d5,d7
 	move.b	d7,d0
 
@@ -34863,14 +30718,17 @@ loc_1A8FC:
 	addq.b	#1,1(a3,d2.w)
 	rts
 ; ---------------------------------------------------------------------------
-off_1A90C:	dc.l loc_1A9A2
+off_1A90C:
+	dc.l loc_1A9A2
 	dc.l loc_1A988
 	dc.l loc_1A972
-off_1A918:	dc.l unk_1A928
+off_1A918:
+	dc.l unk_1A928
 	dc.l unk_1A940
 	dc.l unk_1A958
 	dc.l unk_1A970
-unk_1A928:	dc.b   1
+unk_1A928:
+	dc.b   1
 	dc.b   1
 	dc.b   2
 	dc.b   2
@@ -34894,7 +30752,9 @@ unk_1A928:	dc.b   1
 	dc.b   2
 	dc.b $FF
 	dc.b   0
-unk_1A940:	dc.b   1
+
+unk_1A940:
+	dc.b   1
 	dc.b   2
 	dc.b   2
 	dc.b   2
@@ -34918,7 +30778,9 @@ unk_1A940:	dc.b   1
 	dc.b   1
 	dc.b   3
 	dc.b $FF
-unk_1A958:	dc.b   1
+
+unk_1A958:
+	dc.b   1
 	dc.b   1
 	dc.b   2
 	dc.b   2
@@ -34942,7 +30804,9 @@ unk_1A958:	dc.b   1
 	dc.b   1
 	dc.b $FF
 	dc.b   0
-unk_1A970:	dc.b   1
+
+unk_1A970:
+	dc.b   1
 	dc.b $FF
 ; ---------------------------------------------------------------------------
 
@@ -34989,7 +30853,7 @@ SpecPlane88:
 	adda.w	d2,a4
 	move.w	#1,d2
 	btst	#1,(level_mode).l
-	beq.w	loc_1AA04
+	beq.s	loc_1AA04
 	move.w	#3,d2
 
 loc_1AA04:
@@ -35005,7 +30869,8 @@ loc_1AA0E:
 	dbf	d2,loc_1AA04
 	rts
 ; ---------------------------------------------------------------------------
-unk_1AA22:	dc.b   0
+unk_1AA22:
+	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -35249,7 +31114,7 @@ unk_1AA22:	dc.b   0
 
 loc_1AB12:
 	btst	#1,(level_mode).l
-	beq.w	loc_1AB34
+	beq.s	loc_1AB34
 	clr.w	d5
 	move.b	3(a2),d5
 	lsr.b	#1,d5
@@ -35380,11 +31245,14 @@ loc_1AC76:
 	dbf	d0,loc_1AC76
 	rts
 ; ---------------------------------------------------------------------------
-off_1AC82:	dc.l unk_1AC92
+off_1AC82:
+	dc.l unk_1AC92
 	dc.l unk_1AC9E
 	dc.l unk_1ACAA
 	dc.l unk_1ACB6
-unk_1AC92:	dc.b $C2
+
+unk_1AC92:
+	dc.b $C2
 	dc.b $86
 	dc.b   0
 	dc.b   6
@@ -35393,7 +31261,9 @@ unk_1AC92:	dc.b $C2
 	dc.b $80
 	dc.b   0
 	dc.l unk_1ACC2
-unk_1AC9E:	dc.b $C2
+
+unk_1AC9E:
+	dc.b $C2
 	dc.b $BA
 	dc.b   0
 	dc.b   6
@@ -35402,7 +31272,9 @@ unk_1AC9E:	dc.b $C2
 	dc.b $80
 	dc.b   0
 	dc.l unk_1ACC2
-unk_1ACAA:	dc.b $C2
+
+unk_1ACAA:
+	dc.b $C2
 	dc.b $86
 	dc.b   0
 	dc.b   6
@@ -35411,7 +31283,9 @@ unk_1ACAA:	dc.b $C2
 	dc.b $80
 	dc.b   0
 	dc.l unk_1AD6A
-unk_1ACB6:	dc.b $C2
+
+unk_1ACB6:
+	dc.b $C2
 	dc.b $BA
 	dc.b   0
 	dc.b   6
@@ -35420,7 +31294,9 @@ unk_1ACB6:	dc.b $C2
 	dc.b $80
 	dc.b   0
 	dc.l unk_1AD6A
-unk_1ACC2:	dc.b   0
+
+unk_1ACC2:
+	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -35588,7 +31464,9 @@ unk_1ACC2:	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
-unk_1AD6A:	dc.b   0
+
+unk_1AD6A:
+	dc.b   0
 	dc.b   0
 	dc.b   0
 	dc.b   0
@@ -35765,24 +31643,24 @@ SpecPlane80:
 	lea	(StageTextStrings).l,a3
 	movea.l	(a3,d2.w),a4
 	move.b	2(a2),d4
-	beq.w	loc_1AE42
+	beq.s	loc_1AE42
 	bmi.w	loc_1AE42
 	move.b	(frame_count+1).l,d4
 	andi.b	#$10,d4
-	beq.w	loc_1AE42
+	beq.s	loc_1AE42
 	move.b	#$FF,d4
 
 loc_1AE42:
 	not.b	d4
 	move.w	(a4)+,d0
-	clr.l	d3
+	moveq	#0,d3
 
 loc_1AE48:
 	andi.b	#1,d3
 	adda.l	d3,a4
 	clr.b	d3
 	move.w	(a4)+,d5
-	bne.w	loc_1AE5A
+	bne.s	loc_1AE5A
 	bsr.w	loc_1AE90
 
 loc_1AE5A:
@@ -35792,7 +31670,7 @@ loc_1AE5C:
 	move.b	(a4)+,d2
 	addq.b	#1,d3
 	cmpi.b	#$FF,d2
-	beq.w	loc_1AE8A
+	beq.s	loc_1AE8A
 	bsr.w	loc_1AEB4
 	bsr.w	SetVRAMWrite
 	add.w	d1,d5
@@ -35816,7 +31694,7 @@ loc_1AE90:
 	move.b	3(a2),d0
 	move.b	(swap_controls).l,d1
 	eor.b	d1,d0
-	beq.w	loc_1AEAC
+	beq.s	loc_1AEAC
 	move.w	#$C134,d5
 
 loc_1AEAC:
@@ -35828,7 +31706,7 @@ loc_1AEAC:
 loc_1AEB4:
 	and.b	d4,d2
 	cmpi.b	#$FE,d2
-	beq.w	loc_1AEC0
+	beq.s	loc_1AEC0
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -35848,20 +31726,20 @@ SpecPlane81:
 SpecPlane82:
 	move.w	#$CC22,d5
 	tst.b	(swap_controls).l
-	beq.w	loc_1AEEC
+	beq.s	loc_1AEEC
 	move.w	#$CB1E,d5
 
 loc_1AEEC:
 	move.w	#$A500,d2
 
 loc_1AEF0:
-	movem.l	d2,-(sp)
+	move.l	d2,-(sp)
 	lea	(RAM_START).l,a3
-	clr.l	d3
+	moveq	#0,d3
 	move.w	2(a2),d3
 	move.l	$A(a3,d3.l),d2
 	bsr.w	sub_1B350
-	movem.l	(sp)+,d2
+	move.l	(sp)+,d2
 
 loc_1AF0C:
 	lea	(byte_FF1982).l,a3
@@ -35917,11 +31795,11 @@ SpecPlane87:
 	move.w	#$A500,d2
 	move.w	#$CC22,d5
 	tst.b	(swap_controls).l
-	beq.w	loc_1AF8A
+	beq.s	loc_1AF8A
 	move.w	#$CB1E,d5
 
 loc_1AF8A:
-	movem.l	d2,-(sp)
+	move.l	d2,-(sp)
 	lea	(byte_FF1982).l,a3
 	move.w	#7,d2
 
@@ -35930,22 +31808,22 @@ loc_1AF98:
 	dbf	d2,loc_1AF98
 	lea	(word_FF198A).l,a3
 	lea	(RAM_START).l,a4
-	clr.l	d3
+	moveq	#0,d3
 	move.w	2(a2),d3
 	move.w	$1E(a4,d3.l),d2
-	beq.w	loc_1AFCA
-	movem.l	d3,-(sp)
+	beq.s	loc_1AFCA
+	move.l	d3,-(sp)
 	bsr.w	sub_1B396
-	movem.l	(sp)+,d3
+	move.l	(sp)+,d3
 	move.b	#$81,-(a3)
 
 loc_1AFCA:
-	clr.l	d2
+	moveq	#0,d2
 	move.w	$12(a4,d3.l),d2
 	divu.w	#10000,d2
 	swap	d2
 	bsr.w	sub_1B396
-	movem.l	(sp)+,d2
+	move.l	(sp)+,d2
 	bra.w	loc_1AF0C
 ; ---------------------------------------------------------------------------
 
@@ -35970,9 +31848,9 @@ SpecPlane84:
 	move.w	$C(a3),d5
 	bsr.w	loc_1B0A0
 	tst.b	3(a2)
-	beq.w	loc_1B03A
+	beq.s	loc_1B03A
 	cmpi.b	#5,3(a2)
-	beq.w	loc_1B064
+	beq.s	loc_1B064
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -36013,251 +31891,91 @@ loc_1B0A0:
 	cmpi.w	#$40,4(a3)
 	bcs.w	CopyTilemap8
 	bra.w	CopyTilemap
-; ---------------------------------------------------------------------------
-
-	if BattleBoards=0
-loc_1B0AE:
-	clr.w	d2
-	move.b	(level_mode).l,d2
-	andi.b	#3,d2
-	beq.w	loc_1B0CC
-	cmpi.b	#1,d2
-	beq.w	loc_1B0CC
-	move.b	#3,d2
-	rts
-	
-; ---------------------------------------------------------------------------
-
-loc_1B0CC:
-	clr.w	d0
-	move.b	(level).l,d0
-	move.b	byte_1B0DA(pc,d0.w),d2
-	rts
-	
-; ---------------------------------------------------------------------------
-
-byte_1B0DA:	; Crumbling tile mappings to use in Scenario Mode		
-
-	dc.b 3 ; Lesson 1 (unused)
-	dc.b 3 ; Lesson 2 (unused)
-	dc.b 3 ; Lesson 3 (unused)
-	dc.b 0 ; Stage 1
-	dc.b 0 ; Stage 2
-	dc.b 0 ; Stage 3
-	dc.b 0 ; Stage 4
-	dc.b 0 ; Stage 5
-	dc.b 0 ; Stage 6
-	dc.b 0 ; Stage 7
-	dc.b 0 ; Stage 8
-	dc.b 0 ; Stage 9
-	dc.b 0 ; Stage 10
-	dc.b 0 ; Stage 11
-	dc.b 0 ; Stage 12
-	dc.b 0 ; Stage 13
-	
-off_1B0EA: ; Crumbling tile mappings (when beans fall)
-
-	dc.l off_1B10A ; Scenario - Grass - 1P Side
-	dc.l off_1B11C ; Scenario - Grass - 2P Side
-	
-	dc.l off_1B12E ; Scenario - ??? - 1P Side (unused)
-	dc.l off_1B140 ; Scenario - ??? - 2P Side (unused)
-	
-	dc.l off_1B10A ; VS - Grass - 1P Side
-	dc.l off_1B11C ; VS - Grass - 2P Side
-	
-	dc.l off_1B10A ; Exercise - Grass - 1P Side
-	dc.l off_1B11C ; Exercise - Grass - 2P Side
-	
-off_1B10A:	
-	dc.l unk_1B3EA
-	dc.b   0
-	dc.b $20
-	dc.b $C0
-	dc.b   0
-	dc.b $40
-	dc.b   0
-	dc.b   0
-	dc.b  $F
-	dc.b $ED
-	dc.b   0
-	dc.b $CD
-	dc.b   4
-	dc.b $C0
-	dc.b   4
-	
-off_1B11C:	
-	dc.l unk_1B3EA
-	dc.b   0
-	dc.b $20
-	dc.b $C0
-	dc.b   0
-	dc.b $40
-	dc.b   0
-	dc.b   0
-	dc.b  $F
-	dc.b $ED
-	dc.b $30
-	dc.b $CD
-	dc.b $34
-	dc.b $C0
-	dc.b $34
-	
-off_1B12E:	
-	dc.l unk_1B4C2
-	dc.b   0
-	dc.b $20
-	dc.b $E0
-	dc.b   0
-	dc.b $60
-	dc.b   0
-	dc.b   0
-	dc.b  $F
-	dc.b $ED
-	dc.b   0
-	dc.b $CD
-	dc.b   4
-	dc.b $C0
-	dc.b   4
-	
-off_1B140:	
-	dc.l unk_1B4C2
-	dc.b   0
-	dc.b $20
-	dc.b $E0
-	dc.b   0
-	dc.b $60
-	dc.b   0
-	dc.b   0
-	dc.b  $F
-	dc.b $ED
-	dc.b $30
-	dc.b $CD
-	dc.b $34
-	dc.b $C0
-	dc.b $34
-	else
 
 ; ---------------------------------------------------------------------------
 	
 loc_1B0AE:
-	clr.w	d2					; Clear D2
+	clr.w	d2			; Clear D2
 	move.b	(level_mode).l,d2	; Move "Mode" value into D2
-								; 00 = Scenario Mode
-								; 01 = VS Mode
-								; 02 = Exercise Mode
-								; 03 = ?
-								; 04 = Tutorial Mode	
+						; 00 = Scenario Mode
+						; 01 = VS Mode
+						; 02 = Exercise Mode
+						; 03 = ?
+						; 04 = Tutorial Mode	
 	
 	beq.w	ScenarioFall		; If Scenario Mode, jump to ScenarioFall
 	
-	bra		ModeFall			; Else jump to ModeFall
+	bra	ModeFall		; Else jump to ModeFall
 	
 ; ---------------------------------------------------------------------------
 
 ScenarioFall:
-	clr.w	d0							; Clear D0
-	move.b	(level).l,d0				; Move Stage # into D0
-	subi.b	#3, d0
+	clr.w	d0				; Clear D0
+	move.b	(level).l,d0			; Move Stage # into D0
+;	subi.b	#3, d0
 	move.b	byte_Scenario(pc,d0.w),d2	; D2 contains "Crumbling Tile Mappings" number to use 
 	rts
 	
 ModeFall:
-	clr.w	d0							; Clear D0
-	move.b	(level_mode).l,d0			; Move Stage # into D0
+	clr.w	d0				; Clear D0
+	move.b	(level_mode).l,d0		; Move Stage # into D0
 	subi.b  #1,d0
 	move.b	byte_Mode(pc,d0.w),d2		; D2 contains "Crumbling Tile Mappings" number to use 
 	rts
 	
 ; ---------------------------------------------------------------------------
-byte_Scenario:	; Crumbling tile mappings to use in Scenario Mode		
-
-	dc.b 1 ; Stage 1
-	dc.b 0 ; Stage 2
-	dc.b 0 ; Stage 3
-	dc.b 0 ; Stage 4
-	dc.b 0 ; Stage 5
-	dc.b 0 ; Stage 6
-	dc.b 0 ; Stage 7
-	dc.b 0 ; Stage 8
-	dc.b 0 ; Stage 9
-	dc.b 0 ; Stage 10
-	dc.b 0 ; Stage 11
-	dc.b 0 ; Stage 12
-	dc.b 0 ; Stage 13
+byte_Scenario:		; Crumbling tile mappings to use in Scenario Mode		
+	dc.b 0	; Practise Stage 1
+	dc.b 0	; Practise Stage 2
+	dc.b 0	; Practise Stage 3
+	dc.b 0	; Stage 1
+	dc.b 0	; Stage 2
+	dc.b 0	; Stage 3
+	dc.b 0	; Stage 4
+	dc.b 0	; Stage 5
+	dc.b 0	; Stage 6
+	dc.b 0	; Stage 7
+	dc.b 0	; Stage 8
+	dc.b 0	; Stage 9
+	dc.b 0	; Stage 10
+	dc.b 0	; Stage 11
+	dc.b 0	; Stage 12
+	dc.b 0	; Stage 13
 	even
-	
-byte_Mode:	; Crumbling tile mappings to use in Other Modes	
+
+byte_Mode:		; Crumbling tile mappings to use in Other Modes	
 
 	dc.b 0 ; VS
 	dc.b 0 ; Exercise
 	dc.b 0 ; ?
 	dc.b 0 ; Tutorial
 	even
-	
+
 off_1B0EA: ; Crumbling tile mappings (when beans fall)
 
 	dc.l Grass1P ; Grass - 1P Side
 	dc.l Grass2P ; Grass - 2P Side
-	
+
 	dc.l Stone1P ; Stone - 1P Side
 	dc.l Stone2P ; Stone - 2P Side
-	
-	dc.l Grass1P ; Grass - 1P Side
-	dc.l Grass1P ; Grass - 2P Side
-	
-	dc.l Grass1P ; Grass - 1P Side
-	dc.l Grass1P ; Grass - 2P Side
-	even	
-	
-Grass1P:	
-	dc.l unk_1B3EA
-	dc.b   0
-	dc.b $20
-	dc.b $C0
-	dc.b   0
-	dc.b $40
-	dc.b   0
-	dc.b   0
-	dc.b  $F
-	dc.b $ED
-	dc.b   0
-	dc.b $CD
-	dc.b   4
-	dc.b $C0
-	dc.b   4
-	even
-	
-Grass2P:	
-	dc.l unk_1B3EA
-	dc.b   0
-	dc.b $20
-	dc.b $C0
-	dc.b   0
-	dc.b $40
-	dc.b   0
-	dc.b   0
-	dc.b  $F
-	dc.b $ED
-	dc.b $30
-	dc.b $CD
-	dc.b $34
-	dc.b $C0
-	dc.b $34
-	
-Stone1P:
-	dc.l CrumbleStone
-	incbin	"resource/mapunc/Crumble/Stone/StoneB 1P.bin"
+
+	; Add your pointers to the crumble tile mappings below
+;	dc.l GHZ1P
+;	dc.l GHZ2P
+
+	include "resource/mapunc/Crumble Tiles/Grass/Grass1P.asm"
 	even
 
-Stone2P:
-	dc.l CrumbleStone
-	incbin	"resource/mapunc/Crumble/Stone/StoneB 2P.bin"
+	include "resource/mapunc/Crumble Tiles/Grass/Grass2P.asm"
 	even
+
+	include "resource/mapunc/Crumble Tiles/Stone/Stone1P.asm"
 	even
-	
-	endc
-	
+
+	include "resource/mapunc/Crumble Tiles/Stone/Stone2P.asm"
+	even
+
+;	< include your crumble tile mapping pointers here>
 ; ---------------------------------------------------------------------------
 
 SpecPlane85:
@@ -36353,7 +32071,8 @@ QueueLoadMap:
 ; End of function sub_19F98
 
 ; ---------------------------------------------------------------------------
-off_1B246:	dc.l QueueFillPlane
+off_1B246:
+	dc.l QueueFillPlane
 	dc.l QueueCopyMap8
 	dc.l QueueCopyMapDirect
 	dc.l QueueCopyTwoMaps
@@ -36365,7 +32084,6 @@ QueueFillPlane:
 	move.w	(a3)+,d6
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 FillPlane:
 	bsr.w	SetVRAMWrite
@@ -36380,9 +32098,7 @@ loc_1B268:
 	rts
 ; End of function FillPlane
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 QueueCopyMap8:
 	movea.l	(a3)+,a4
@@ -36407,14 +32123,11 @@ CopyTilemap8:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 QueueCopyMapDirect:
 	movea.l	(a3)+,a4
 ; End of function QueueCopyMapDirect
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 CopyTilemap:
 	bsr.w	SetVRAMWrite
@@ -36429,9 +32142,7 @@ loc_1B2A4:
 	rts
 ; End of function CopyTilemap
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 QueueCopyMap16:
 	movea.l	(a3)+,a4
@@ -36452,9 +32163,7 @@ loc_1B2C2:
 	rts
 ; End of function QueueCopyMap16
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 QueueCopyTwoMaps:
 	movea.l	(a3)+,a4
@@ -36475,14 +32184,12 @@ loc_1B2E8:
 	rts
 ; End of function QueueCopyTwoMaps
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1B2F8:
 	move.b	(a4)+,d6
 	move.b	(a5)+,d2
-	beq.w	loc_1B308
+	beq.s	loc_1B308
 	move.w	d2,VDP_DATA
 	rts
 ; ---------------------------------------------------------------------------
@@ -36492,9 +32199,7 @@ loc_1B308:
 	rts
 ; End of function sub_1B2F8
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 QueueCopyMapPalMap:
 	movea.l	(a3)+,a4
@@ -36510,7 +32215,7 @@ loc_1B318:
 
 loc_1B322:
 	andi.b	#3,d2
-	bne.w	loc_1B32E
+	bne.s	loc_1B32E
 	move.b	(a5)+,d7
 	ror.w	#1,d7
 
@@ -36529,9 +32234,7 @@ loc_1B32E:
 	rts
 ; End of function QueueCopyMapPalMap
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1B350:
 	divu.w	#10000,d2
@@ -36562,9 +32265,7 @@ loc_1B37E:
 	rts
 ; End of function sub_1B350
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_1B396:
 	andi.l	#$FFFF,d2
@@ -36580,9 +32281,7 @@ locret_1B3AC:
 	rts
 ; End of function sub_1B396
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 SetVRAMWrite:
 	move.w	d5,d7
@@ -36596,9 +32295,7 @@ SetVRAMWrite:
 	rts
 ; End of function SetVRAMWrite
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 SetVRAMRead:
 	move.w	d5,d7
@@ -36612,439 +32309,41 @@ SetVRAMRead:
 ; End of function SetVRAMRead
 
 ; ---------------------------------------------------------------------------
-unk_1B3EA:	dc.b $8E
-	dc.b $8F
-	dc.b $90
-	dc.b $91
-	dc.b $92
-	dc.b $93
-	dc.b $94
-	dc.b $95
-	dc.b $8E
-	dc.b $8F
-	dc.b $90
-	dc.b $91
-	dc.b $92
-	dc.b $93
-	dc.b $94
-	dc.b $95
-	dc.b $A0
-	dc.b $A1
-	dc.b $A2
-	dc.b $A3
-	dc.b $A4
-	dc.b $A5
-	dc.b $A6
-	dc.b $A7
-	dc.b $A0
-	dc.b $A1
-	dc.b $A2
-	dc.b $A3
-	dc.b $A4
-	dc.b $A5
-	dc.b $A6
-	dc.b $A7
-	dc.b $8E
-	dc.b $8F
-	dc.b $90
-	dc.b $91
-	dc.b $B9
-	dc.b $BA
-	dc.b $BB
-	dc.b $BC
-	dc.b $BD
-	dc.b $BE
-	dc.b $BF
-	dc.b $C0
-	dc.b $92
-	dc.b $93
-	dc.b $94
-	dc.b $95
-	dc.b $A0
-	dc.b $A1
-	dc.b $A2
-	dc.b $C1
-	dc.b $C2
-	dc.b $C3
-	dc.b $C4
-	dc.b $C5
-	dc.b $C6
-	dc.b $C7
-	dc.b $C8
-	dc.b $C9
-	dc.b $A4
-	dc.b $A5
-	dc.b $A6
-	dc.b $A7
-	dc.b $8E
-	dc.b $8F
-	dc.b $CA
-	dc.b $CB
-	dc.b $CC
-	dc.b $CD
-	dc.b $CE
-	dc.b $77
-	dc.b $CF
-	dc.b $D0
-	dc.b $D1
-	dc.b $D2
-	dc.b $D3
-	dc.b $D4
-	dc.b $94
-	dc.b $95
-	dc.b $A0
-	dc.b $A1
-	dc.b $D5
-	dc.b $D6
-	dc.b $D7
-	dc.b $D8
-	dc.b $D9
-	dc.b $DA
-	dc.b $DB
-	dc.b $DC
-	dc.b $DD
-	dc.b $DE
-	dc.b $DF
-	dc.b $E0
-	dc.b $A6
-	dc.b $A7
-	dc.b $8E
-	dc.b $8F
-	dc.b $E1
-	dc.b $E2
-	dc.b $74
-	dc.b $75
-	dc.b $76
-	dc.b $77
-	dc.b $78
-	dc.b $79
-	dc.b $7A
-	dc.b $7B
-	dc.b $74
-	dc.b $75
-	dc.b $94
-	dc.b $95
-	dc.b $A0
-	dc.b $A1
-	dc.b $E3
-	dc.b $E4
-	dc.b $E5
-	dc.b $E6
-	dc.b $E7
-	dc.b $E8
-	dc.b $E9
-	dc.b $EA
-	dc.b $EB
-	dc.b $EC
-	dc.b $ED
-	dc.b $EE
-	dc.b $A6
-	dc.b $A7
-	dc.b $8E
-	dc.b $8F
-	dc.b $72
-	dc.b $73
-	dc.b $74
-	dc.b $75
-	dc.b $76
-	dc.b $77
-	dc.b $78
-	dc.b $79
-	dc.b $7A
-	dc.b $7B
-	dc.b $74
-	dc.b $75
-	dc.b $94
-	dc.b $95
-	dc.b $A0
-	dc.b $A1
-	dc.b $84
-	dc.b $85
-	dc.b $86
-	dc.b $87
-	dc.b $88
-	dc.b $89
-	dc.b $8A
-	dc.b $8B
-	dc.b $8C
-	dc.b $8D
-	dc.b $86
-	dc.b $87
-	dc.b $A6
-	dc.b $A7
-	dc.b $8E
-	dc.b $8F
-	dc.b $90
-	dc.b $91
-	dc.b $92
-	dc.b $93
-	dc.b $94
-	dc.b $95
-	dc.b $8E
-	dc.b $8F
-	dc.b $90
-	dc.b $91
-	dc.b $92
-	dc.b $93
-	dc.b $94
-	dc.b $95
-	dc.b $A0
-	dc.b $A1
-	dc.b $A2
-	dc.b $A3
-	dc.b $A4
-	dc.b $A5
-	dc.b $A6
-	dc.b $A7
-	dc.b $A0
-	dc.b $A1
-	dc.b $A2
-	dc.b $A3
-	dc.b $A4
-	dc.b $A5
-	dc.b $A6
-	dc.b $A7
-	dc.b   3
-	dc.b   4
-	dc.b   5
-	dc.b   6
-	dc.b   7
-	dc.b   8
-	dc.b   1
-	dc.b   2
-	dc.b   3
-	dc.b   4
-	dc.b   5
-	dc.b   6
-	dc.b $13
-	dc.b $14
-	dc.b $15
-	dc.b $16
-	dc.b $17
-	dc.b $18
-	dc.b $11
-	dc.b $12
-	dc.b $13
-	dc.b $14
-	dc.b $15
-	dc.b $16
-unk_1B4C2:	dc.b $1B
-	dc.b $18
-	dc.b $15
-	dc.b $14
-	dc.b $15
-	dc.b $16
-	dc.b $17
-	dc.b $18
-	dc.b $19
-	dc.b $15
-	dc.b $16
-	dc.b $1A
-	dc.b $1B
-	dc.b $18
-	dc.b $15
-	dc.b $1A
-	dc.b $3B
-	dc.b $38
-	dc.b $35
-	dc.b $34
-	dc.b $35
-	dc.b $36
-	dc.b $37
-	dc.b $38
-	dc.b $39
-	dc.b $35
-	dc.b $36
-	dc.b $3A
-	dc.b $3B
-	dc.b $38
-	dc.b $35
-	dc.b $34
-	dc.b $1B
-	dc.b $18
-	dc.b $15
-	dc.b $14
-	dc.b $15
-	dc.b $1C
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $13
-	dc.b $1A
-	dc.b $1B
-	dc.b $18
-	dc.b $15
-	dc.b $1A
-	dc.b $3B
-	dc.b $38
-	dc.b $35
-	dc.b $34
-	dc.b $35
-	dc.b $3C
-	dc.b $13
-	dc.b $18
-	dc.b $19
-	dc.b $1C
-	dc.b $33
-	dc.b $3A
-	dc.b $3B
-	dc.b $38
-	dc.b $35
-	dc.b $34
-	dc.b $1B
-	dc.b $18
-	dc.b $15
-	dc.b $1C
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $13
-	dc.b $18
-	dc.b $15
-	dc.b $1A
-	dc.b $3B
-	dc.b $38
-	dc.b $35
-	dc.b $3C
-	dc.b $13
-	dc.b $1C
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $FF
-	dc.b $13
-	dc.b $1C
-	dc.b $33
-	dc.b $38
-	dc.b $35
-	dc.b $34
-	dc.b $1B
-	dc.b $1C
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b $13
-	dc.b $1A
-	dc.b $3B
-	dc.b $3C
-	dc.b $13
-	dc.b $1C
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b $13
-	dc.b $1C
-	dc.b $33
-	dc.b $34
-	dc.b $1B
-	dc.b $1C
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b $13
-	dc.b $1A
-	dc.b $3B
-	dc.b $3C
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b   0
-	dc.b $33
-	dc.b $34
-	dc.b $1B
-	dc.b $18
-	dc.b $15
-	dc.b $14
-	dc.b $15
-	dc.b $16
-	dc.b $17
-	dc.b $18
-	dc.b $19
-	dc.b $15
-	dc.b $16
-	dc.b $1A
-	dc.b $1B
-	dc.b $18
-	dc.b $15
-	dc.b $1A
-	dc.b $3B
-	dc.b $38
-	dc.b $35
-	dc.b $34
-	dc.b $35
-	dc.b $36
-	dc.b $37
-	dc.b $38
-	dc.b $39
-	dc.b $35
-	dc.b $36
-	dc.b $3A
-	dc.b $3B
-	dc.b $38
-	dc.b $35
-	dc.b $34
-	dc.b $13
-	dc.b $14
-	dc.b $15
-	dc.b $16
-	dc.b $17
-	dc.b $16
-	dc.b $1C
-	dc.b   5
-	dc.b   2
-	dc.b  $A
-	dc.b   1
-	dc.b   2
-	dc.b $33
-	dc.b $34
-	dc.b $35
-	dc.b $36
-	dc.b $37
-	dc.b $36
-	dc.b $3C
-	dc.b   5
-	dc.b   1
-	dc.b   2
-	dc.b   6
-	dc.b   5
-word_1B59A:	dc.w 9
+
+	include "resource/mapunc/Crumble Tiles/Grass/CrumbleGrass.asm"
+	even
+
+	include "resource/mapunc/Crumble Tiles/Stone/CrumbleStone.asm"
+	even
+
+	include "resource/mapunc/Crumble Tiles/Stone/CrumbleStoneAlt.asm"
+	even
+
+; ---------------------------------------------------------------------------
+
+off_1B632:	; Leftover Puyo Opponent Art (Potentially remove?)
+	dc.l SkeletonT_PlaneMaps	;	Skeleton Tea
+	dc.l Suketoudara_PlaneMaps	;	Suketoudara
+	dc.l Zombie_PlaneMaps		;	Zombie
+	dc.l Draco_PlaneMaps		;	Draco Centauros
+	dc.l NasuGrave_PlaneMaps	;	Nasu Grave
+	dc.l Witch_PlaneMaps		;	Witch
+	dc.l Sasoriman_PlaneMaps	;	Sasoriman
+	dc.l Harpy_PlaneMaps		;	Harpy
+	dc.l ZohDaimaoh_PlaneMaps	;	Zoh Daimaoh
+	dc.l Schezo_PlaneMaps		;	Schezo Wegey
+	dc.l Minotauros_PlaneMaps	;	Minotauros
+	dc.l Rulue_PlaneMaps		;	Rulue
+	dc.l Satan_PlaneMaps		;	Satan
+	dc.l Mummy_PlaneMaps		;	Mummy
+	dc.l Sukiyapotes_PlaneMaps	;	Sukiyapotes
+	dc.l Panotty_PlaneMaps		;	Panotty
+	dc.l SkeletonT_PlaneMaps	;	Skeleton Tea (Duplicate)
+
+; ---------------------------------------------------------------------------
+
+word_1B59A:
+	dc.w 9
 	dc.w 6
 	dc.w $C61E
 	dc.b 0,	1, 2, 3, 4, 5, 6, 7, 8,	9, $20,	$21, $22, $23, $24, $25
@@ -37052,7 +32351,9 @@ word_1B59A:	dc.w 9
 	dc.b $62, $63, $64, $65, $66, $67, $68,	$69, $80, $81, $82, $83, $84, $85, $86,	$87
 	dc.b $88, $89, $A0, $A1, $A2, $A3, $A4,	$A5, $A6, $A7, $A8, $A9, $C0, $C1, $C2,	$C3
 	dc.b $C4, $C5, $C6, $C7, $C8, $C9
-word_1B5E6:	dc.w 9
+
+word_1B5E6:
+	dc.w 9
 	dc.w 6
 	dc.w $C61E
 	dc.b $16, $17, $18, $19, $1A, $1B, $1C,	$1D, $1E, $1F, $36, $37, $38, $39, $3A,	$3B
@@ -37060,24 +32361,11 @@ word_1B5E6:	dc.w 9
 	dc.b $78, $79, $7A, $7B, $7C, $7D, $7E,	$7F, $96, $97, $98, $99, $9A, $9B, $9C,	$9D
 	dc.b $9E, $9F, $B6, $B7, $B8, $B9, $BA,	$BB, $BC, $BD, $BE, $BF, $D6, $D7, $D8,	$D9
 	dc.b $DA, $DB, $DC, $DD, $DE, $DF
-off_1B632:	dc.l off_1BB24
-	dc.l off_1BC3A
-	dc.l off_1BD2A
-	dc.l off_1BDD8
-	dc.l off_1BEFA
-	dc.l off_1C064
-	dc.l off_1C16E
-	dc.l off_1C228
-	dc.l off_1C314
-	dc.l off_1C4BA
-	dc.l off_1C638
-	dc.l off_1C712
-	dc.l off_1C846
-	dc.l off_1B676
-	dc.l off_1B7A0
-	dc.l off_1B900
-	dc.l off_1BB24
-off_1B676:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Mummy_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1B6A6
 	dc.l word_1B6B4
@@ -37089,46 +32377,66 @@ off_1B676:	dc.l word_1B59A
 	dc.l word_1B718
 	dc.l word_1B736
 	dc.l word_1B754
-word_1B6A6:	dc.w 3
+
+word_1B6A6:
+	dc.w 3
 	dc.w 1
 	dc.w $C724
 	dc.b $43, $44, $45, $46, $63, $64, $65,	$66
-word_1B6B4:	dc.w 3
+
+word_1B6B4:
+	dc.w 3
 	dc.w 1
 	dc.w $C724
 	dc.b $A, $B, $C, $D, $2A, $2B, $2C, $2D
-word_1B6C2:	dc.w 3
+
+word_1B6C2:
+	dc.w 3
 	dc.w 1
 	dc.w $C724
 	dc.b $4A, $4B, $4C, $4D, $6A, $6B, $6C,	$6D
-word_1B6D0:	dc.w 3
+
+word_1B6D0:
+	dc.w 3
 	dc.w 1
 	dc.w $C724
 	dc.b $E, $F, $10, $11, $2E, $2F, $30, $31
-word_1B6DE:	dc.w 3
+
+word_1B6DE:
+	dc.w 3
 	dc.w 1
 	dc.w $C724
 	dc.b $4E, $4F, $50, $51, $6E, $6F, $70,	$71
-word_1B6EC:	dc.w 3
+
+word_1B6EC:
+	dc.w 3
 	dc.w 1
 	dc.w $C724
 	dc.b $8E, $8F, $90, $91, $AE, $AF, $B0,	$B1
-word_1B6FA:	dc.w 7
+
+word_1B6FA:
+	dc.w 7
 	dc.w 2
 	dc.w $C720
 	dc.b $41, $42, $8A, $8B, $8C, $8D, $47,	$48, $12, $13, $AA, $AB, $AC, $AD, $14,	$15
 	dc.b $32, $33, $83, $84, $85, $86, $34,	$35
-word_1B718:	dc.w 7
+
+word_1B718:
+	dc.w 7
 	dc.w 2
 	dc.w $C720
 	dc.b $41, $42, $CA, $CB, $CC, $CD, $47,	$48, $52, $53, $EA, $EB, $EC, $ED, $54,	$55
 	dc.b $72, $73, $83, $84, $85, $86, $74,	$75
-word_1B736:	dc.w 7
+
+word_1B736:
+	dc.w 7
 	dc.w 2
 	dc.w $C720
 	dc.b $41, $42, $CA, $CB, $CC, $CD, $47,	$48, $92, $93, $EA, $EB, $EC, $ED, $94,	$95
 	dc.b $B2, $B3, $83, $84, $85, $86, $B4,	$B5
-word_1B754:	dc.w 9
+
+word_1B754:
+	dc.w 9
 	dc.w 6
 	dc.w $C61E
 	dc.b $16, $17, $18, $19, $1A, $1B, $F6,	$F7, $D4, $D5, $36, $37, $38, $39, $3A,	$3B
@@ -37136,7 +32444,11 @@ word_1B754:	dc.w 9
 	dc.b $EF, $79, $F0, $F1, $7C, $7D, $7E,	$7F, $96, $97, $98, $99, $9A, $9B, $9C,	$9D
 	dc.b $9E, $9F, $B6, $B7, $B8, $B9, $BA,	$BB, $BC, $BD, $BE, $BF, $D6, $D7, $D8,	$D9
 	dc.b $DA, $DB, $DC, $DD, $DE, $DF
-off_1B7A0:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Sukiyapotes_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1B7D8
 	dc.l word_1B7EE
@@ -37150,63 +32462,79 @@ off_1B7A0:	dc.l word_1B59A
 	dc.l word_1B8F0
 	dc.l word_1B8F8
 	dc.l word_1B8A6
+
 word_1B7D8:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $A, $B, $C, $D, $E, $2A, $2B, $2C,	$2D, $2E, $4A, $4B, $4C, $4D, $4E, 0
+
 word_1B7EE:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $22, $6B, $6C, $6D, $6E, $8A, $8B,	$8C, $8D, $8E, $AA, $AB, $AC, $AD, $AE,	0
+
 word_1B804:	dc.w 7
 	dc.w 5
 	dc.w $C6A0
 	dc.b $21, $E0, $E1, $E2, $E3, $E4, $27,	$28, $41, $E5, $E6, $E7, $E8, $E9, $47,	$48
 	dc.b $61, $EA, $EB, $EC, $ED, $EE, $67,	$68, $81, $82, $83, $CE, $CF, $86, $87,	$88
 	dc.b $A1, $A2, $A3, $A4, $A5, $A6, $A7,	$A8, $C1, $C2, $C3, $C4, $C5, $C6, $C7,	$C8
+
 word_1B83A:	dc.w 7
 	dc.w 5
 	dc.b $C6, $A0, $21, $E0, $E1, $E2, $E3,	$E4, $27, $28, $41, $E5, $E6, $E7, $E8,	$E9
 	dc.b $47, $48, $61, $EA, $EB, $EC, $ED,	$EE, $67, $68, $6F, $70, $83, $CE, $CF,	$86
 	dc.b $14, $15, $8F, $90, $A3, $A4, $A5,	$A6, $34, $35, $AF, $B0, $C3, $C4, $C5,	$C6
 	dc.b $54, $55
+
 word_1B870:	dc.w 7
 	dc.w 5
 	dc.w $C6A0
 	dc.b $21, $E0, $E1, $E2, $E3, $E4, $27,	$28, $41, $E5, $E6, $E7, $E8, $E9, $47,	$48
 	dc.b $61, $EA, $EB, $EC, $ED, $EE, $67,	$68, $71, $72, $83, $CE, $CF, $86, $74,	$75
 	dc.b $91, $92, $A3, $A4, $A5, $A6, $94,	$95, $B1, $B2, $C3, $C4, $C5, $C6, $B4,	$B5
+
 word_1B8A6:	dc.w 6
 	dc.w 4
 	dc.w $C624
 	dc.b $19, $1A, $F, $10,	$11, $12, $13, $39, $3A, $2F, $30, $31,	$32, $33, $59, $5A
 	dc.b $4F, $50, $51, $52, $53, $D4, $D5,	$7B, $7C, $7D, $7E, $7F, $F4, $F5, $9B,	$9C
 	dc.b $9D, $9E, $9F, 0
+
 word_1B8D0:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $84, $85
+
 word_1B8D8:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $CA, $CB
+
 word_1B8E0:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $CC, $CD
+
 word_1B8E8:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $CE, $CF
+
 word_1B8F0:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $D0, $D1
+
 word_1B8F8:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $D2, $D3
-off_1B900:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Panotty_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1B93C
 	dc.l word_1B94C
@@ -37221,26 +32549,32 @@ off_1B900:	dc.l word_1B59A
 	dc.l word_1BADC
 	dc.l word_1BAF4
 	dc.l word_1BB0C
+
 word_1B93C:	dc.w 4
 	dc.w 1
 	dc.w $C822
 	dc.b $AA, $AB, $AC, $AD, $AE, $CA, $CB,	$CC, $CD, $CE
+
 word_1B94C:	dc.w 4
 	dc.w 1
 	dc.w $C822
 	dc.b $EA, $EB, $EC, $ED, $EE, $E5, $E6,	$E7, $E8, $E9
+
 word_1B95C:	dc.w 5
 	dc.w 1
 	dc.w $C822
 	dc.b $E0, $E1, $E2, $E3, $E4, $87, $E5,	$E6, $E7, $E8, $E9, $A7
+
 word_1B96E:	dc.w 5
 	dc.w 1
 	dc.w $C822
 	dc.b $E0, $FA, $FB, $FC, $E4, $87, $E5,	$E6, $E7, $E8, $E9, $A7
+
 word_1B980:	dc.w 5
 	dc.w 1
 	dc.w $C822
 	dc.b $E0, $FD, $FE, $FF, $E4, $87, $E5,	$E6, $E7, $E8, $E9, $A7
+
 word_1B992:	dc.w 9
 	dc.w 5
 	dc.w $C61E
@@ -37248,6 +32582,7 @@ word_1B992:	dc.w 9
 	dc.b $26, $27, $28, $29, $40, $41, $42,	$EF, $44, $F0, $46, $47, $48, $49, $60,	$61
 	dc.b $F1, $F2, $64, $F3, $F4, $67, $68,	$69, $80, $81, $F5, $F6, $F7, $F8, $F9,	$87
 	dc.b $88, $89, $A0, $A1, $E5, $E6, $E7,	$E8, $E9, $A7, $A8, $A9
+
 word_1B9D4:	dc.w 9
 	dc.w 5
 	dc.w $C61E
@@ -37255,6 +32590,7 @@ word_1B9D4:	dc.w 9
 	dc.b $26, $27, $34, $35, $40, $B1, $42,	$EF, $44, $F0, $46, $47, $54, $55, $60,	$D1
 	dc.b $F1, $F2, $64, $F3, $F4, $67, $74,	$75, $80, $81, $F5, $D3, $D4, $D5, $F9,	$87
 	dc.b $88, $89, $A0, $A1, $E5, $E6, $E7,	$E8, $E9, $A7, $A8, $A9
+
 word_1BA16:	dc.w 9
 	dc.w 5
 	dc.w $C61E
@@ -37262,6 +32598,7 @@ word_1BA16:	dc.w 9
 	dc.b $26, $27, $12, $13, $50, $51, $42,	$EF, $44, $F0, $46, $47, $32, $33, $70,	$71
 	dc.b $F1, $F2, $64, $F3, $F4, $67, $52,	$53, $80, $81, $F5, $F6, $F7, $F8, $F9,	$87
 	dc.b $88, $89, $A0, $A1, $E5, $E6, $E7,	$E8, $E9, $A7, $A8, $A9
+
 word_1BA58:	dc.w 9
 	dc.w 5
 	dc.w $C61E
@@ -37269,6 +32606,7 @@ word_1BA58:	dc.w 9
 	dc.b $26, $27, $12, $13, $10, $11, $42,	$EF, $44, $F0, $46, $47, $94, $95, $30,	$31
 	dc.b $F1, $F2, $64, $F3, $F4, $67, $B4,	$B5, $80, $81, $F5, $D3, $D4, $D5, $F9,	$87
 	dc.b $88, $89, $A0, $A1, $E5, $E6, $E7,	$E8, $E9, $A7, $A8, $A9
+
 word_1BA9A:	dc.w 9
 	dc.w 5
 	dc.w $C61E
@@ -37276,22 +32614,29 @@ word_1BA9A:	dc.w 9
 	dc.b $26, $27, $72, $73, $AF, $B0, $42,	$EF, $44, $F0, $46, $47, $92, $93, $CF,	$D0
 	dc.b $F1, $F2, $64, $F3, $F4, $67, $B2,	$B3, $80, $81, $F5, $D3, $D4, $D5, $F9,	$87
 	dc.b $88, $89, $A0, $A1, $E5, $E6, $E7,	$E8, $E9, $A7, $A8, $A9
+
 word_1BADC:	dc.w 5
 	dc.w 2
 	dc.w $C7A0
 	dc.b $4C, $4D, $4E, $7A, $7B, $7C, $97,	$98, $99, $9A, $C, $D, $B7, $B8, $B9, $BA
 	dc.b $2C, $2D
+
 word_1BAF4:	dc.w 5
 	dc.w 2
 	dc.w $C7A0
 	dc.b $77, $4A, $4B, $7A, $7B, $7C, $97,	$6A, $6B, $A, $B, $9C, $B7, $B8, $B9, $2A
 	dc.b $2B, $BC
+
 word_1BB0C:	dc.w 5
 	dc.w 2
 	dc.w $C7A0
 	dc.b $77, $78, $2F, $7A, $7B, $7C, $97,	$98, $4F, $E, $F, $9C, $B7, $B8, $6F, $2E
 	dc.b $BB, $BC
-off_1BB24:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+SkeletonT_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1BB5C
 	dc.l word_1BB6E
@@ -37305,58 +32650,74 @@ off_1BB24:	dc.l word_1B59A
 	dc.l word_1BC16
 	dc.l word_1BC22
 	dc.l word_1BC2E
+
 word_1BB5C:	dc.w 5
 	dc.w 1
 	dc.w $C724
 	dc.b $43, $44, $45, $46, $47, $48, $63,	$64, $65, $66, $67, $68
+
 word_1BB6E:	dc.w 5
 	dc.w 1
 	dc.w $C724
 	dc.b $43, $44, $45, $46, $B4, $B5, $94,	$95, $65, $66, $67, $68
+
 word_1BB80:	dc.w 6
 	dc.w 3
 	dc.w $C7A4
 	dc.b $63, $64, $65, $66, $14, $15, $34,	$D, $E,	$F, $10, $11, $12, $13,	$2D, $2E
 	dc.b $2F, $30, $31, $32, $33, $4D, $4E,	$4F, $50, $51, $52, $53
+
 word_1BBA2:	dc.w 6
 	dc.w 3
 	dc.w $C7A4
 	dc.b $63, $64, $65, $66, $54, $55, $34,	$6D, $6E, $6F, $70, $71, $72, $73, $8D,	$8E
 	dc.b $8F, $90, $91, $92, $93, $AD, $AE,	$AF, $B0, $B1, $B2, $B3
+
 word_1BBC4:	dc.w 6
 	dc.w 3
 	dc.w $C7A4
 	dc.b $63, $64, $65, $66, $74, $75, $34,	$CD, $CE, $CF, $D0, $D1, $D2, $D3, $ED,	$EE
 	dc.b $EF, $F0, $F1, $F2, $F3, $F7, $F8,	$F9, $FA, $FB, $FC, $FD
+
 word_1BBE6:	dc.w 2
 	dc.w 1
 	dc.w $C61E
 	dc.b 0,	1, 2, $20, $21,	$22
+
 word_1BBF2:	dc.w 2
 	dc.w 1
 	dc.w $C61E
 	dc.b $A, $B, $C, $2A, $2B, $2C
+
 word_1BBFE:	dc.w 2
 	dc.w 1
 	dc.w $C61E
 	dc.b $4A, $4B, $4C, $6A, $6B, $6C
+
 word_1BC0A:	dc.w 2
 	dc.w 1
 	dc.w $C61E
 	dc.b $8A, $8B, $8C, $AA, $AB, $AC
+
 word_1BC16:	dc.w 2
 	dc.w 1
 	dc.w $C61E
 	dc.b $CA, $CB, $CC, $EA, $EB, $EC
+
 word_1BC22:	dc.w 2
 	dc.w 1
 	dc.w $C61E
 	dc.b $E0, $E1, $E2, $E3, $E4, $E5
+
 word_1BC2E:	dc.w 2
 	dc.w 1
 	dc.w $C61E
 	dc.b $E6, $E7, $E8, $F4, $F5, $F6
-off_1BC3A:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Suketoudara_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1BC66
 	dc.l word_1BC76
@@ -37367,48 +32728,61 @@ off_1BC3A:	dc.l word_1B59A
 	dc.l word_1BCDE
 	dc.l word_1BCEE
 	dc.l word_1BD0C
+
 word_1BC66:	dc.w 4
 	dc.w 1
 	dc.w $C7A0
 	dc.b $61, $62, $63, $64, $65, $81, $82,	$83, $84, $85
+
 word_1BC76:	dc.w 4
 	dc.w 1
 	dc.w $C7A0
 	dc.b $A, $B, $C, $D, $E, $2A, $2B, $2C,	$2D, $2E
+
 word_1BC86:	dc.w 4
 	dc.w 1
 	dc.w $C7A0
 	dc.b $4A, $4B, $4C, $4D, $4E, $6A, $6B,	$6C, $6D, $6E
+
 word_1BC96:	dc.w 5
 	dc.w 2
 	dc.w $C71E
 	dc.b $10, $11, $12, $13, $14, $15, $30,	$31, $32, $33, $34, $35, $80, $81, $82,	$83
 	dc.b $84, $85
+
 word_1BCAE:	dc.w 5
 	dc.w 2
 	dc.w $C71E
 	dc.b $10, $11, $12, $13, $14, $15, $50,	$51, $52, $53, $54, $55, $70, $71, $72,	$73
 	dc.b $74, $75
+
 word_1BCC6:	dc.w 5
 	dc.w 2
 	dc.w $C71E
 	dc.b $10, $11, $12, $13, $14, $15, $90,	$91, $92, $93, $94, $95, $B0, $B1, $B2,	$B3
 	dc.b $B4, $B5
+
 word_1BCDE:	dc.w 4
 	dc.w 1
 	dc.w $C6A0
 	dc.b $D0, $D1, $D2, $D3, $D4, $F0, $F1,	$F2, $F3, $F4
+
 word_1BCEE:	dc.w 5
 	dc.w 3
 	dc.w $C7A0
 	dc.b $61, $62, $63, $64, $65, $66, $81,	$82, $83, $84, $85, $86, $A1, $A2, $A3,	$A4
 	dc.b $A5, $A6, $C1, $C2, $C3, $C4, $C5,	$C6
+
 word_1BD0C:	dc.w 5
 	dc.w 3
 	dc.w $C7A0
 	dc.b $8A, $8B, $8C, $8D, $8E, $8F, $AA,	$AB, $AC, $AD, $AE, $AF, $CA, $CB, $CC,	$CD
 	dc.b $CE, $CF, $EA, $EB, $EC, $ED, $EE,	$EF
-off_1BD2A:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Zombie_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1BD4A
 	dc.l word_1BD5C
@@ -37416,18 +32790,22 @@ off_1BD2A:	dc.l word_1B59A
 	dc.l word_1BD80
 	dc.l word_1BDB8
 	dc.l word_1BDC8
+
 word_1BD4A:	dc.w 3
 	dc.w 2
 	dc.w $C7A6
 	dc.b $64, $65, $66, $67, $84, $85, $86,	$87, $A4, $A5, $A6, $A7
+
 word_1BD5C:	dc.w 3
 	dc.w 2
 	dc.w $C7A6
 	dc.b $11, $12, $13, $14, $31, $32, $33,	$34, $51, $52, $53, $54
+
 word_1BD6E:	dc.w 3
 	dc.w 2
 	dc.w $C7A6
 	dc.b $71, $72, $73, $74, $91, $92, $93,	$94, $B1, $B2, $B3, $B4
+
 word_1BD80:	dc.w 6
 	dc.w 6
 	dc.w $C624
@@ -37435,15 +32813,21 @@ word_1BD80:	dc.w 6
 	dc.b $4C, $4D, $4E, $4F, $50, $6A, $6B,	$6C, $6D, $6E, $6F, $70, $8A, $8B, $8C,	$8D
 	dc.b $8E, $8F, $90, $AA, $AB, $AC, $AD,	$AE, $AF, $B0, $CA, $CB, $CC, $CD, $CE,	$CF
 	dc.b $D0, 0
+
 word_1BDB8:	dc.w 2
 	dc.w 2
 	dc.w $C7A6
 	dc.b $6B, $6C, $6D, $8B, $8C, $8D, $AB,	$AC, $AD, 0
+
 word_1BDC8:	dc.w 2
 	dc.w 2
 	dc.w $C7A6
 	dc.b $D1, $D2, $D3, $F1, $F2, $F3, $F4,	$F5, $F6, 0
-off_1BDD8:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Draco_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1BE1C
 	dc.l word_1BE32
@@ -37460,67 +32844,86 @@ off_1BDD8:	dc.l word_1B59A
 	dc.l word_1BEDC
 	dc.l word_1BEE6
 	dc.l word_1BEF0
+
 word_1BE1C:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $22, $23, $24, $25, $26, $42, $43,	$44, $45, $46, $62, $63, $64, $65, $66,	0
+
 word_1BE32:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $22, $23, $24, $25, $26, $A, $B, $C, $D, $E, $2A, $2B, $2C, $2D, $2E, 0
+
 word_1BE48:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $22, $23, $24, $25, $26, $4A, $4B,	$4C, $4D, $4E, $6A, $6B, $6C, $6D, $6E,	0
+
 word_1BE5E:	dc.w 1
 	dc.w 1
 	dc.w $C824
 	dc.b $83, $84, $A3, $A4
+
 word_1BE68:	dc.w 1
 	dc.w 1
 	dc.w $C824
 	dc.b $F, $10, $A3, $A4
+
 word_1BE72:	dc.w 1
 	dc.w 1
 	dc.w $C824
 	dc.b $2F, $30, $A3, $A4
+
 word_1BE7C:	dc.w 1
 	dc.w 1
 	dc.w $C824
 	dc.b $8A, $8B, $A3, $A4
+
 word_1BE86:	dc.w 1
 	dc.w 1
 	dc.w $C824
 	dc.b $AA, $AB, $A3, $A4
+
 word_1BE90:	dc.w 1
 	dc.w 1
 	dc.w $C824
 	dc.b $CA, $CB, $A3, $A4
+
 word_1BE9A:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $11, $12, $13, $14, $15, $31, $32,	$33, $34, $35, $51, $52, $53, $54, $55,	0
+
 word_1BEB0:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $71, $72, $73, $74, $75, $91, $92,	$93, $94, $95, $B1, $B2, $B3, $B4, $B5,	0
+
 word_1BEC6:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $71, $72, $73, $74, $75, $D1, $D2,	$D3, $D4, $D5, $6A, $6B, $6C, $6D, $6E,	0
+
 word_1BEDC:	dc.w 1
 	dc.w 1
 	dc.w $C824
 	dc.b $8C, $8D, $A3, $A4
+
 word_1BEE6:	dc.w 1
 	dc.w 1
 	dc.w $C824
 	dc.b $AC, $AD, $A3, $A4
+
 word_1BEF0:	dc.w 1
 	dc.w 1
 	dc.w $C824
 	dc.b $CC, $CD, $EC, $ED
-off_1BEFA:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+NasuGrave_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1BF22
 	dc.l word_1BF5E
@@ -37530,6 +32933,7 @@ off_1BEFA:	dc.l word_1B59A
 	dc.l word_1BFD6
 	dc.l word_1BFEC
 	dc.l word_1C002
+
 word_1BF22:	dc.w 8
 	dc.w 5
 	dc.w $C6A0
@@ -37537,6 +32941,7 @@ word_1BF22:	dc.w 8
 	dc.b $48, $49, $61, $62, $63, $64, $65,	$66, $67, $68, $69, $81, $82, $83, $84,	$85
 	dc.b $86, $87, $88, $89, $A1, $A2, $A3,	$A4, $A5, $A6, $A7, $A8, $A9, $C1, $C2,	$C3
 	dc.b $C4, $C5, $C6, $C7, $C8, $C9
+
 word_1BF5E:	dc.w 8
 	dc.w 5
 	dc.w $C6A0
@@ -37544,28 +32949,34 @@ word_1BF5E:	dc.w 8
 	dc.b $48, $49, $50, $51, $63, $64, $65,	$66, $13, $14, $15, $70, $71, $83, $84,	$85
 	dc.b $86, $33, $34, $35, $A1, $A2, $A3,	$A4, $A5, $52, $53, $54, $55, $C1, $C2,	$C3
 	dc.b $C4, $C5, $72, $73, $74, $75
+
 word_1BF9A:	dc.w 5
 	dc.w 3
 	dc.w $C6A2
 	dc.b $22, $E0, $E1, $25, $26, $27, $A, $B, $C, $D, $E, $F, $2A,	$2B, $2C, $2D
 	dc.b $2E, $2F, $82, $83, $84, $4D, $4E,	$4F
+
 word_1BFB8:	dc.w 5
 	dc.w 3
 	dc.w $C6A2
 	dc.b $4A, $4B, $4C, $25, $26, $27, $6A,	$6B, $6C, $6D, $6E, $6F, $8A, $8B, $8C,	$8D
 	dc.b $8E, $8F, $AA, $AB, $AC, $AD, $AE,	$AF
+
 word_1BFD6:	dc.w 3
 	dc.w 3
 	dc.w $C724
 	dc.b $90, $91, $92, $93, $CA, $CB, $CC,	$CD, $EA, $EB, $EC, $ED, $F0, $F1, $F2,	$F3
+
 word_1BFEC:	dc.w 3
 	dc.w 3
 	dc.w $C724
 	dc.b $5B, $5C, $5D, $5E, $7B, $7C, $7D,	$7E, $9B, $9C, $9D, $9E, $BB, $BC, $BD,	$BE
+
 word_1C002:	dc.w 3
 	dc.w 3
 	dc.w $C724
 	dc.b $90, $91, $92, $93, $B0, $B1, $B2,	$B3, $D0, $D1, $D2, $D3, $F0, $F1, $F2,	$F3
+
 word_1C018:	dc.w 9
 	dc.w 6
 	dc.w $C61E
@@ -37574,7 +32985,11 @@ word_1C018:	dc.w 9
 	dc.b $37, $77, $78, $79, $7A, $37, $37,	$7F, $96, $37, $37, $97, $98, $99, $9A,	$37
 	dc.b $37, $9F, $B6, $37, $37, $B7, $B8,	$B9, $BA, $37, $37, $BF, $D6, $D7, $D8,	$D9
 	dc.b $DA, $DB, $DC, $DD, $DE, $DF
-off_1C064:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Witch_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1C0A8
 	dc.l word_1C0C0
@@ -37591,70 +33006,89 @@ off_1C064:	dc.l word_1B59A
 	dc.l word_1C156
 	dc.l word_1C15E
 	dc.l word_1C166
+
 word_1C0A8:	dc.w 5
 	dc.w 2
 	dc.w $C6A2
 	dc.b $22, $23, $24, $25, $26, $27, $42,	$43, $44, $45, $46, $47, $62, $63, $64,	$65
 	dc.b $66, $67
+
 word_1C0C0:	dc.w 5
 	dc.w 2
 	dc.w $C6A2
 	dc.b $A, $B, $C, $D, $E, $F, $2A, $2B, $2C, $2D, $2E, $2F, $4A,	$4B, $4C, $4D
 	dc.b $4E, $4F
+
 word_1C0D8:	dc.w 5
 	dc.w 2
 	dc.w $C6A2
 	dc.b $6A, $6B, $6C, $6D, $6E, $6F, $8A,	$8B, $8C, $8D, $8E, $8F, $AA, $AB, $AC,	$AD
 	dc.b $AE, $AF
+
 word_1C0F0:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $84, $85
+
 word_1C0F8:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $CA, $CB
+
 word_1C100:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $EA, $EB
+
 word_1C108:	dc.w 5
 	dc.w 1
 	dc.w $C722
 	dc.b $10, $11, $12, $13, $14, $15, $30,	$31, $32, $33, $34, $35
+
 word_1C11A:	dc.w 5
 	dc.w 1
 	dc.w $C722
 	dc.b $50, $51, $52, $53, $54, $55, $70,	$71, $72, $73, $74, $75
+
 word_1C12C:	dc.w 5
 	dc.w 1
 	dc.w $C722
 	dc.b $90, $91, $92, $93, $94, $95, $AA,	$AB, $AC, $AD, $AE, $AF
+
 word_1C13E:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $B0, $B1
+
 word_1C146:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $D0, $D1
+
 word_1C14E:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $F0, $F1
+
 word_1C156:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $B2, $B3
+
 word_1C15E:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $D2, $D3
+
 word_1C166:	dc.w 1
 	dc.w 0
 	dc.w $C826
 	dc.b $F2, $F3
-off_1C16E:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Sasoriman_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1C18E
 	dc.l word_1C1A6
@@ -37662,37 +33096,47 @@ off_1C16E:	dc.l word_1B59A
 	dc.l word_1C1D6
 	dc.l word_1C1F8
 	dc.l word_1C210
+
 word_1C18E:	dc.w 5
 	dc.w 2
 	dc.w $C7A0
 	dc.b $61, $62, $63, $64, $65, $66, $81,	$82, $83, $84, $85, $86, $A1, $A2, $A3,	$A4
 	dc.b $A5, $A6
+
 word_1C1A6:	dc.w 5
 	dc.w 2
 	dc.w $C7A0
 	dc.b $A, $B, $C, $D, $E, $F, $2A, $2B, $2C, $2D, $2E, $2F, $4A,	$4B, $4C, $4D
 	dc.b $4E, $4F
+
 word_1C1BE:	dc.w 5
 	dc.w 2
 	dc.w $C7A0
 	dc.b $A, $B, $C, $D, $E, $F, $6A, $6B, $6C, $6D, $6E, $6F, $8A,	$8B, $8C, $8D
 	dc.b $8E, $8F
+
 word_1C1D6:	dc.w 6
 	dc.w 3
 	dc.w $C7A0
 	dc.b $10, $11, $12, $13, $14, $15, $90,	$30, $31, $32, $33, $34, $35, $B0, $50,	$51
 	dc.b $52, $53, $54, $55, $D0, $70, $71,	$72, $73, $74, $75, $F0
+
 word_1C1F8:	dc.w 5
 	dc.w 2
 	dc.w $C7A0
 	dc.b $AA, $AB, $AC, $AD, $AE, $AF, $CA,	$CB, $CC, $CD, $CE, $CF, $EA, $EB, $EC,	$ED
 	dc.b $EE, $EF
+
 word_1C210:	dc.w 5
 	dc.w 2
 	dc.w $C7A0
 	dc.b $AA, $AB, $AC, $AD, $AE, $AF, $6A,	$6B, $6C, $6D, $6E, $6F, $8A, $8B, $8C,	$8D
 	dc.b $8E, $8F
-off_1C228:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Harpy_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1C260
 	dc.l word_1C272
@@ -37706,55 +33150,71 @@ off_1C228:	dc.l word_1B59A
 	dc.l word_1C2DE
 	dc.l word_1C2F0
 	dc.l word_1C302
+
 word_1C260:	dc.w 5
 	dc.w 1
 	dc.w $C724
 	dc.b $43, $44, $45, $46, $47, $48, $63,	$64, $65, $66, $67, $68
+
 word_1C272:	dc.w 5
 	dc.w 1
 	dc.w $C724
 	dc.b $A, $B, $C, $D, $E, $F, $2A, $2B, $2C, $2D, $2E, $2F
+
 word_1C284:	dc.w 5
 	dc.w 1
 	dc.w $C724
 	dc.b $4A, $4B, $4C, $4D, $4E, $4F, $6A,	$6B, $6C, $6D, $6E, $6F
+
 word_1C296:	dc.w 2
 	dc.w 1
 	dc.w $C826
 	dc.b $84, $85, $86, $A4, $A5, $A6
+
 word_1C2A2:	dc.w 2
 	dc.w 1
 	dc.w $C826
 	dc.b $10, $11, $12, $30, $31, $32
+
 word_1C2AE:	dc.w 2
 	dc.w 1
 	dc.w $C826
 	dc.b $50, $51, $52, $70, $71, $72
+
 word_1C2BA:	dc.w 2
 	dc.w 1
 	dc.w $C826
 	dc.b $13, $14, $15, $33, $34, $35
+
 word_1C2C6:	dc.w 2
 	dc.w 1
 	dc.w $C826
 	dc.b $53, $54, $55, $73, $74, $75
+
 word_1C2D2:	dc.w 2
 	dc.w 1
 	dc.w $C826
 	dc.b $93, $94, $95, $B3, $B4, $B5
+
 word_1C2DE:	dc.w 5
 	dc.w 1
 	dc.w $C724
 	dc.b $8A, $8B, $8C, $8D, $8E, $8F, $AA,	$AB, $AC, $AD, $AE, $AF
+
 word_1C2F0:	dc.w 5
 	dc.w 1
 	dc.w $C724
 	dc.b $CA, $CB, $CC, $CD, $CE, $CF, $2A,	$2B, $2C, $2D, $2E, $2F
+
 word_1C302:	dc.w 5
 	dc.w 1
 	dc.w $C724
 	dc.b $EA, $EB, $EC, $ED, $EE, $EF, $6A,	$6B, $6C, $6D, $6E, $6F
-off_1C314:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+ZohDaimaoh_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1C340
 	dc.l word_1C35E
@@ -37765,58 +33225,71 @@ off_1C314:	dc.l word_1B59A
 	dc.l word_1C418
 	dc.l word_1C44E
 	dc.l word_1C484
+
 word_1C340:	dc.w 5
 	dc.w 3
 	dc.w $C6A2
 	dc.b $22, $23, $24, $25, $26, $27, $42,	$43, $44, $45, $46, $47, $62, $63, $64,	$65
 	dc.b $66, $67, $82, $83, $84, $85, $86,	$87
+
 word_1C35E:	dc.w 5
 	dc.w 3
 	dc.w $C6A2
 	dc.b $22, $23, $24, $C,	$D, $E,	$42, $43, $44, $2C, $2D, $2E, $A, $B, $64, $4C
 	dc.b $4D, $4E, $2A, $2B, $84, $85, $86,	$87
+
 word_1C37C:	dc.w 5
 	dc.w 3
 	dc.w $C6A2
 	dc.b $22, $23, $24, $6C, $6D, $6E, $42,	$43, $44, $8C, $8D, $8E, $4A, $4B, $64,	$AC
 	dc.b $AD, $AE, $6A, $6B, $84, $85, $86,	$87
+
 word_1C39A:	dc.w 6
 	dc.w 4
 	dc.w $C71E
 	dc.b $40, $41, $42, $43, $44, $45, $46,	$60, $61, $62, $63, $64, $65, $66, $80,	$81
 	dc.b $82, $83, $84, $85, $86, $A0, $A1,	$A2, $A3, $A4, $A5, $A6, $C0, $C1, $C2,	$C3
 	dc.b $C4, $C5, $C6, 0
+
 word_1C3C4:	dc.w 6
 	dc.w 4
 	dc.w $C71E
 	dc.b $40, $41, $42, $43, $44, $45, $46,	$F, $10, $11, $12, $13,	$14, $15, $2F, $30
 	dc.b $31, $32, $33, $34, $35, $4F, $50,	$51, $52, $53, $54, $55, $6F, $70, $71,	$72
 	dc.b $73, $74, $75, 0
+
 word_1C3EE:	dc.w 6
 	dc.w 4
 	dc.w $C71E
 	dc.b $8F, $90, $91, $92, $93, $94, $95,	$AF, $B0, $B1, $B2, $B3, $B4, $B5, $CF,	$D0
 	dc.b $D1, $D2, $D3, $D4, $D5, $EF, $F0,	$F1, $F2, $F3, $F4, $F5, $F6, $F7, $F8,	$F9
 	dc.b $FA, $FB, $FC, 0
+
 word_1C418:	dc.w 7
 	dc.w 5
 	dc.w $C69E
 	dc.b $20, $21, $22, $23, $24, $6C, $6D,	$6E, $40, $41, $42, $43, $8A, $8B, $8D,	$8E
 	dc.b $60, $61, $62, $63, $AA, $AB, $AD,	$AE, $80, $81, $82, $83, $84, $85, $86,	$87
 	dc.b $A0, $A1, $A2, $A3, $A4, $A5, $A6,	$A7, $C0, $C1, $C2, $C3, $C4, $C5, $C6,	$C7
+
 word_1C44E:	dc.w 7
 	dc.w 5
 	dc.w $C69E
 	dc.b $20, $21, $22, $23, $24, $6C, $6D,	$6E, $40, $41, $42, $43, $8A, $8B, $8D,	$8E
 	dc.b $F, $10, $11, $12,	$AA, $AB, $AD, $AE, $2F, $30, $31, $32,	$33, $34, $35, $87
 	dc.b $4F, $50, $51, $52, $53, $54, $55,	$A7, $6F, $70, $71, $72, $73, $74, $75,	$C7
+
 word_1C484:	dc.w 7
 	dc.w 5
 	dc.w $C69E
 	dc.b $20, $21, $22, $23, $24, $6C, $6D,	$6E, $8F, $90, $91, $92, $8A, $8B, $8D,	$8E
 	dc.b $AF, $B0, $B1, $B2, $AA, $AB, $AD,	$AE, $CF, $D0, $D1, $D2, $D3, $D4, $D5,	$87
 	dc.b $EF, $F0, $F1, $F2, $F3, $F4, $F5,	$A7, $F6, $F7, $F8, $F9, $FA, $FB, $FC,	$C7
-off_1C4BA:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Schezo_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1C50E
 	dc.l word_1C524
@@ -37837,83 +33310,106 @@ off_1C4BA:	dc.l word_1B59A
 	dc.l word_1C61A
 	dc.l word_1C624
 	dc.l word_1C62E
+
 word_1C50E:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $22, $23, $24, $25, $26, $42, $43,	$44, $45, $46, $62, $63, $64, $65, $66,	0
+
 word_1C524:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $A, $B, $C, $D, $E, $2A, $2B, $2C,	$2D, $2E, $4A, $4B, $4C, $65, $66, 0
+
 word_1C53A:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $A, $B, $C, $D, $E, $6A, $6B, $6C,	$6D, $6E, $8A, $8B, $8C, $65, $66, 0
+
 word_1C550:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $F, $10, $11, $12,	$13, $2F, $30, $31, $32, $33, $4F, $50,	$51, $14, $15, 0
+
 word_1C566:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $6F, $70, $71, $72, $73, $8F, $90,	$91, $92, $93, $AF, $B0, $B1, $14, $15,	0
+
 word_1C57C:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $6F, $70, $71, $72, $73, $CF, $D0,	$D1, $D2, $D3, $EF, $F0, $F1, $14, $15,	0
+
 word_1C592:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $F, $10, $11, $12,	$13, $2F, $30, $31, $32, $33, $4F, $50,	$51, $D4, $D5, 0
+
 word_1C5A8:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $6F, $70, $71, $72, $73, $8F, $90,	$91, $92, $93, $AF, $B0, $B1, $D4, $D5,	0
+
 word_1C5BE:	dc.w 4
 	dc.w 2
 	dc.w $C6A2
 	dc.b $6F, $70, $71, $72, $73, $CF, $D0,	$D1, $D2, $D3, $EF, $F0, $F1, $D4, $D5,	0
+
 word_1C5D4:	dc.w 1
 	dc.w 1
 	dc.w $C7A8
 	dc.b $65, $66, $85, $86
+
 word_1C5DE:	dc.w 1
 	dc.w 1
 	dc.w $C7A8
 	dc.b $AA, $AB, $CA, $CB
+
 word_1C5E8:	dc.w 1
 	dc.w 1
 	dc.w $C7A8
 	dc.b $AC, $AD, $CC, $CD
+
 word_1C5F2:	dc.w 1
 	dc.w 1
 	dc.w $C7A8
 	dc.b $14, $15, $34, $35
+
 word_1C5FC:	dc.w 1
 	dc.w 1
 	dc.w $C7A8
 	dc.b $54, $55, $74, $75
+
 word_1C606:	dc.w 1
 	dc.w 1
 	dc.w $C7A8
 	dc.b $94, $95, $B4, $B5
+
 word_1C610:	dc.w 1
 	dc.w 1
 	dc.w $C7A8
 	dc.b $D4, $D5, $F4, $F5
+
 word_1C61A:	dc.w 2
 	dc.w 0
 	dc.w $C7A6
 	dc.b $7A, $7B, $7C, 0
+
 word_1C624:	dc.w 2
 	dc.w 0
 	dc.w $C7A6
 	dc.b $E0, $E1, $E2, 0
+
 word_1C62E:	dc.w 2
 	dc.w 0
 	dc.w $C7A6
 	dc.b $E3, $E4, $E5, 0
-off_1C638:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Minotauros_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1C660
 	dc.l word_1C66C
@@ -37923,27 +33419,33 @@ off_1C638:	dc.l word_1B59A
 	dc.l word_1C6AA
 	dc.l word_1C6E6
 	dc.l word_1C6FC
+
 word_1C660:	dc.w 1
 	dc.w 2
 	dc.w $C6AC
 	dc.b $27, $28, $47, $48, $67, $68
+
 word_1C66C:	dc.w 1
 	dc.w 2
 	dc.w $C6AC
 	dc.b $A, $B, $2A, $2B, $4A, $4B
+
 word_1C678:	dc.w 1
 	dc.w 2
 	dc.w $C6AC
 	dc.b $C, $D, $2C, $2D, $4C, $4D
+
 word_1C684:	dc.w 1
 	dc.w 2
 	dc.w $C6AC
 	dc.b $E, $F, $2E, $2F, $4E, $4F
+
 word_1C690:	dc.w 4
 	dc.w 3
 	dc.w $C7A8
 	dc.b $6A, $6B, $6C, $6D, $6E, $8A, $8B,	$8C, $8D, $8E, $AA, $AB, $AC, $AD, $AE,	$CA
 	dc.b $CB, $CC, $CD, $CE
+
 word_1C6AA:	dc.w 8
 	dc.w 5
 	dc.w $C620
@@ -37951,15 +33453,21 @@ word_1C6AA:	dc.w 8
 	dc.b $33, $34, $41, $42, $43, $44, $45,	$46, $47, $53, $54, $61, $62, $63, $64,	$65
 	dc.b $66, $67, $68, $69, $10, $11, $12,	$84, $85, $86, $87, $88, $89, $30, $31,	$32
 	dc.b $A4, $A5, $A6, $A7, $A8, $A9
+
 word_1C6E6:	dc.w 3
 	dc.w 3
 	dc.w $C72A
 	dc.b $46, $2E, $2F, $49, $66, $4E, $4F,	$69, $86, $87, $88, $89, $A6, $A7, $A8,	$A9
+
 word_1C6FC:	dc.w 3
 	dc.w 3
 	dc.w $C72A
 	dc.b $46, $2E, $71, $72, $66, $4E, $91,	$92, $AF, $B0, $B1, $B2, $CF, $D0, $D1,	$D2
-off_1C712:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Rulue_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1C756
 	dc.l word_1C76E
@@ -37976,73 +33484,92 @@ off_1C712:	dc.l word_1B59A
 	dc.l word_1C822
 	dc.l word_1C82E
 	dc.l word_1C83A
+
 word_1C756:	dc.w 5
 	dc.w 2
 	dc.w $C6A2
 	dc.b $22, $23, $24, $25, $26, $27, $42,	$43, $44, $45, $46, $47, $62, $63, $64,	$65
 	dc.b $66, $67
+
 word_1C76E:	dc.w 5
 	dc.w 2
 	dc.w $C6A2
 	dc.b $A, $B, $C, $D, $E, $F, $2A, $2B, $2C, $2D, $2E, $2F, $4A,	$4B, $4C, $4D
 	dc.b $4E, $4F
+
 word_1C786:	dc.w 5
 	dc.w 2
 	dc.w $C6A2
 	dc.b $A, $B, $C, $D, $E, $F, $6A, $6B, $6C, $6D, $6E, $6F, $8A,	$8B, $8C, $8D
 	dc.b $8E, $8F
+
 word_1C79E:	dc.w 5
 	dc.w 2
 	dc.w $C6A2
 	dc.b $10, $11, $12, $13, $14, $15, $30,	$31, $32, $33, $34, $35, $50, $51, $52,	$53
 	dc.b $54, $55
+
 word_1C7B6:	dc.w 5
 	dc.w 2
 	dc.w $C6A2
 	dc.b $10, $11, $12, $13, $14, $15, $70,	$71, $72, $73, $74, $75, $4A, $4B, $4C,	$4D
 	dc.b $4E, $4F
+
 word_1C7CE:	dc.w 5
 	dc.w 2
 	dc.w $C6A2
 	dc.b $10, $11, $12, $13, $14, $15, $90,	$91, $92, $93, $94, $95, $8A, $8B, $8C,	$8D
 	dc.b $8E, $8F
+
 word_1C7E6:	dc.w 1
 	dc.w 1
 	dc.w $C7A4
 	dc.b $63, $64, $83, $84
+
 word_1C7F0:	dc.w 1
 	dc.w 1
 	dc.w $C7A4
 	dc.b $63, $64, $AA, $AB
+
 word_1C7FA:	dc.w 1
 	dc.w 1
 	dc.w $C7A4
 	dc.b $CA, $CB, $EA, $EB
+
 word_1C804:	dc.w 1
 	dc.w 1
 	dc.w $C7A4
 	dc.b $51, $52, $AC, $AD
+
 word_1C80E:	dc.w 1
 	dc.w 1
 	dc.w $C7A4
 	dc.b $51, $52, $AE, $AF
+
 word_1C818:	dc.w 1
 	dc.w 1
 	dc.w $C7A4
 	dc.b $CE, $CF, $EE, $EF
+
 word_1C822:	dc.w 2
 	dc.w 1
 	dc.w $C7A4
 	dc.b $51, $52, $53, $CC, $CD, $85
+
 word_1C82E:	dc.w 2
 	dc.w 1
 	dc.w $C7A4
 	dc.b $51, $52, $53, $B0, $B1, $B2
+
 word_1C83A:	dc.w 2
 	dc.w 1
 	dc.w $C7A4
 	dc.b $D0, $D1, $D2, $F0, $F1, $F2
-off_1C846:	dc.l word_1B59A
+
+; ---------------------------------------------------------------------------
+
+Satan_PlaneMaps:
+	dc.l word_1B59A
 	dc.l word_1B5E6
 	dc.l word_1C88A
 	dc.l word_1C89C
@@ -38059,74 +33586,93 @@ off_1C846:	dc.l word_1B59A
 	dc.l word_1C92C
 	dc.l word_1C93C
 	dc.l word_1C94C
+
 word_1C88A:	dc.w 5
 	dc.w 1
 	dc.w $C722
 	dc.b $42, $43, $44, $45, $46, $47, $62,	$63, $64, $65, $66, $67
+
 word_1C89C:	dc.w 5
 	dc.w 1
 	dc.w $C722
 	dc.b $A, $B, $C, $D, $E, $F, $2A, $2B, $2C, $2D, $2E, $2F
+
 word_1C8AE:	dc.w 5
 	dc.w 1
 	dc.w $C722
 	dc.b $4A, $4B, $4C, $4D, $4E, $4F, $6A,	$6B, $6C, $6D, $6E, $6F
+
 word_1C8C0:	dc.w 2
 	dc.w 1
 	dc.w $C824
 	dc.b $83, $84, $85, $A3, $A4, $A5
+
 word_1C8CC:	dc.w 2
 	dc.w 1
 	dc.w $C824
 	dc.b $8A, $8B, $8C, $AA, $AB, $AC
+
 word_1C8D8:	dc.w 2
 	dc.w 1
 	dc.w $C824
 	dc.b $8D, $8E, $8F, $AD, $AE, $AF
+
 word_1C8E4:	dc.w 2
 	dc.w 1
 	dc.w $C824
 	dc.b $10, $11, $12, $30, $31, $32
+
 word_1C8F0:	dc.w 2
 	dc.w 1
 	dc.w $C824
 	dc.b $50, $51, $52, $70, $71, $72
+
 word_1C8FC:	dc.w 2
 	dc.w 1
 	dc.w $C824
 	dc.b $90, $91, $92, $B0, $B1, $B2
+
 word_1C908:	dc.w 2
 	dc.w 1
 	dc.w $C824
 	dc.b $13, $14, $15, $33, $34, $35
+
 word_1C914:	dc.w 2
 	dc.w 1
 	dc.w $C824
 	dc.b $53, $54, $55, $73, $74, $75
+
 word_1C920:	dc.w 2
 	dc.w 1
 	dc.w $C824
 	dc.b $93, $94, $95, $B3, $B4, $B5
+
 word_1C92C:	dc.w 4
 	dc.w 1
 	dc.w $C7A4
 	dc.b $79, $7A, $7B, $7C, $7D, $99, $9A,	$9B, $9C, $9D
+
 word_1C93C:	dc.w 4
 	dc.w 1
 	dc.w $C7A4
 	dc.b $CA, $CB, $CC, $CD, $CE, $EA, $EB,	$EC, $ED, $EE
+
 word_1C94C:	dc.w 4
 	dc.w 1
 	dc.w $C7A4
-	dc.b $CF, $D0, $D1, $D2, $D3, $EF, $F0,	$F1, $F2, $F3
-	
+	dc.b $CF, $D0, $D1, $D2, $D3, $EF, $F0,	$F1, $F2, $F3	
+
+; ---------------------------------------------------------------------------
+
 PlaneCmdLists: 		; List of Plane Mappings (uncompressed)
 	dc.l word_1D3BE ; 0 =  
 	dc.l word_1D54A ; 1 = 
 	dc.l word_1D630 ; 2 = 
-	dc.l word_1D0C8 ; 3 = SCENARIO / VS / TUTORIAL BG 1
-	dc.l word_1D190 ; 4 = 
-	dc.l word_1D23A ; 5 = STONE (PUYO)
+
+	; PUYO PUYO SCENARIO MODE PLANE MAPPINGS
+	dc.l Grass_Maps ; 3 = SCENARIO / VS / TUTORIAL BG 1
+	dc.l Exercise_Maps ; 4 = 
+	dc.l Stone_Maps ; 5 = STONE (PUYO)
 	dc.l word_1D052 ; 6 = 
 	dc.l word_1D010 ; 7 = 
 	dc.l word_1D002 ; 8 = 
@@ -38139,31 +33685,35 @@ PlaneCmdLists: 		; List of Plane Mappings (uncompressed)
 	dc.l word_1CB9A ; 15 = 
 	dc.l word_1CBDC ; 16 = 
 	dc.l word_1CBFE ; 17 = 
-	dc.l word_1CC20 ; 18 = 
-	dc.l word_1CCDE ; 19 = 
+	dc.l word_1CC20 ; 18 = Game Over Continue Text?
+	dc.l word_1CCDE ; 19 = Something else Game Over related
 	dc.l word_1D02A ; 20 = 
-	dc.l 0 			; 21 = 
-	dc.l word_1D190 ; 22 = EXERCISE
-	dc.l word_1D14E ; 23 = VS (during Game Over)
-	dc.l 0 			; 24 = 
+
+	; EXTRA GAME MODE MAPPINGS
+	dc.l Tutorial_Maps 		; 21 = 
+	dc.l Exercise_Maps		; 22 = EXERCISE
+	dc.l Versus_GameOver_Maps	; 23 = VS (during Game Over)
+	dc.l Versus_Maps 		; 24 = 
+
+	; THESE SLOTS CAN BE USED FOR EXTRA BATTLE BOARDS/PLANE MAPS
 	dc.l 0 			; 25 = 
 	dc.l 0 			; 26 = 
 	dc.l 0 			; 27 = 
 	dc.l 0 			; 28 = 
 	dc.l 0 			; 29 = 
 	dc.l word_1D044 ; 30 = 
-	dc.l word_1CCEC ; 31 = 
+	dc.l Puyo_MainMenu_Maps ; 31 = 
 	dc.l word_1CE8C ; 32 = 
 	dc.l word_1CE8C ; 33 = 
 	dc.l word_1CE8C ; 34 = 
 	dc.l word_1CE62 ; 35 = 
 	dc.l word_1CA36 ; 36 = 
-	dc.l word_1CA24 ; 37 = 
+	dc.l CreditsSky_Maps ; 37 = 
 	dc.l 0 			; 38 = 
 	dc.l 0 			; 39 = 
 	dc.l 0 			; 40 = 
 	dc.l 0 			; 41 = 
-	dc.l word_1CDF6 ; 42 = TUTORIAL BG 2
+	dc.l TutorialBox_Maps ; 42 = TUTORIAL BG 2
 	dc.l word_1CE54 ; 43 = 
 	dc.l word_1D34E ; 44 = 
 	dc.l word_1D358 ; 45 = 
@@ -38171,212 +33721,1085 @@ PlaneCmdLists: 		; List of Plane Mappings (uncompressed)
 	dc.l word_1D39C ; 47 = 
 	dc.l word_1D540 ; 48 = 
 	dc.l word_1D630 ; 49 = 
-	
-word_1CA24:	dc.w 1
+
+; ===========================================================================
+
+	include "resource/mapunc/Boards/MiscBoardData.asm"
+	even
+
+; ---------------------------------------------------------------------------
+;	Battle Board Mappings (inc. Tutorial)
+
+	include "resource/mapunc/Boards/Grass/GrassMaps.asm"
+	even
+
+	include "resource/mapunc/Boards/Stone/StoneMaps.asm"
+	even
+
+	include "resource/mapunc/Boards/Tutorial/TutorialMaps.asm"
+	even
+
+	include "resource/mapunc/Boards/Tutorial/TutorialMaps (Box).asm"
+	even
+
+	include "resource/mapunc/Boards/Exercise/ExerciseMaps.asm"
+	even
+
+	include "resource/mapunc/Boards/Versus/VersusMaps.asm"
+	even
+
+	include "resource/mapunc/Boards/Versus/VersusMaps (Game Over).asm"
+	even
+
+; ---------------------------------------------------------------------------
+;	These are either the practice or versus stage maps from Puyo Puyo. They're unreferenced.
+	include "resource/mapunc/Puyo/Plane Maps/PracticeMaps.asm"
+	even
+
+; ===========================================================================
+; ===========================================================================
+
+CreditsSky_Maps:	dc.w 1
 	dc.l word_1CA2A
+
 word_1CA2A:	dc.w $14
 	dc.b $28
 	dc.b $B
 	dc.w $D200
 	dc.l MapEni_CreditsSky
 	dc.w $2000
+
+; ===========================================================================
+
 word_1CA36:	dc.w 2
 	dc.l word_1CA40
 	dc.l word_1CA4C
+
 word_1CA40:	dc.w 4
 	dc.b $A
 	dc.b 7
 	dc.w $D688
 	dc.l byte_1CA58
 	dc.w $8100
+
 word_1CA4C:	dc.w 4
 	dc.b $12
 	dc.b 3
 	dc.w $D722
 	dc.l byte_1CA9E
 	dc.w $8100
-byte_1CA58:	dc.b 0,	0, 0, 0, 0, 0, 0, 0, $E, $F, 0,	0, 0, 0, 0, 0
-	dc.b 0,	$18, $19, $1A, 0, 0, 0,	0, 0, 0, 0, $25, $26, $27, 0, 0
-	dc.b 0,	0, 0, 0, 0, $33, $34, $27, 0, 0, 0, 0, 0, 0, $43, $44
-	dc.b $45, $27, 0, 0, 0,	0, 0, $55, $56,	$57, $58, $59, 0, 0, 0,	0
-	dc.b 0,	$6C, $6D, $6E, $6F, $70
-byte_1CA9E:	dc.b $1E, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, $1F
-	dc.b $20, $21, $2A, $2B, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0
-	dc.b $2C, $2D, $2E, $2F, $38, $39, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0
-	dc.b 0,	$3A, $3B, $3C, $3D, $17
+
+byte_1CA58:
+	dc.b	0, 0, 0, 0, 0, 0, 0, 0, $E, $F
+	dc.b	0, 0, 0, 0, 0, 0, 0, $18, $19, $1A
+	dc.b	0, 0, 0, 0, 0, 0, 0, $25, $26, $27
+	dc.b	0, 0, 0, 0, 0, 0, 0, $33, $34, $27
+	dc.b	0, 0, 0, 0, 0, 0, $43, $44, $45, $27
+	dc.b	0, 0, 0, 0, 0, $55, $56, $57, $58, $59
+	dc.b	0, 0, 0, 0, 0, $6C, $6D, $6E, $6F, $70
+
+byte_1CA9E:
+	dc.b	$1E, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, 0, $1F, $20, $21
+
+	dc.b	$2A, $2B, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, $2C, $2D, $2E, $2F
+
+	dc.b	$38, $39, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, $3A, $3B, $3C, $3D, $17
+
+; ===========================================================================
+
 word_1CAD4:	dc.w 4
 	dc.l word_1CAE6
 	dc.l word_1CAF2
 	dc.l word_1CAFE
 	dc.l word_1CB0A
+
 word_1CAE6:	dc.w $14
 	dc.b $18
 	dc.b 3
 	dc.w $C912
 	dc.l byte_22172
 	dc.w $E190
+
 word_1CAF2:	dc.w $14
 	dc.b $18
 	dc.b 3
 	dc.w $CC12
 	dc.l byte_22202
 	dc.w $8190
+
 word_1CAFE:	dc.w $14
 	dc.b $19
 	dc.b 3
 	dc.w $CF10
 	dc.l byte_22292
 	dc.w $8190
+
 word_1CB0A:	dc.w $14
 	dc.b $E
 	dc.b 3
 	dc.w $D210
 	dc.l byte_22328
 	dc.w $8190
+
+; ---------------------------------------------------------------------------
+
 word_1CB16:	dc.w 4
 	dc.l word_1CB28
 	dc.l word_1CB34
 	dc.l word_1CB40
 	dc.l word_1CB4C
+
 word_1CB28:	dc.w $14
 	dc.b $18
 	dc.b 3
 	dc.w $C912
 	dc.l byte_22172
 	dc.w $8190
+
 word_1CB34:	dc.w $14
 	dc.b $18
 	dc.b 3
 	dc.w $CC12
 	dc.l byte_22202
 	dc.w $E190
+
 word_1CB40:	dc.w $14
 	dc.b $19
 	dc.b 3
 	dc.w $CF10
 	dc.l byte_22292
 	dc.w $8190
+
 word_1CB4C:	dc.w $14
 	dc.b $E
 	dc.b 3
 	dc.w $D210
 	dc.l byte_22328
 	dc.w $8190
+
+; ---------------------------------------------------------------------------
+
 word_1CB58:	dc.w 4
 	dc.l word_1CB6A
 	dc.l word_1CB76
 	dc.l word_1CB82
 	dc.l word_1CB8E
+
 word_1CB6A:	dc.w $14
 	dc.b $18
 	dc.b 3
 	dc.w $C912
 	dc.l byte_22172
 	dc.w $8190
+
 word_1CB76:	dc.w $14
 	dc.b $18
 	dc.b 3
 	dc.w $CC12
 	dc.l byte_22202
 	dc.w $8190
+
 word_1CB82:	dc.w $14
 	dc.b $19
 	dc.b 3
 	dc.w $CF10
 	dc.l byte_22292
 	dc.w $E190
+
 word_1CB8E:	dc.w $14
 	dc.b $E
 	dc.b 3
 	dc.w $D210
 	dc.l byte_22328
 	dc.w $8190
+
+; ---------------------------------------------------------------------------
+
 word_1CB9A:	dc.w 4
 	dc.l word_1CBAC
 	dc.l word_1CBB8
 	dc.l word_1CBC4
 	dc.l word_1CBD0
+
 word_1CBAC:	dc.w $14
 	dc.b $18
 	dc.b 3
 	dc.w $C912
 	dc.l byte_22172
 	dc.w $8190
+
 word_1CBB8:	dc.w $14
 	dc.b $18
 	dc.b 3
 	dc.w $CC12
 	dc.l byte_22202
 	dc.w $8190
+
 word_1CBC4:	dc.w $14
 	dc.b $19
 	dc.b 3
 	dc.w $CF10
 	dc.l byte_22292
 	dc.w $8190
+
 word_1CBD0:	dc.w $14
 	dc.b $E
 	dc.b 3
 	dc.w $D210
 	dc.l byte_22328
 	dc.w $E190
+
+; ---------------------------------------------------------------------------
+
+byte_22172:
+	dc.b	1, $70, 1, $71, 1, $72, 1, $73, 1, $74, 1, $75
+	dc.b	1, $76, 1, $77, 1, $78, 1, $79, 1, $7A, 1, $7B
+	dc.b	1, $7C, 1, $72, 1, $7D, 1, $7E, 1, $7F, 1, $80
+	dc.b	1, $72, 1, $7D, 1, $81, 1, $82, 1, $74, 1, $83
+
+	dc.b	1, $84, 1, $85, 1, $86, 1, $87, 1, $88, 1, $89
+	dc.b	1, $8A, 1, $8B, 1, $8C, 1, $8D, 1, $8E, 1, $8F
+	dc.b	1, $90, 1, $86, 1, $91, 1, $92, 1, $93, 1, $94
+	dc.b	1, $86, 1, $91, 1, $95, 1, $96, 1, $88, 1, $97
+
+	dc.b	1, $98, 1, $99, 1, $9A, 0, $DD, 1, $9B, 1, $9C
+	dc.b	0, $C1, 1, $9D, 0, $C1, 1, $9E, 1, $9F, 1, $9F
+	dc.b	1, $A0, 1, $9A, 0, $DD, 1, $A1, 9, $A1, 1, $A2
+	dc.b	1, $9A, 0, $DD, 1, $9B, 0, $DD, 1, $9B, 1, $A0
+
+byte_22202:
+	dc.b	1, $A3, 1, $A4, 1, $A5, 1, $A6, 1, $A7, 1, $A8
+	dc.b	1, $A9, 1, $70, 1, $AA, 0, 0, 0, 0, 1, $AB
+	dc.b	1, $AC, 1, $A5, 1, $A6, 1, $7E, 1, $7F, 1, $80
+	dc.b	1, $72, 1, $7D, 1, $81, 1, $82, 1, $74, 1, $83
+
+	dc.b	1, $AD, $11, $A4, 1, $AE, 1, $AF, $11, $7E, 1, $B0
+	dc.b	1, $B1, 1, $84, 1, $B2, 1, $B3, 0, 0, 1, $B4
+	dc.b	1, $B5, 1, $AE, 1, $AF, 1, $92, 1, $93, 1, $94
+	dc.b	1, $86, 1, $91, 1, $95, 1, $B6, 1, $88, 1, $97
+
+	dc.b	8, $C1, 9, $A1, 1, $B7, 0, 0, 0, 0, 1, $B8
+	dc.b	$19, $7E, 1, $98, 1, $99, 1, $B9, 0, 0, 1, $BA
+	dc.b	1, $A0, 1, $B7, 0, 0, 1, $A1, 9, $A1, 1, $A2
+	dc.b	1, $9A, 0, $DD, 1, $9B, 0, $DD, 1, $9B, 1, $A0
+
+byte_22292:
+	dc.b	0, $D1, 1, $74, 1, $BB, 1, $BC, 1, $BD, 1, $74, 1, $BE
+	dc.b	1, $7A, 1, $BF, 1, $72, 1, $C0, 1, $C1, 1, $70
+	dc.b	1, $C2, 1, $74, 1, $83, 1, $7E, 1, $7F, 1, $80
+	dc.b	1, $72, 1, $7D, 1, $81, 1, $82, 1, $74, 1, $83
+
+	dc.b	1, $C3, 1, $88, 1, $C4, 1, $C5, 1, $C6, 1, $88, 1, $C7
+	dc.b	1, $8E, 1, $C8, 1, $86, 1, $C9, 1, $CA, 1, $84
+	dc.b	1, $CB, 1, $88, 1, $97, 1, $92, 1, $93, 1, $94
+	dc.b	1, $86, 1, $91, 1, $95, 1, $B6, 1, $88, 1, $97
+	
+	dc.b	0, 0, 1, $9B, 1, $9C, 0, $C1, 1, $CC, 1, $9B, 1, $9F
+	dc.b	1, $9F, 1, $A0, 1, $9A, 1, $CD, 1, $A0, 1, $98
+	dc.b	1, $99, 1, $9B, 1, $A0, 1, $A1, 9, $A1, 1, $A2
+	dc.b	1, $9A, 0, $DD, 1, $9B, 0, $DD, 1, $9B, 1, $A0
+
+byte_22328:
+	dc.b $10, $E2, 1, $72, 1, $7D, 1, $A5, 1, $CE, 1, $CF, 1, $D0
+	dc.b 1, $7C, 1, $72, 1, $D1, 1, $D2, 1, $D3, 1, $70, 1, $AA
+
+	dc.b 1, $D4, 1, $86, 1, $91, 1, $AE, 1, $AF, 1, $D5, 1, $D6
+	dc.b 1, $90, 1, $86, 1, $D7, 1, $D8, 1, $D9, 1, $84, 1, $B2
+
+	dc.b 0, 0, 1, $9A, 1, $DA, 1, $B7, 0, 0, 9, $B9, 1, $DB
+	dc.b 1, $A0, 1, $9A, 1, $DC, 1, $DD, 1, $CC, 1, $98, 1, $DE
+
+; ===========================================================================
+
 word_1CBDC:	dc.w 2
 	dc.l word_1CBE6
 	dc.l word_1CBF2
+
 word_1CBE6:	dc.w $14
 	dc.b $A
 	dc.b 3
 	dc.w $CA6C
 	dc.l byte_2237C
 	dc.w $E190
+
 word_1CBF2:	dc.w $14
 	dc.b $10
 	dc.b 3
 	dc.w $CD6A
 	dc.l byte_223B8
 	dc.w $8190
+
+; ---------------------------------------------------------------------------
+
 word_1CBFE:	dc.w 2
 	dc.l word_1CC08
 	dc.l word_1CC14
+
 word_1CC08:	dc.w $14
 	dc.b $A
 	dc.b 3
 	dc.w $CA6C
 	dc.l byte_2237C
 	dc.w $8190
+
 word_1CC14:	dc.w $14
 	dc.b $10
 	dc.b 3
 	dc.w $CD6A
 	dc.l byte_223B8
 	dc.w $E190
+
+; ---------------------------------------------------------------------------
+
+byte_2237C:
+	dc.b	1, $70, 1, $DF, 1, $CF, 1, $E0, 1, $78
+	dc.b	1, $79, 1, $7A, 1, $E1, 1, $CF, 1, $E0
+
+	dc.b	1, $84, 1, $B2, 1, $D5, 1, $E2, 1, $8C
+	dc.b	1, $8D, 1, $8E, 1, $E3, 1, $D5, 1, $E4
+	
+	dc.b	1, $98, 1, $99, 9, $B9, 0, $E2, 0, $C1
+	dc.b	1, $9E, 1, $9F, 1, $A0, 9, $B9, 0, 0
+
+byte_223B8:
+	dc.b $10, $E2, 1, $72, 1, $E5, 1, $72, 1, $D1, 1, $D2, 1, $D3, 1, $CF
+	dc.b 1, $D0, 1, $E6, 1, $76, 1, $E7, 1, $E8, 1, $E9, 1, $74, 1, $83
+
+	dc.b 1, $D4, 1, $86, 1, $EA, 1, $86, 1, $D7, 1, $D8, 1, $D9, 1, $D5
+	dc.b 1, $D6, 1, $EB, 1, $8A, 1, $EC, 1, $ED, 1, $EE, 1, $88, 1, $97
+
+	dc.b 0, 0, 1, $EF, 0, $DD, 1, $9A, 1, $DC, 1, $DD, 1, $CC, 9, $B9
+	dc.b 1, $F0, 1, $F1, 0, $C1, 1, $B7, 1, $F2, 1, $99, 1, $9B, 1, $A0
+
+; ===========================================================================
+
 word_1CC20:	dc.w 1
 	dc.l word_1CC26
+
 word_1CC26:	dc.w $14
 	dc.b $2B
 	dc.b 2
 	dc.w $EC00
 	dc.l byte_1CC32
 	dc.w $E2A0
-byte_1CC32:	dc.b 2,	$A6, 2,	$A7, 2,	$A8, $A, $A8, 0, 0, 2, $A9, 2, $AA, 2, $A8
-	dc.b $A, $A8, 2, $AB, 2, $AB, 0, 0, 2, $AC, $A,	$AC, 2,	$AD, $A, $AD
-	dc.b 2,	$AE, 2,	$AF, 2,	$B0, 2,	$B1, 0,	0, 2, $B0, 2, $B1, 2, $A8
-	dc.b $A, $A8, 0, 0, 2, $A8, 2, $B2, 2, $A8, $A,	$A8, 2,	$AE, 2,	$AF
-	dc.b 2,	$B0, 2,	$B1, 2,	$B3, 2,	$AE, 2,	$AF, 2,	$AB, 2,	$AB, 2,	$B4
-	dc.b 2,	$B5, 2,	$B6, 2,	$B7, $12, $A6, $12, $A7, $12, $A8, $1A,	$A8, 0,	0
-	dc.b 2,	$B8, 2,	$B9, $12, $A8, $1A, $A8, 2, $BA, $A, $BA, 0, 0,	2, $BB
-	dc.b $A, $BB, 2, $BC, $A, $BC, 2, $BD, 2, $BE, 2, $B8, 2, $B9, 0, 0
-	dc.b 2,	$B8, 2,	$B9, $12, $A8, $1A, $A8, 0, 0, $12, $A8, $12, $B2, $12,	$A8
-	dc.b $1A, $A8, 2, $BD, 2, $BE, 2, $B8, 2, $B9, $12, $B3, 2, $BD, 2, $BE
-	dc.b 2,	$BA, $A, $BA, $12, $B4,	$12, $B5, 2, $BF, 2, $C0
+
+byte_1CC32:
+	dc.b	2, $A6, 2, $A7, 2, $A8, $A, $A8, 0, 0, 2, $A9, 2, $AA, 2, $A8
+	dc.b	$A, $A8, 2, $AB, 2, $AB, 0, 0, 2, $AC, $A, $AC, 2, $AD
+	dc.b	$A, $AD, 2, $AE, 2, $AF, 2, $B0, 2, $B1, 0, 0, 2, $B0
+	dc.b	2, $B1, 2, $A8, $A, $A8, 0, 0, 2, $A8, 2, $B2, 2, $A8
+	dc.b	$A, $A8, 2, $AE, 2, $AF, 2, $B0, 2, $B1, 2, $B3, 2, $AE
+	dc.b	2, $AF, 2, $AB, 2, $AB, 2, $B4, 2, $B5, 2, $B6, 2, $B7
+
+	dc.b	$12, $A6, $12, $A7, $12, $A8, $1A, $A8, 0, 0, 2, $B8, 2, $B9, $12, $A8
+	dc.b	$1A, $A8, 2, $BA, $A, $BA, 0, 0, 2, $BB, $A, $BB, 2, $BC
+	dc.b	$A, $BC, 2, $BD, 2, $BE, 2, $B8, 2, $B9, 0, 0, 2, $B8
+	dc.b	2, $B9, $12, $A8, $1A, $A8, 0, 0, $12, $A8, $12, $B2, $12, $A8
+	dc.b	$1A, $A8, 2, $BD, 2, $BE, 2, $B8, 2, $B9, $12, $B3, 2, $BD
+	dc.b	2, $BE, 2, $BA, $A, $BA, $12, $B4, $12, $B5, 2, $BF, 2, $C0
+
+; ===========================================================================
+
 word_1CCDE:	dc.w 1
 	dc.l word_1CCE4
+
 word_1CCE4:	dc.w 0
 	dc.b $40
 	dc.b $F
 	dc.w $E000
 	dc.w $23EC
-word_1CCEC:	dc.w $11
+
+; ===========================================================================
+
+word_1CE54:	dc.w 1
+	dc.l word_1CE5A
+
+word_1CE5A:	dc.w 0
+	dc.b $16
+	dc.b $11
+	dc.w $C120
+	dc.w $8000
+
+; ===========================================================================
+
+word_1CE62:	dc.w 3
+	dc.l word_1CE70
+	dc.l word_1CE78
+	dc.l word_1CE80
+
+word_1CE70:	dc.w 0
+	dc.b $40
+	dc.b $1C
+	dc.w $C000
+	dc.w $8000
+
+word_1CE78:	dc.w 0
+	dc.b $40
+	dc.b $1C
+	dc.w $E000
+	dc.w 0
+
+word_1CE80:	dc.w 4
+	dc.b $C
+	dc.b 4
+	dc.w $C61C
+	dc.l byte_21DE4
+	dc.w $8000
+
+byte_21DE4:
+	dc.b 	1, 2, 3, 4, 5, 6, 7, 8, 9, $A, $B, 0
+	dc.b	$C, $D, $E, $F, $10, $11, $12, $13, $14, $15, $16, $17
+	dc.b	$18, $19, $1A, $1B, $1C, $1D, $1E, $1F, $20, $21, $22, $23
+	dc.b	$24, $25, $26, $27, $28, $29, $2A, $2B, $2C, $2D, $2E, $2F
+
+; ===========================================================================
+
+word_1CE8C:	dc.w 8
+	dc.l word_1CEAE
+	dc.l word_1CEB6
+	dc.l word_1CEC0
+	dc.l word_1CECA
+	dc.l word_1CED4
+	dc.l word_1CEE0
+	dc.l word_1CEEC
+	dc.l word_1CEF8
+
+word_1CEAE:	dc.w 0
+	dc.b $80
+	dc.b $20
+	dc.w $C000
+	dc.w $500
+
+word_1CEB6:	dc.w 8
+	dc.b $28
+	dc.b 4
+	dc.w $E000
+	dc.l byte_2006C
+
+word_1CEC0:	dc.w 8
+	dc.b $28
+	dc.b $C
+	dc.w $E400
+	dc.l byte_1FDEC
+
+word_1CECA:	dc.w 8
+	dc.b $28
+	dc.b $C
+	dc.w $F000
+	dc.l byte_1FDEC
+
+word_1CED4:	dc.w 4
+	dc.b 8
+	dc.b 7
+	dc.w $C608
+	dc.l byte_201AC
+	dc.w $E300
+
+word_1CEE0:	dc.w 4
+	dc.b 8
+	dc.b 7
+	dc.w $C618
+	dc.l byte_201E4
+	dc.w $E300
+
+word_1CEEC:	dc.w 4
+	dc.b 8
+	dc.b 7
+	dc.w $C628
+	dc.l byte_2021C
+	dc.w $E300
+
+word_1CEF8:	dc.w 4
+	dc.b 8
+	dc.b 7
+	dc.w $C638
+	dc.l byte_20254
+	dc.w $E300
+
+; ---------------------------------------------------------------------------
+
+byte_1FDEC:
+	dc.b	$42, 2, $42, $16, $42, $17, $42, $18, $42, $19, $42, $1A, $42, 2, $42, $16
+	dc.b	$42, $17, $42, $1B, $42, $19, $42, $1A, $42, 2, $42, $16, $42, $17, $42, $1B
+	dc.b	$42, $19, $42, $1A, $42, 2, $42, $16, $42, $17, $42, $1B, $42, $19, $42, $1A
+	dc.b	$42, 2, $42, $16, $42, $17, $42, $1B, $42, $19, $42, $1A, $42, 2, $42, $16
+	dc.b	$42, $17, $42, $1B, $42, $19, $42, $1A, $42, 2, $42, $16, $42, $17, $42, $1B
+	dc.b	$42, $1C, $42, $1D, $42, $1E, $42, $1F, $42, $1C, $42, $1C, $42, $1C, $42, $1D
+	dc.b	$42, $1E, $42, $1F, $42, $1C, $42, $1C, $42, $1C, $42, $1D, $42, $1E, $42, $1F
+	dc.b	$42, $1C, $42, $1C, $42, $1C, $42, $1D, $42, $1E, $42, $1F, $42, $1C, $42, $1C
+	dc.b	$42, $1C, $42, $1D, $42, $1E, $42, $1F, $42, $1C, $42, $1C, $42, $1C, $42, $1D
+	dc.b	$42, $1E, $42, $1F, $42, $1C, $42, $1C, $42, $1C, $42, $1D, $42, $1E, $42, $1F
+	dc.b	$42, $20, $42, $21, $42, $22, $42, $23, $42, $24, $42, $25, $42, $26, $42, $27
+	dc.b	$42, $22, $42, $28, $42, $29, $42, $25, $42, $26, $42, $27, $42, $22, $42, $28
+	dc.b	$42, $29, $42, $25, $42, $26, $42, $27, $42, $22, $42, $28, $42, $29, $42, $25
+	dc.b	$42, $26, $42, $27, $42, $22, $42, $28, $42, $29, $42, $25, $42, $26, $42, $27
+	dc.b	$42, $22, $42, $28, $42, $29, $42, $25, $42, $26, $42, $27, $42, $22, $42, $28
+	dc.b	$42, $2A, $42, $2B, $42, $2C, $42, $2D, $42, $2E, $42, $2F, $42, $30, $42, $2B
+	dc.b	$42, $31, $42, $2D, $42, $2E, $42, $2F, $42, $30, $42, $2B, $42, $31, $42, $2D
+	dc.b	$42, $2E, $42, $2F, $42, $30, $42, $2B, $42, $31, $42, $2D, $42, $2E, $42, $2F
+	dc.b	$42, $30, $42, $2B, $42, $31, $42, $2D, $42, $2E, $42, $2F, $42, $30, $42, $2B
+	dc.b	$42, $31, $42, $2D, $42, $2E, $42, $2F, $42, $30, $42, $2B, $42, $31, $42, $2D
+	dc.b	$42, $32, $42, $33, $42, $34, $42, $35, $42, $36, $42, $37, $42, $38, $42, $33
+	dc.b	$42, $34, $42, $35, $42, $36, $42, $37, $42, $38, $42, $33, $42, $34, $42, $35
+	dc.b	$42, $36, $42, $37, $42, $38, $42, $33, $42, $34, $42, $35, $42, $36, $42, $37
+	dc.b	$42, $38, $42, $33, $42, $34, $42, $35, $42, $36, $42, $37, $42, $38, $42, $33
+	dc.b	$42, $34, $42, $35, $42, $36, $42, $37, $42, $38, $42, $33, $42, $34, $42, $35
+	dc.b	$42, $39, $42, $3A, $42, $3B, $42, $3C, $42, $3D, $42, $3E, $42, $39, $42, $3A
+	dc.b	$42, $3B, $42, $3C, $42, $3D, $42, $3E, $4A, $3D, $42, $3A, $42, $3B, $42, $3C
+	dc.b	$42, $3D, $42, $3E, $42, $39, $42, $3A, $42, $3B, $42, $3C, $42, $3D, $42, $3E
+	dc.b	$42, $39, $42, $3A, $42, $3B, $42, $3C, $42, $3D, $42, $3E, $42, $39, $42, $3A
+	dc.b	$42, $3B, $42, $3C, $42, $3D, $42, $3E, $42, $39, $42, $3A, $42, $3B, $42, $3C
+	dc.b	$42, $3F, $42, $40, $42, $41, $42, $42, $42, $43, $42, $44, $42, $3F, $42, $40
+	dc.b	$42, $41, $42, $42, $42, $43, $42, $44, $42, $3F, $42, $40, $42, $41, $42, $42
+	dc.b	$42, $43, $42, $44, $42, $3F, $42, $40, $42, $41, $42, $42, $42, $43, $42, $44
+	dc.b	$42, $3F, $42, $40, $42, $41, $42, $42, $42, $43, $42, $44, $42, $3F, $42, $40
+	dc.b	$42, $41, $42, $42, $42, $43, $42, $44, $42, $3F, $42, $40, $42, $41, $42, $42
+	dc.b	$42, $45, $42, $46, $42, $47, $4A, $46, $4A, $45, $42, $48, $42, $45, $42, $46
+	dc.b	$42, $47, $4A, $46, $4A, $45, $42, $48, $42, $45, $42, $49, $42, $47, $4A, $46
+	dc.b	$4A, $45, $42, $48, $42, $45, $42, $49, $42, $47, $4A, $46, $4A, $45, $42, $48
+	dc.b	$42, $45, $42, $46, $42, $47, $4A, $46, $4A, $45, $42, $48, $42, $45, $42, $46
+	dc.b	$42, $47, $4A, $46, $4A, $45, $42, $48, $42, $45, $42, $46, $42, $47, $4A, $46
+
+byte_2006C:
+	dc.b	$42, $4A, $42, $4B, $42, $4C, $42, $4D, $4A, $4A, $42, $4E, $42, $4A, $42, $4F
+	dc.b	$42, $50, $42, $51, $4A, $4A, $42, $4E, $42, $4A, $42, $52, $42, $53, $42, $54
+	dc.b	$4A, $4A, $42, $4E, $42, $4A, $4A, $51, $4A, $50, $4A, $4F, $4A, $4A, $42, $4E
+	dc.b	$42, $4A, $4A, $4D, $4A, $4C, $4A, $4B, $4A, $4A, $42, $4E, $42, $4A, $42, $4B
+	dc.b	$42, $4C, $42, $4D, $4A, $4A, $42, $4E, $42, $4A, $42, $4F, $42, $50, $42, $51
+	dc.b	$42, $56, $42, $57, $42, $58, $42, $59, $4A, $56, $42, $5A, $42, $56, $42, $5B
+	dc.b	$42, $5C, $42, $5D, $4A, $56, $42, $5A, $42, $56, $42, $5E, $42, $5F, $42, $60
+	dc.b	$4A, $56, $42, $5A, $42, $56, $4A, $5D, $4A, $5C, $4A, $5B, $4A, $56, $42, $5A
+	dc.b	$42, $56, $4A, $59, $4A, $58, $4A, $57, $4A, $56, $42, $5A, $42, $56, $42, $57
+	dc.b	$42, $58, $42, $59, $4A, $56, $42, $5A, $42, $56, $42, $5B, $42, $5C, $42, $5D
+	dc.b	$42, $62, $42, $63, $42, $64, $4A, $63, $4A, $62, $42, $65, $42, $62, $42, $63
+	dc.b	$42, $66, $4A, $63, $4A, $62, $42, $65, $42, $62, $42, $63, $42, $67, $4A, $63
+	dc.b	$4A, $62, $42, $65, $42, $62, $42, $68, $42, $69, $4A, $63, $4A, $62, $42, $65
+	dc.b	$42, $62, $42, $63, $42, $6A, $4A, $63, $4A, $62, $42, $65, $42, $62, $42, $63
+	dc.b	$42, $69, $4A, $63, $4A, $62, $42, $65, $42, $62, $42, $63, $42, $6A, $4A, $63
+	dc.b	$42, $6B, $52, $3A, $52, $3B, $52, $3C, $4A, $6B, $42, $6C, $42, $6B, $52, $3A
+	dc.b	$52, $3B, $52, $3C, $4A, $6B, $42, $6C, $42, $6B, $52, $3A, $52, $3B, $52, $3C
+	dc.b	$4A, $6B, $42, $6C, $42, $6B, $52, $3A, $52, $3B, $52, $3C, $4A, $6B, $42, $6C
+	dc.b	$42, $6B, $52, $3A, $52, $3B, $52, $3C, $4A, $6B, $42, $6C, $42, $6B, $52, $3A
+	dc.b	$52, $3B, $52, $3C, $4A, $6B, $42, $6C, $42, $6B, $52, $3A, $52, $3B, $52, $3C
+
+byte_201AC:
+	dc.b	0, 1, 2, 3, 4, 0, 0, 0
+	dc.b	0, 9, $A, $B, $C, 0, 0, 0
+	dc.b	0, 0, $13, $14, $15, 0, 0, 0
+	dc.b	$1B, $1C, $1D, $1E, $1F, $20, $21, $22
+	dc.b	$29, $2A, $2B, $2C, $2D, $2E, $2F, $30
+	dc.b	$39, $3A, $3B, $3C, $3D, $3E, $3F, $40
+	dc.b	0, 0, $49, $4A, $4B, $4C, 0, 0
+
+byte_201E4:
+	dc.b 0,	0, 5, 6, 7, 8, 0, 0, 0,	0, $D, $E, $F, $10, $11, $12
+	dc.b 0,	0, 0, $16, $17,	$18, $19, $1A, 0, $23, $24, $25, $26, $27, $28,	0
+	dc.b $31, $32, $33, $34, $35, $36, $37,	$38, $41, $42, $43, $44, $45, $46, $47,	$48
+	dc.b $4D, $4E, $4F, $50, $51, $52, $53,	$54
+
+byte_2021C:
+	dc.b	0, 1, 2, 3, 4, 0, 0, 0
+	dc.b	0, 9, $A, $B, $C, 0, 0, 0
+	dc.b	0, 0, $13, $14, $15, 0, 0, 0
+	dc.b	$1B, $1C, $1D, $1E, $1F, $20, $21, $22
+	dc.b	$29, $2A, $2B, $2C, $2D, $2E, $2F, $30
+	dc.b	$39, $3A, $3B, $3C, $3D, $3E, $3F, $40
+	dc.b	0, 0, $49, $4A, $4B, $4C, 0, 0
+
+byte_20254:
+	dc.b	0, 0, 5, 6, 7, 8, 0, 0
+	dc.b	0, 0, $D, $E, $F, $10, $11, $12
+	dc.b	0, 0, 0, $16, $17, $18, $19, $1A
+	dc.b	0, $23, $24, $25, $26, $27, $28, 0
+	dc.b	$31, $32, $33, $34, $35, $36, $37, $38
+	dc.b	$41, $42, $43, $44, $45, $46, $47, $48
+	dc.b	$4D, $4E, $4F, $50, $51, $52, $53, $54
+
+; ===========================================================================
+
+word_1CF96:	dc.w 1
+	dc.l word_1CF9C
+
+word_1CF9C:	dc.w 4
+	dc.b $20
+	dc.b $14
+	dc.w $C208
+	dc.l byte_1FB6C
+	dc.w $8100
+
+; ---------------------------------------------------------------------------
+
+byte_1FB6C:
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $E0, $DF,	$DF
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $E1, $DF, $E2, $DF, $DF, $DF, $DF,	$DF
+
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$E3, $DF, $E4, $DF, $DF, $DF, $DF, $E5,	$DF
+
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $E6,	$DF
+	dc.b $E7, $DF, $E8, $E9, $DF, $EA, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $E6, $DF, $DF,	$E2
+	dc.b $EB, $DF, $DF, $EC, $ED, $DF, $DF,	$E5, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+
+	dc.b $DF, $DF, $DF, $DF, $EE, $DF, $E1,	$EF, $DF, $F0, $F1, $DF, $EA, $DF, $DF,	$DF
+	dc.b $DF, $DF, $E8, $DF, $DF, $ED, $F2,	$F3, $E2, $E5, $DF, $DF, $DF, $DF, $DF,	$DF
+
+	dc.b $DF, $DF, $DF, $F4, $F5, $EA, $DF,	$DF, $DF, $DF, $DF, $F6, $DF, $DF, $E4,	$DF
+	dc.b $DF, $DF, $DF, $DF, $F7, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+
+	dc.b $DF, $DF, $DF, $F8, $F9, $DF, $DF,	$DF, $FA, $FB, $E0, $FC, $DF, $EA, $DF,	$DF
+	dc.b $F4, $F4, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $E2, $DF, $DF,	$DF
+
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$FD, $DF, $E3, $DF, $DF, $DF, $DF, $DF,	$DF
+	dc.b $DF, $E3, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+	dc.b $FD, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $E2,	$DF, $FE, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+	dc.b $DF, $EA, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+
+	dc.b $DF, $DF, $DF, $DF, $DF, $E1, $E3,	$DF, $DF, $F2, $DF, $DF, $DF, $DF, $DF,	$DF
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
+
+	dc.b 1,	2, 3, 4, 5, 6, 7, 8, 9,	$A, $B,	$C, $D,	$E, $F,	$10
+	dc.b $11, $12, $13, $14, $15, $16, $17,	$18, $19, $1A, $1B, $1C, $1D, $1E, $1F,	$20
+
+	dc.b $21, $22, $23, $24, $25, $26, $27,	$28, $29, $2A, $2B, $2C, $2D, $2E, $2F,	$30
+	dc.b $31, $32, $33, $34, $35, $36, $37,	$38, $39, $3A, $3B, $3C, $3D, $3E, $3F,	$40
+
+	dc.b $41, $42, $43, $44, $45, $46, $47,	$48, $49, $4A, $4B, $4C, $4D, $4E, $4F,	$50
+	dc.b $51, $52, $53, $54, $55, $56, $57,	$58, $59, $5A, $5B, $5C, $5D, $5E, $5F,	$60
+
+	dc.b $61, $62, $63, $64, $65, $66, $67,	$68, $69, $6A, $6B, $6C, $6D, $6E, $6F,	$70
+	dc.b $71, $72, $73, $74, $75, $76, $77,	$78, $79, $7A, $7B, $7C, $7D, $7E, $7F,	$80
+
+	dc.b $81, $82, $83, $84, $85, $86, $87,	$88, $89, $8A, $8B, $8C, $8D, $8E, $8F,	$90
+	dc.b $91, $92, $93, $94, $95, $96, $97,	$98, $99, $9A, $9B, $9C, $9D, $9E, $9F,	$A0
+
+	dc.b $A1, $A2, $A3, $A4, $A5, $A6, $A7,	$A8, $A9, $AA, $AB, $AC, $AD, $AE, $AF,	$B0
+	dc.b $B1, $B2, $B3, $B4, $B5, $B6, $B7,	$B8, $B9, $BA, $BB, $BC, $BD, $BE, $BF,	$C0
+
+	dc.b $C1, $C2, $C3, $C4, $C5, $C6, $C7,	$C8, $C9, $CA, $CB, $CC, $CD, $CE, $CF,	$D0
+	dc.b $D1, $D2, $D3, 4, $D4, $D5, $D6, $D7, 4, $D8, $D9,	$DA, $DB, $DC, $DD, $DE
+
+; ===========================================================================
+
+word_1D002:	dc.w 1
+	dc.l word_1D008
+
+word_1D008:	dc.w 0
+	dc.b $80
+	dc.b $1C
+	dc.w $C000
+	dc.w $8500
+
+; ===========================================================================
+
+word_1D010:	dc.w 2
+	dc.l word_1D01A
+	dc.l word_1D022
+
+word_1D01A:	dc.w 0
+	dc.b $80
+	dc.b $1C
+	dc.w $C000
+	dc.w $8500
+
+word_1D022:	dc.w 0
+	dc.b $80
+	dc.b $1C
+	dc.w $E000
+	dc.w $500
+
+; ===========================================================================
+
+word_1D02A:	dc.w 2
+	dc.l word_1D034
+	dc.l word_1D03C
+
+word_1D034:	dc.w 0
+	dc.b $80
+	dc.b $1C
+	dc.w $C000
+	dc.w $8000
+
+word_1D03C:	dc.w 0
+	dc.b $80
+	dc.b $1C
+	dc.w $E000
+	dc.w 0
+
+; ===========================================================================
+
+word_1D044:	dc.w 1
+	dc.l word_1D04A
+
+word_1D04A:	dc.w 0
+	dc.b $38
+	dc.b $1C
+	dc.w $C000
+	dc.w 0
+
+; ===========================================================================
+
+word_1D052:	dc.w 7
+	dc.l word_1D078
+	dc.l word_1D088
+	dc.l word_1D094
+	dc.l word_1D0A0
+	dc.l word_1D0AC
+	dc.l word_1D080
+	dc.l word_1D070
+
+word_1D070:	dc.w 0
+	dc.b $40
+	dc.b $1C
+	dc.w $C000
+	dc.w $1F8
+
+word_1D078:	dc.w 0
+	dc.b $28
+	dc.b 4
+	dc.w $E400
+	dc.w 1
+
+word_1D080:	dc.w 0
+	dc.b $28
+	dc.b 2
+	dc.w $ED00
+	dc.w $101
+
+word_1D088:	dc.w 4
+	dc.b $20
+	dc.b $C
+	dc.w $E400
+	dc.l byte_1EF40
+	dc.w 0
+
+word_1D094:	dc.w 4
+	dc.b 8
+	dc.b 8
+	dc.w $E640
+	dc.l byte_1F0C0
+	dc.w 0
+
+word_1D0A0:	dc.w 4
+	dc.b $20
+	dc.b 6
+	dc.w $EA00
+	dc.l byte_1F100
+	dc.w $100
+
+word_1D0AC:	dc.w 4
+	dc.b 8
+	dc.b 6
+	dc.w $EA40
+	dc.l byte_1F1C0
+	dc.w $100
+
+; ---------------------------------------------------------------------------
+
+byte_1EF40:
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 5, 6, 7, 8, 9, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, $A, $B, $C, $D, $E, $F, $10, $11, $12, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, $13, $14, $15, $16, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, $17, $18, $19, $1A, $1B, $1C, $1D, $1E, $1F, $20, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, $21, $22, $23, $24, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, $25, $26, $27, $28, $29, $2A, $2B, $2C, $2D, $2E, $2F, 1
+	dc.b	$35, $36, $37, $38, $30, $31, $32, $33, $34, $35, $36, $37, $38, $30, $31, $39
+	dc.b	$3A, $3B, $3C, $3D, $3E, $3F, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49
+	dc.b	$51, $52, $53, $54, $4C, $4D, $4E, $4F, $50, $51, $52, $53, $54, $4C, $4D, $55
+	dc.b	$56, $57, $58, $59, $5A, $5B, $5C, $5D, $5E, $5F, $60, $61, $62, $63, $64, $65
+	dc.b	$6C, $6D, $6E, $6F, $68, $68, $69, $6A, $6B, $6C, $6D, $6E, $6F, $68, $68, $68
+	dc.b	$70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $7A, $7B, $7C, $7D, $7E, $68
+	dc.b	$68, $68, $80, $68, $68, $68, $68, $68, $68, $68, $68, $80, $68, $68, $81, $82
+	dc.b	$83, $84, $85, $86, $87, $88, $89, $8A, $8B, $8C, $8D, $8E, $8F, $90, $68, $91
+	dc.b	$68, $68, $68, $68, $68, $68, $68, $68, $68, $68, $68, $68, $68, $95, $96, $97
+	dc.b	$98, $99, $9A, $9B, $9C, $9D, $9E, $9F, $A0, $A1, $A2, $A3, $A4, $A5, $A6, $A7
+	dc.b	$68, $68, $68, $68, $68, $68, $AC, $AD, $AE, $AF, $68, $68, $68, $B0, $B1, $B2
+	dc.b	$B3, $B4, $B5, $B6, $B7, $B8, $B9, $BA, $BB, $BC, $BD, $BE, $BF, $C0, $C1, $C2
+	dc.b	$68, $68, $68, $68, $68, $C7, $C8, $C9, $CA, $CB, $68, $68, $68, $CC, $CD, $CE
+	dc.b	$CF, $D0, $D1, $D2, $D3, $D4, $D5, $D6, $D7, $D8, $D9, $DA, $DB, $DC, $DD, $DE
+	dc.b	$68, $68, $68, $68, $68, $E3, $E4, $E5, $E6, $E7, $E8, $68, $E9, $EA, $EB, $EC
+	dc.b	$ED, $EE, $EF, $F0, $F1, $F2, $F3, $F4, $F5, $F6, $F7, $F8, $F9, $FA, $FB, $FC
+
+byte_1F0C0:
+	dc.b	$4A, $4B, $32, $33, $34, $35, $36, $37, $66, $67, $4E, $4F, $50, $51, $52, $53
+	dc.b	$68, $7F, $69, $6A, $6B, $6C, $6D, $6E, $92, $93, $94, $68, $68, $68, $68, $80
+	dc.b	$A8, $A9, $AA, $AB, $68, $68, $68, $68, $C3, $C4, $C5, $C6, $68, $68, $68, $68
+	dc.b	$DF, $E0, $E1, $E2, $68, $68, $68, $68, $FD, $FE, $FF, $68, $68, $68, $68, $68
+
+byte_1F100:
+	dc.b	1, 1, 1, 1, 1, 2, 3, 4, 5, 6, 7, 1, 8, 9, $A, $B
+	dc.b	$C, $D, 1, $E, $F, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $1A
+	dc.b	1, 1, 1, 1, 1, 1, $1E, $1F, $20, $21, $22, $23, $24, $25, 1, $26
+	dc.b	$27, $28, $29, $2A, $2B, $2C, $2D, $2E, $2F, $30, $31, $32, $33, $34, $35, $36
+	dc.b	1, 1, 1, 1, 1, 1, 1, $3A, $3B, $3C, $3D, $3E, 1, $3F, $40, $41
+	dc.b	$42, $43, $44, 1, $45, $46, $47, $48, $49, $4A, $4B, $4C, $4D, $4E, 1, $1E
+	dc.b	1, 1, 1, 1, 1, 1, 1, $4F, $50, $51, $52, $53, 1, 1, $54, $42
+	dc.b	$42, $55, $56, 1, 1, 1, 1, 1, 1, 1, $57, $58, $59, $5A, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, $1E, $1E, 1, 1, 1, 1, $5B, $5C
+	dc.b	$5D, $5E, $5F, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+
+byte_1F1C0:
+	dc.b	$1B, $1C, $1D, 1, 1, 1, 1, 1, $37, $38, $39, 1, 1, 1, 1, 1
+	dc.b	$1E, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+
+; ===========================================================================
+
+word_1CF04:	dc.w $A
+	dc.l word_1CF2E
+	dc.l word_1CF36
+	dc.l word_1CF3E
+	dc.l word_1CF46
+	dc.l word_1CF52
+	dc.l word_1CF5E
+	dc.l word_1CF6A
+	dc.l word_1CF72
+	dc.l word_1CF7E
+	dc.l word_1CF8A
+
+word_1CF2E:	dc.w 0
+	dc.b $40
+	dc.b $1C
+	dc.w $C000
+	dc.w $80FF
+
+word_1CF36:	dc.w 0
+	dc.b $20
+	dc.b 3
+	dc.w $C708
+	dc.w $8000
+
+word_1CF3E:	dc.w 0
+	dc.b $40
+	dc.b $1C
+	dc.w $E000
+	dc.w 0
+
+word_1CF46:	dc.w 4
+	dc.b $20
+	dc.b 7
+	dc.w $C888
+	dc.l byte_1FA8C
+	dc.w $8100
+
+word_1CF52:	dc.w 4
+	dc.b $20
+	dc.b 9
+	dc.w $C208
+	dc.l byte_1F8EC
+	dc.w $8000
+
+word_1CF5E:	dc.w 4
+	dc.b $20
+	dc.b 1
+	dc.w $C688
+	dc.l byte_1F8CC
+	dc.w $8000
+
+word_1CF6A:	dc.w 0
+	dc.b $40
+	dc.b 9
+	dc.w $E200
+	dc.w $F
+
+word_1CF72:	dc.w 4
+	dc.b $20
+	dc.b 4
+	dc.w $E680
+	dc.l byte_1F84C
+	dc.w 0
+
+word_1CF7E:	dc.w 4
+	dc.b $20
+	dc.b 4
+	dc.w $E6C0
+	dc.l byte_1F84C
+	dc.w 0
+
+word_1CF8A:	dc.w 4
+	dc.b $20
+	dc.b 4
+	dc.w $E688
+	dc.l byte_1F84C
+	dc.w 0
+
+; ---------------------------------------------------------------------------
+
+byte_1F84C:
+	dc.b $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $C5, $C6, $C7, $C8, $C9, $CA
+	dc.b $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F
+
+	dc.b $D3, $D3, $D3, $D3, $D3, $D3, $D3,	$D3, $D4, $D5, $D6, $D7, $D8, $D8, $D9,	$DA
+	dc.b $DB, $DC, $D3, $D3, $D3, $D3, $D3,	$D3, $D3, $D3, $D3, $D3, $D3, $D3, $D3,	$D3
+
+	dc.b $DD, $DD, $DD, $DD, $DD, $DD, $DD,	$DE, $DF, $D8, $D8, $D8, $D8, $D8, $D8,	$D8
+	dc.b $E0, $E1, $E2, $DD, $DD, $DD, $DD,	$DD, $DD, $DD, $DD, $DD, $DD, $DD, $DD,	$DD
+
+	dc.b $E3, $E3, $E3, $E3, $E3, $E3, $E3,	$E4, $E5, $D8, $D8, $D8, $D8, $D8, $D8,	$D8
+	dc.b $D8, $E0, $E6, $E3, $E3, $E3, $E3,	$E3, $E3, $E3, $E3, $E3, $E3, $E3, $E3,	$E3
+
+byte_1F8CC:
+	dc.b	$C0, $C1, $C2, $C3, $C4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, 0, 0, $CB, $CC, $CD, $CE, $CF, $D0, $D1, $D2, $F
+
+; ---------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
+
+word_1CFA8:	dc.w 6
+	dc.l word_1CFC2
+	dc.l word_1CFCA
+	dc.l word_1CFD2
+	dc.l word_1CFDE
+	dc.l word_1CFEA
+	dc.l word_1CFF6
+
+word_1CFC2:	dc.w 0
+	dc.b $80
+	dc.b $1C
+	dc.w $C000
+	dc.w 0
+
+word_1CFCA:	dc.w 0
+	dc.b $80
+	dc.b $1C
+	dc.w $E000
+	dc.w 0
+
+word_1CFD2:	dc.w 4
+	dc.b $18
+	dc.b $10
+	dc.w $C820
+	dc.l byte_1F66C
+	dc.w $2200
+
+word_1CFDE:	dc.w 4
+	dc.b $18
+	dc.b 4
+	dc.w $D820
+	dc.l byte_1F7EC
+	dc.w $2300
+
+word_1CFEA:	dc.w 4
+	dc.b $20
+	dc.b $D
+	dc.w $E408
+	dc.l byte_1F8EC
+	dc.w 0
+
+word_1CFF6:	dc.w 4
+	dc.b $20
+	dc.b 7
+	dc.w $F108
+	dc.l byte_1FA8C
+	dc.w $100
+
+; ---------------------------------------------------------------------------
+
+byte_1F66C:
+	dc.b	0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5
+	dc.b	6, 7, 8, 9, $A, $B, $C, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, $D, $E, $F, $10, $11, $12, $13, $14, $15, $16, $17
+	dc.b	$18, 0, 0, 0, 0, 0, 0, 0, 0, 0, $19, $1A, $1B, $1C, $1D, $1E
+	dc.b	$1F, $20, $21, $22, $23, $24, $25, $26, $27, $28, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, $29, $2A, $2B, $2C, $2D, $2E, $2F, $30, $31, $32, $33, $34, $35, $36
+	dc.b	$37, $38, 0, 0, 0, 0, 0, 0, 0, 0, $39, $3A, $3B, $3C, $3D, $3E
+	dc.b	$3F, $40, $41, $42, $43, $44, $45, $46, $47, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, $48, $49, $4A, $4B, $4C, $4D, $4E, $4F, $50, $51, $52, $53, $54, $55
+	dc.b	$56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, $57, $58, $59, $5A, $5B
+	dc.b	$5C, $5D, $5E, $5F, $60, $61, $62, $63, $64, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, $65, $66, $67, $68, $69, $6A, $6B, $6C, $6D, $6E, $6F, $70, $71, $72
+	dc.b	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, $73, $74, $75, $76, $77, $78
+	dc.b	$79, $7A, $7B, $7C, $7D, $7E, $7F, $80, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, $81, $82, $83, $84, $85, $86, $87, $88, $89, $8A, $8B, $8C, $8D, $8E
+	dc.b	$8F, $90, 0, 0, $91, $92, $93, $94, 0, 0, 0, $95, $96, $97, $98, $99
+	dc.b	$9A, $9B, $9C, $9D, $9E, $9F, $A0, $A1, $A2, $A3, $A4, 0, $A5, $A6, $A7, $A8
+	dc.b	0, 0, 0, $A9, $AA, $AB, $AC, $AD, $AE, $AF, $B0, $B1, $B2, $B3, $B4, $B5
+	dc.b	$B6, $B7, $B8, 0, $B9, $BA, $5E, $BB, 0, 0, 0, 0, $BC, $BD, $5E, $BE
+	dc.b	$BF, $C0, $C1, $C2, $C3, $C4, $C5, $C6, $C7, $9C, $C8, $C9, $CA, $CB, $CC, $CD
+	dc.b	0, 0, 0, 0, $CE, $CF, $D0, $D1, $D2, $D3, $C0, $C0, $D4, $D5, $D6, $D7
+	dc.b	$D8, $9C, $D9, $DA, $DB, $DC, $DD, 0, 0, 0, 0, 0, $DE, $DF, $E0, $E1
+	dc.b	$E2, $E3, $C0, $E4, $E5, $E6, $E7, $E8, $E9, $EA, $EB, $EC, $ED, $EE, $EF, 0
+
+byte_1F7EC:
+	dc.b	0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, $A, $B, $C
+	dc.b	$D, 0, $E, $F, $10, $11, 0, 0, 0, 0, 0, 0, 0, $12, $13, $14
+	dc.b	$15, $16, $17, $18, $19, $1A, $1B, $1C, $1D, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, 0, 0, $1E, $1F, $20, $21, $22, $23, $24, $25, $26
+	dc.b	$27, $28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, $29, $2A
+	dc.b	$2B, $2C, $2D, $2E, $2F, $30, $31, $32, $33, $34, $35, 0, 0, 0, 0, 0
+
+; ---------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
+
+byte_1F8EC:
+	dc.b	1, 2, 3, 4, 5, 6, 7, 8, 9, $A, $B, $C, $D, $E, $F, $F
+	dc.b	$F, $F, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $1A, $1B, $1C, $1D
+	dc.b	$1E, $1F, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $F, $F, $F, $F
+	dc.b	$F, $F, $2A, $2B, $2C, $2D, $2E, $2F, $30, $31, $32, $33, $34, $35, $36, $37
+	dc.b	$38, $39, $3A, $3B, $3C, $3D, $3E, $3F, $40, $41, $42, $43, $44, $F, $F, $F
+	dc.b	$F, $F, $F, $F, $45, $46, $47, $48, $49, $4A, $4B, $4C, $4D, $4E, $4F, $50
+	dc.b	$51, $52, $53, $54, $55, $56, $57, $58, $59, $5A, $5B, $5C, $5D, $F, $F, $F
+	dc.b	$F, $F, $5E, $5F, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $6A, $6B
+	dc.b	$6C, $F, $6D, $F, $6E, $6F, $70, $71, $72, $73, $74, $F, $F, $F, $F, $F
+	dc.b	$75, $76, $77, $78, $79, $7A, $7B, $7C, $7D, $7E, $7F, $80, $81, $82, $83, $84
+	dc.b	$F, $F, $85, $F, $F, $F, $F, $86, $F, $F, $F, $F, $F, $F, $F, $87
+	dc.b	$88, $89, $8A, $8B, $F, $8C, $8D, $8E, $8F, $90, $91, $92, $93, $94, $95, $F
+	dc.b	$F, $96, $97, $98, $99, $9A, $9B, $F, $F, $F, $F, $F, $F, $F, $F, $F
+	dc.b	$F, $F, $F, $F, $F, $9C, $9D, $9E, $9F, $A0, $F, $A1, $A2, $F, $F, $F
+	dc.b	$A3, $A4, $A5, $A6, $A7, $A8, $A9, $AA, $F, $F, $F, $F, $F, $F, $F, $F
+	dc.b	$F, $F, $F, $F, $F, $F, $F, $F, $F, $AB, $AC, $AD, $AE, $AF, $B0, $B1
+	dc.b	$B2, $B3, $B4, $B5, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F
+	dc.b	$F, $F, $F, $F, $F, $F, $B6, $B7, $B8, $B9, $BA, $BB, $BC, $BD, $BE, $BF
+	dc.b	$C0, $C1, $C2, $C3, $C4, $F, $F, $F, $F, $F, $C5, $C6, $C7, $C8, $C9, $CA
+	dc.b	$F, $F, $F, $F, $F, $F, $F, $CB, $CC, $CD, $CE, $CF, $D0, $D1, $D2, $F
+	dc.b	$D3, $D3, $D3, $D3, $D3, $D3, $D3, $D3, $D4, $D5, $D6, $D7, $D8, $D8, $D9, $DA
+	dc.b	$DB, $DC, $D3, $D3, $D3, $D3, $D3, $D3, $D3, $D3, $D3, $D3, $D3, $D3, $D3, $D3
+	dc.b	$DD, $DD, $DD, $DD, $DD, $DD, $DD, $DE, $DF, $D8, $D8, $D8, $D8, $D8, $D8, $D8
+	dc.b	$E0, $E1, $E2, $DD, $DD, $DD, $DD, $DD, $DD, $DD, $DD, $DD, $DD, $DD, $DD, $DD
+	dc.b	$E3, $E3, $E3, $E3, $E3, $E3, $E3, $E4, $E5, $D8, $D8, $D8, $D8, $D8, $D8, $D8
+	dc.b	$D8, $E0, $E6, $E3, $E3, $E3, $E3, $E3, $E3, $E3, $E3, $E3, $E3, $E3, $E3, $E3
+
+byte_1FA8C:
+	dc.b	1, 2, 3, 4, 5, 6, 7, 8, 9, $A, $B, $C, $D, $E, $F, $10
+	dc.b	$11, $12, $13, $14, $15, $16, $17, $18, $19, $1A, $1B, $1C, $1D, $1E, $1F, $20
+	dc.b	$21, $22, $23, $24, $25, $26, $27, $28, $29, $2A, $2B, $2C, $2D, $2E, $2F, $30
+	dc.b	$31, $32, $33, $34, $35, $36, $37, $38, $39, $3A, $3B, $3C, $3D, $3E, $3F, $40
+	dc.b	$41, $42, $43, $44, $45, $46, $47, $48, $49, $4A, $4B, $4C, $4D, $4E, $4F, $50
+	dc.b	$51, $52, $53, $54, $55, $56, $57, $58, $59, $5A, $5B, $5C, $5D, $5E, $5F, $60
+	dc.b	$61, $62, $63, $64, $65, $66, $67, $68, $69, $6A, $6B, $6C, $6D, $6E, $6F, $70
+	dc.b	$71, $72, $73, $74, $75, $76, $77, $78, $79, $7A, $7B, $7C, $7D, $7E, $7F, $80
+	dc.b	$81, $82, $83, $84, $85, $86, $87, $88, $89, $8A, $8B, $8C, $8D, $8E, $8F, $90
+	dc.b	$91, $92, $93, $94, $95, $96, $97, $98, $99, $9A, $9B, $9C, $9D, $9E, $9F, $A0
+	dc.b	$A1, $A2, $A3, $A4, $A5, $A6, $A7, $A8, $A9, $AA, $AB, $AC, $AD, $AE, $AF, $B0
+	dc.b	$B1, $B2, $B3, $B4, $B5, $B6, $B7, $B8, $B9, $BA, $BB, $BC, $BD, $BE, $BF, $C0
+	dc.b	$C1, $C2, $C3, $C4, $C5, $C6, $C7, $C8, $C9, $CA, $CB, $CC, $CD, $CE, $CF, $D0
+	dc.b	$D1, $D2, $D3, 4, $D4, $D5, $D6, $D7, 4, $D8, $D9, $DA, $DB, $DC, $DD, $DE
+
+; ===========================================================================
+
+;	include "resource/mapunc/Puyo/Plane Maps/MainMenu.asm"
+;	even
+
+Puyo_MainMenu_Maps:	dc.w $11
 	dc.l word_1CD32
 	dc.l word_1CD3A
 	dc.l word_1CD46
@@ -38394,722 +34817,201 @@ word_1CCEC:	dc.w $11
 	dc.l word_1CDD2
 	dc.l word_1CDDE
 	dc.l word_1CDEA
+
 word_1CD32:	dc.w 0
 	dc.b $50
 	dc.b $1C
 	dc.w $C000
 	dc.w $8000
+
 word_1CD3A:	dc.w 4
 	dc.b $20
 	dc.b $E
 	dc.w $EE00
 	dc.l byte_1DF5A
 	dc.w $100
+
 word_1CD46:	dc.w 4
 	dc.b 8
 	dc.b $E
 	dc.w $EE40
 	dc.l byte_1E15A
 	dc.w $100
+
 word_1CD52:	dc.w 0
 	dc.b $80
 	dc.b $E
 	dc.w $E000
 	dc.w $295
+
 word_1CD5A:	dc.w 4
 	dc.b $B
 	dc.b 5
 	dc.w $E004
-	dc.l byte_1E3D6
+	dc.l Map_Puyo_CloudB
 	dc.w $200
+
 word_1CD66:	dc.w 4
 	dc.b $C
 	dc.b 4
 	dc.w $E438
-	dc.l byte_1E40E
+	dc.l Map_Puyo_CloudA
 	dc.w $200
+
 word_1CD72:	dc.w 4
 	dc.b $B
 	dc.b 5
 	dc.w $E934
-	dc.l byte_1E3D6
+	dc.l Map_Puyo_CloudB
 	dc.w $200
+
 word_1CD7E:	dc.w 4
 	dc.b $C
 	dc.b 4
 	dc.w $E904
-	dc.l byte_1E40E
+	dc.l Map_Puyo_CloudA
 	dc.w $200
+
 word_1CD8A:	dc.w 4
 	dc.b $B
 	dc.b 5
 	dc.w $E352
-	dc.l byte_1E3D6
+	dc.l Map_Puyo_CloudB
 	dc.w $200
+
 word_1CD96:	dc.w 4
 	dc.b $C
 	dc.b 4
 	dc.w $E988
-	dc.l byte_1E40E
+	dc.l Map_Puyo_CloudA
 	dc.w $200
+
 word_1CDA2:	dc.w 4
 	dc.b $B
 	dc.b 5
 	dc.w $E970
-	dc.l byte_1E3D6
+	dc.l Map_Puyo_CloudB
 	dc.w $200
+
 word_1CDAE:	dc.w 4
 	dc.b $C
 	dc.b 4
 	dc.w $E568
-	dc.l byte_1E40E
+	dc.l Map_Puyo_CloudA
 	dc.w $200
+
 word_1CDBA:	dc.w 4
 	dc.b $B
 	dc.b 5
 	dc.w $E2A4
-	dc.l byte_1E3D6
+	dc.l Map_Puyo_CloudB
 	dc.w $200
+
 word_1CDC6:	dc.w 4
 	dc.b $C
 	dc.b 4
 	dc.w $EAC8
-	dc.l byte_1E40E
+	dc.l Map_Puyo_CloudA
 	dc.w $200
+
 word_1CDD2:	dc.w 4
 	dc.b $B
 	dc.b 5
 	dc.w $E8AC
-	dc.l byte_1E3D6
+	dc.l Map_Puyo_CloudB
 	dc.w $200
+
 word_1CDDE:	dc.w 4
 	dc.b $C
 	dc.b 4
 	dc.w $E4BC
-	dc.l byte_1E40E
+	dc.l Map_Puyo_CloudA
 	dc.w $200
+
 word_1CDEA:	dc.w 4
 	dc.b $1E
 	dc.b $16
 	dc.w $C30A
-	dc.l byte_21EDE
+	dc.l Map_Puyo_MainMenu
 	dc.w $E000
-word_1CDF6:	dc.w 7
-	dc.l word_1CE14
-	dc.l word_1CE1C
-	dc.l word_1CE24
-	dc.l word_1CE2C
-	dc.l word_1CE38
-	dc.l word_1CE44
-	dc.l word_1CE4C
-word_1CE14:	dc.w 0
-	dc.b $17
-	dc.b $19
-	dc.w $C11E
-	dc.w $8000
-word_1CE1C:	dc.w 0
-	dc.b $16
-	dc.b $11
-	dc.w $E120
-	dc.w $63FD
-word_1CE24:	dc.w 0
-	dc.b $15
-	dc.b $10
-	dc.w $E1A2
-	dc.w $63FC
-word_1CE2C:	dc.w 4
-	dc.b 1
-	dc.b $11
-	dc.w $E11E
-	dc.l byte_21E14
-	dc.w $4000
-word_1CE38:	dc.w 4
-	dc.b $17
-	dc.b 8
-	dc.w $E99E
-	dc.l byte_21E26
-	dc.w $4000
-word_1CE44:	dc.w 0
-	dc.b $E
-	dc.b 6
-	dc.w $EA20
-	dc.w $63FD
-word_1CE4C:	dc.w 0
-	dc.b $D
-	dc.b 5
-	dc.w $EAA2
-	dc.w $63FC
-word_1CE54:	dc.w 1
-	dc.l word_1CE5A
-word_1CE5A:	dc.w 0
-	dc.b $16
-	dc.b $11
-	dc.w $C120
-	dc.w $8000
-word_1CE62:	dc.w 3
-	dc.l word_1CE70
-	dc.l word_1CE78
-	dc.l word_1CE80
-word_1CE70:	dc.w 0
-	dc.b $40
-	dc.b $1C
-	dc.w $C000
-	dc.w $8000
-word_1CE78:	dc.w 0
-	dc.b $40
-	dc.b $1C
-	dc.w $E000
-	dc.w 0
-word_1CE80:	dc.w 4
-	dc.b $C
-	dc.b 4
-	dc.w $C61C
-	dc.l byte_21DE4
-	dc.w $8000
-word_1CE8C:	dc.w 8
-	dc.l word_1CEAE
-	dc.l word_1CEB6
-	dc.l word_1CEC0
-	dc.l word_1CECA
-	dc.l word_1CED4
-	dc.l word_1CEE0
-	dc.l word_1CEEC
-	dc.l word_1CEF8
-word_1CEAE:	dc.w 0
-	dc.b $80
-	dc.b $20
-	dc.w $C000
-	dc.w $500
-word_1CEB6:	dc.w 8
-	dc.b $28
-	dc.b 4
-	dc.w $E000
-	dc.l byte_2006C
-word_1CEC0:	dc.w 8
-	dc.b $28
-	dc.b $C
-	dc.w $E400
-	dc.l byte_1FDEC
-word_1CECA:	dc.w 8
-	dc.b $28
-	dc.b $C
-	dc.w $F000
-	dc.l byte_1FDEC
-word_1CED4:	dc.w 4
-	dc.b 8
-	dc.b 7
-	dc.w $C608
-	dc.l byte_201AC
-	dc.w $E300
-word_1CEE0:	dc.w 4
-	dc.b 8
-	dc.b 7
-	dc.w $C618
-	dc.l byte_201E4
-	dc.w $E300
-word_1CEEC:	dc.w 4
-	dc.b 8
-	dc.b 7
-	dc.w $C628
-	dc.l byte_2021C
-	dc.w $E300
-word_1CEF8:	dc.w 4
-	dc.b 8
-	dc.b 7
-	dc.w $C638
-	dc.l byte_20254
-	dc.w $E300
-word_1CF04:	dc.w $A
-	dc.l word_1CF2E
-	dc.l word_1CF36
-	dc.l word_1CF3E
-	dc.l word_1CF46
-	dc.l word_1CF52
-	dc.l word_1CF5E
-	dc.l word_1CF6A
-	dc.l word_1CF72
-	dc.l word_1CF7E
-	dc.l word_1CF8A
-word_1CF2E:	dc.w 0
-	dc.b $40
-	dc.b $1C
-	dc.w $C000
-	dc.w $80FF
-word_1CF36:	dc.w 0
-	dc.b $20
-	dc.b 3
-	dc.w $C708
-	dc.w $8000
-word_1CF3E:	dc.w 0
-	dc.b $40
-	dc.b $1C
-	dc.w $E000
-	dc.w 0
-word_1CF46:	dc.w 4
-	dc.b $20
-	dc.b 7
-	dc.w $C888
-	dc.l byte_1FA8C
-	dc.w $8100
-word_1CF52:	dc.w 4
-	dc.b $20
-	dc.b 9
-	dc.w $C208
-	dc.l byte_1F8EC
-	dc.w $8000
-word_1CF5E:	dc.w 4
-	dc.b $20
-	dc.b 1
-	dc.w $C688
-	dc.l byte_1F8CC
-	dc.w $8000
-word_1CF6A:	dc.w 0
-	dc.b $40
-	dc.b 9
-	dc.w $E200
-	dc.w $F
-word_1CF72:	dc.w 4
-	dc.b $20
-	dc.b 4
-	dc.w $E680
-	dc.l byte_1F84C
-	dc.w 0
-word_1CF7E:	dc.w 4
-	dc.b $20
-	dc.b 4
-	dc.w $E6C0
-	dc.l byte_1F84C
-	dc.w 0
-word_1CF8A:	dc.w 4
-	dc.b $20
-	dc.b 4
-	dc.w $E688
-	dc.l byte_1F84C
-	dc.w 0
-word_1CF96:	dc.w 1
-	dc.l word_1CF9C
-word_1CF9C:	dc.w 4
-	dc.b $20
-	dc.b $14
-	dc.w $C208
-	dc.l byte_1FB6C
-	dc.w $8100
-word_1CFA8:	dc.w 6
-	dc.l word_1CFC2
-	dc.l word_1CFCA
-	dc.l word_1CFD2
-	dc.l word_1CFDE
-	dc.l word_1CFEA
-	dc.l word_1CFF6
-word_1CFC2:	dc.w 0
-	dc.b $80
-	dc.b $1C
-	dc.w $C000
-	dc.w 0
-word_1CFCA:	dc.w 0
-	dc.b $80
-	dc.b $1C
-	dc.w $E000
-	dc.w 0
-word_1CFD2:	dc.w 4
-	dc.b $18
-	dc.b $10
-	dc.w $C820
-	dc.l byte_1F66C
-	dc.w $2200
-word_1CFDE:	dc.w 4
-	dc.b $18
-	dc.b 4
-	dc.w $D820
-	dc.l byte_1F7EC
-	dc.w $2300
-word_1CFEA:	dc.w 4
-	dc.b $20
-	dc.b $D
-	dc.w $E408
-	dc.l byte_1F8EC
-	dc.w 0
-word_1CFF6:	dc.w 4
-	dc.b $20
-	dc.b 7
-	dc.w $F108
-	dc.l byte_1FA8C
-	dc.w $100
-word_1D002:	dc.w 1
-	dc.l word_1D008
-word_1D008:	dc.w 0
-	dc.b $80
-	dc.b $1C
-	dc.w $C000
-	dc.w $8500
-word_1D010:	dc.w 2
-	dc.l word_1D01A
-	dc.l word_1D022
-word_1D01A:	dc.w 0
-	dc.b $80
-	dc.b $1C
-	dc.w $C000
-	dc.w $8500
-word_1D022:	dc.w 0
-	dc.b $80
-	dc.b $1C
-	dc.w $E000
-	dc.w $500
-word_1D02A:	dc.w 2
-	dc.l word_1D034
-	dc.l word_1D03C
-word_1D034:	dc.w 0
-	dc.b $80
-	dc.b $1C
-	dc.w $C000
-	dc.w $8000
-word_1D03C:	dc.w 0
-	dc.b $80
-	dc.b $1C
-	dc.w $E000
-	dc.w 0
-word_1D044:	dc.w 1
-	dc.l word_1D04A
-word_1D04A:	dc.w 0
-	dc.b $38
-	dc.b $1C
-	dc.w $C000
-	dc.w 0
-word_1D052:	dc.w 7
-	dc.l word_1D078
-	dc.l word_1D088
-	dc.l word_1D094
-	dc.l word_1D0A0
-	dc.l word_1D0AC
-	dc.l word_1D080
-	dc.l word_1D070
-word_1D070:	dc.w 0
-	dc.b $40
-	dc.b $1C
-	dc.w $C000
-	dc.w $1F8
-word_1D078:	dc.w 0
-	dc.b $28
-	dc.b 4
-	dc.w $E400
-	dc.w 1
-word_1D080:	dc.w 0
-	dc.b $28
-	dc.b 2
-	dc.w $ED00
-	dc.w $101
-word_1D088:	dc.w 4
-	dc.b $20
-	dc.b $C
-	dc.w $E400
-	dc.l byte_1EF40
-	dc.w 0
-word_1D094:	dc.w 4
-	dc.b 8
-	dc.b 8
-	dc.w $E640
-	dc.l byte_1F0C0
-	dc.w 0
-word_1D0A0:	dc.w 4
-	dc.b $20
-	dc.b 6
-	dc.w $EA00
-	dc.l byte_1F100
-	dc.w $100
-word_1D0AC:	dc.w 4
-	dc.b 8
-	dc.b 6
-	dc.w $EA40
-	dc.l byte_1F1C0
-	dc.w $100
-word_1D0B8:	dc.w 0
-	dc.b $28
-	dc.b 4
-	dc.w $CE00
-	dc.w $8000
-word_1D0C0:	dc.w 0
-	dc.b $28
-	dc.b 4
-	dc.w $EE00
-	dc.w $8000
-word_1D0C8:	dc.w 9
-	dc.l word_1D0EE
-	dc.l word_1D0FA
-	dc.l word_1D106
-	dc.l word_1D112
-	dc.l word_1D11E
-	dc.l word_1D12A
-	dc.l word_1D136
-	dc.l word_1D142
-	dc.l word_1D0B8
-word_1D0EE:	dc.w 4
-	dc.b $20
-	dc.b $E
-	dc.w $C000
-	dc.l byte_1D69A
-	dc.w $C000
-word_1D0FA:	dc.w 4
-	dc.b 8
-	dc.b $E
-	dc.w $C040
-	dc.l byte_1D85A
-	dc.w $C000
-word_1D106:	dc.w 4
-	dc.b $20
-	dc.b $E
-	dc.w $C700
-	dc.l byte_1D8CA
-	dc.w $C000
-word_1D112:	dc.w 4
-	dc.b 8
-	dc.b $E
-	dc.w $C740
-	dc.l byte_1DA8A
-	dc.w $C000
-word_1D11E:	dc.w 4
-	dc.b $20
-	dc.b $E
-	dc.w $E000
-	dc.l byte_1DAFA
-	dc.w $4000
-word_1D12A:	dc.w 4
-	dc.b 8
-	dc.b $E
-	dc.w $E040
-	dc.l byte_1DCBA
-	dc.w $4000
-word_1D136:	dc.w 4
-	dc.b $20
-	dc.b $E
-	dc.w $E700
-	dc.l byte_1DD2A
-	dc.w $4000
-word_1D142:	dc.w 4
-	dc.b 8
-	dc.b $E
-	dc.w $E740
-	dc.l byte_1DEEA
-	dc.w $4000
-word_1D14E:	dc.w 4
-	dc.l word_1D160
-	dc.l word_1D16C
-	dc.l word_1D178
-	dc.l word_1D184
-word_1D160:	dc.w 4
-	dc.b $20
-	dc.b $E
-	dc.w $C000
-	dc.l byte_1D69A
-	dc.w $C000
-word_1D16C:	dc.w 4
-	dc.b 8
-	dc.b $E
-	dc.w $C040
-	dc.l byte_1D85A
-	dc.w $C000
-word_1D178:	dc.w 4
-	dc.b $20
-	dc.b $C
-	dc.w $C700
-	dc.l byte_1D8CA
-	dc.w $C000
-word_1D184:	dc.w 4
-	dc.b 8
-	dc.b $C
-	dc.w $C740
-	dc.l byte_1DA8A
-	dc.w $C000
-word_1D190:	dc.w $C
-	dc.l word_1D1C2
-	dc.l word_1D1CE
-	dc.l word_1D1DA
-	dc.l word_1D1E6
-	dc.l word_1D1F2
-	dc.l word_1D1FE
-	dc.l word_1D20A
-	dc.l word_1D216
-	dc.l word_1D222
-	dc.l word_1D22E
-	dc.l word_1D0B8
-	dc.l word_1D0C0
-word_1D1C2:	dc.w 4
-	dc.b $20
-	dc.b $E
-	dc.w $C000
-	dc.l byte_1D69A
-	dc.w $C000
-word_1D1CE:	dc.w 4
-	dc.b 8
-	dc.b $E
-	dc.w $C040
-	dc.l byte_1D85A
-	dc.w $C000
-word_1D1DA:	dc.w 4
-	dc.b $20
-	dc.b $E
-	dc.w $C700
-	dc.l byte_1D8CA
-	dc.w $C000
-word_1D1E6:	dc.w 4
-	dc.b 8
-	dc.b $E
-	dc.w $C740
-	dc.l byte_1DA8A
-	dc.w $C000
-word_1D1F2:	dc.w 4
-	dc.b $20
-	dc.b $E
-	dc.w $E000
-	dc.l byte_1DAFA
-	dc.w $4000
-word_1D1FE:	dc.w 4
-	dc.b 8
-	dc.b $E
-	dc.w $E040
-	dc.l byte_1DCBA
-	dc.w $4000
-word_1D20A:	dc.w 4
-	dc.b $20
-	dc.b $E
-	dc.w $E700
-	dc.l byte_1DD2A
-	dc.w $4000
-word_1D216:	dc.w 4
-	dc.b 8
-	dc.b $E
-	dc.w $E740
-	dc.l byte_1DEEA
-	dc.w $4000
-word_1D222:	dc.w 4
-	dc.b $20
-	dc.b 2
-	dc.w $E000
-	dc.l byte_1D69A
-	dc.w $4000
-word_1D22E:	dc.w 4
-	dc.b 8
-	dc.b 2
-	dc.w $E040
-	dc.l byte_1D85A
-	dc.w $4000
-word_1D23A:	dc.w 6
-	dc.l word_1D254
-	dc.l word_1D260
-	dc.l word_1D26C
-	dc.l word_1D278
-	dc.l word_1D0B8
-	dc.l word_1D0C0
-word_1D254:	dc.w 4
-	dc.b $20
-	dc.b $1C
-	dc.w $C000
-	dc.l byte_20B4C
-	dc.w $C000
-word_1D260:	dc.w 4
-	dc.b 8
-	dc.b $1C
-	dc.w $C040
-	dc.l byte_20ECC
-	dc.w $C000
-word_1D26C:	dc.w 4
-	dc.b $20
-	dc.b $1C
-	dc.w $E000
-	dc.l byte_20FAC
-	dc.w $4000
-word_1D278:	dc.w 4
-	dc.b 8
-	dc.b $1C
-	dc.w $E040
-	dc.l byte_2132C
-	dc.w $4000
-	dc.w $B
-	dc.l word_1D2BE
-	dc.l word_1D2CE
-	dc.l word_1D2DE
-	dc.l word_1D2EE
-	dc.l word_1D2FE
-	dc.l word_1D30A
-	dc.l word_1D316
-	dc.l word_1D322
-	dc.l word_1D32E
-	dc.l word_1D33E
-	dc.l word_1D2B6
-	dc.l word_1D0B8
-word_1D2B6:	dc.w 0
-	dc.b $28
-	dc.b 4
-	dc.w $D01C
-	dc.w $8000
-word_1D2BE:	dc.w $10
-	dc.b $20
-	dc.b $E
-	dc.w $C000
-	dc.l byte_2140C
-	dc.l byte_215CC
-	dc.w $8000
-word_1D2CE:	dc.w $10
-	dc.b 8
-	dc.b $E
-	dc.w $C040
-	dc.l byte_2163C
-	dc.l byte_216AC
-	dc.w $8000
-word_1D2DE:	dc.w $10
-	dc.b $20
-	dc.b $E
-	dc.w $C700
-	dc.l byte_216C8
-	dc.l byte_21888
-	dc.w $8000
-word_1D2EE:	dc.w $10
-	dc.b 8
-	dc.b $E
-	dc.w $C740
-	dc.l byte_218F8
-	dc.l byte_21968
-	dc.w $8000
-word_1D2FE:	dc.w 4
-	dc.b $20
-	dc.b $E
-	dc.w $E000
-	dc.l byte_21984
-	dc.w $4000
-word_1D30A:	dc.w 4
-	dc.b 8
-	dc.b $E
-	dc.w $E040
-	dc.l byte_21B44
-	dc.w $4000
-word_1D316:	dc.w 4
-	dc.b $20
-	dc.b $E
-	dc.w $E700
-	dc.l byte_21BB4
-	dc.w $4000
-word_1D322:	dc.w 4
-	dc.b 8
-	dc.b $E
-	dc.w $E740
-	dc.l byte_21D74
-	dc.w $4000
-word_1D32E:	dc.w $10
-	dc.b $20
-	dc.b 2
-	dc.w $E000
-	dc.l byte_2140C
-	dc.l byte_215CC
-	dc.w 0
-word_1D33E:	dc.w $10
-	dc.b 8
-	dc.b 2
-	dc.w $E040
-	dc.l byte_2163C
-	dc.l byte_216AC
-	dc.w 0
+
+; ---------------------------------------------------------------------------
+
+Map_Puyo_MainMenu:
+	dc.b	0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0
+	dc.b	3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+	dc.b	0, 5, 6, 7, 8, 9, $A, $B, $C, 7, 8, 9, $D, 7, 8
+	dc.b	$E, $F, 7, 8, 9, $D, $10, $C, 7, 8, 9, $D, $11, $12, 0
+
+	dc.b	0, $13, $14, $15, $16, $17, $18, $19, $1A, $15, $16, $17, $18, $15, $16
+	dc.b	$17, $18, $15, $16, $17, $18, $1B, $1C, $15, $16, $17, $18, $1D, $1E, 0
+
+	dc.b	0, $1F, $20, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $22, $23, $21, $21, $21, $21, $24, $25, 0
+
+	dc.b	0, $26, $27, $21, $80, $81, $82, $83, $84, $85, $86, $87, $88, $89, $8A
+	dc.b	$8B, $8C, $8D, $8E, $8F, $90, $91, $92, $93, $94, $95, $96, $28, $27, 0
+
+	dc.b	0, $29, $2A, $2B, $A0, $A1, $A2, $A3, $A4, $A5, $A6, $A7, $A8, $A9, $AA
+	dc.b	$AB, $AC, $AD, $AE, $AF, $B0, $B1, $B2, $B3, $B4, $B5, $B6, $2C, $2D, 0
+
+	dc.b	0, $2E, $2F, $30, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $31, $32, 0
+
+	dc.b	$33, $34, $35, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $36, $35, 0
+
+	dc.b	$37, $38, $39, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $3A, $39, 0
+
+	dc.b	0, $29, $2D, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $3B, $3C, $3D, $3E
+
+	dc.b	0, $2E, $32, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $3F, $40, $41, $42
+
+	dc.b	0, $43, $35, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $36, $35, 0
+
+	dc.b	0, $44, $39, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $3A, $39, 0
+
+	dc.b	0, $45, $46, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $47, $46, 0
+
+	dc.b	0, $48, $25, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $49, $4A, $4B
+
+	dc.b	0, $43, $35, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $36, $4C, $4D
+
+	dc.b	0, $44, $39, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $3A, $39, 0
+
+	dc.b	0, $4E, $4F, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $50, $4F, 0
+
+	dc.b	0, $51, $52, $21, $21, $21, $21, $21, $21, $21, $53, $54, $21, $21, $21
+	dc.b	$21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $21, $55, $56, 0
+
+	dc.b	0, $57, $58, 7, 8, 9, $D, 7, 8, 9, $59, $5A, $C, 7, 8
+	dc.b	9, $D, 7, 8, 9, $D, $10, $C, 9, $D, $10, $C, $5B, $5C, 0
+
+	dc.b	0, $5D, $5E, $5F, $60, $61, $62, $63, $64, $61, $62, $65, $66, $5F, $61
+	dc.b	$62, $62, $5F, $60, $61, $62, $65, $63, $64, $62, $65, $66, $67, $68, 0
+
+	dc.b	0, 0, 0, 0, 0, 0, 0, $69, $6A, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, 0, 0, $69, $6A, 0, 0, 0, 0, 0, 0
+
+; ---------------------------------------------------------------------------
+
 word_1D34E:	dc.w 2
 	dc.l word_1D428
 	dc.l word_1D434
+
+; ---------------------------------------------------------------------------
+
 word_1D358:	dc.w 8
 	dc.l word_1D428
 	dc.l word_1D434
@@ -39119,6 +35021,163 @@ word_1D358:	dc.w 8
 	dc.l word_1D462
 	dc.l word_1D46C
 	dc.l word_1D478
+
+; ---------------------------------------------------------------------------
+
+word_1D440:	dc.w 4
+	dc.b $20
+	dc.b 9
+	dc.w $DA00
+	dc.l byte_1E1DA
+	dc.w $6200
+
+word_1D44C:	dc.w 4
+	dc.b 8
+	dc.b 9
+	dc.w $DA40
+	dc.l byte_1E2FA
+	dc.w $6200
+
+word_1D458:	dc.w 8
+	dc.b 2
+	dc.b 3
+	dc.w $DD00
+	dc.l byte_1E342
+
+word_1D462:	dc.w 8
+	dc.b 2
+	dc.b 4
+	dc.w $DCCC
+	dc.l byte_1E34E
+
+word_1D46C:	dc.w 4
+	dc.b $20
+	dc.b 3
+	dc.w $DE80
+	dc.l byte_1E35E
+	dc.w $E100
+
+word_1D478:	dc.w 4
+	dc.b 8
+	dc.b 3
+	dc.w $DEC0
+	dc.l byte_1E3BE
+	dc.w $E100
+
+; ---------------------------------------------------------------------------
+
+byte_1E1DA:
+	dc.b	$5D, $5E, $5F, 1, 2, 3, 4, $60, $61, 5, $62, $63, $64, $65, $66, $60
+	dc.b	$5D, $67, $68, $69, $6A, $6B, $67, $6C, $6D, $5D, $6E, $6F, $70, $5D, $71, 5
+	dc.b	$72, $C, $D, $E, $F, $10, $11, $12, $13, $B, $73, $74, $75, $76, $77, $77
+	dc.b	$78, $77, $64, $79, $7A, $7B, $77, $7C, $77, $77, $7D, $7E, $7F, $14, $15, $16
+	dc.b	$1E, $1F, $20, $21, $22, $23, $24, $25, $26, $27, $32, $7E, $80, $7B, $81, $82
+	dc.b	$83, $58, $84, $85, $86, $87, $88, $89, $88, $6C, $80, $8A, $8B, $28, $29, $2A
+	dc.b	$62, $33, $34, $35, $36, $37, $38, $39, $3A, $63, 5, $4A, $88, $50, $4F, $4F
+	dc.b	$4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4A, $8C, $3B, $3C, $3D
+	dc.b	$64, $82, $8C, $67, $8D, $47, $8E, $57, $4A, $89, $50, $4F, $4F, $4F, $4F, $4F
+	dc.b	$4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $50, $44, $45, $46
+	dc.b	$77, $8F, $90, $45, $51, $91, $87, $6C, $92, $4F, $4F, $4F, $4F, $4F, $4F, $4F
+	dc.b	$4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F
+	dc.b	0, $5C, $7C, $6C, $44, $57, $50, $93, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F
+	dc.b	$4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F
+	dc.b	0, 0, $94, $64, $88, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F
+	dc.b	$4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F
+	dc.b	0, 0, $77, $92, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F
+	dc.b	$4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F
+
+byte_1E2FA:
+	dc.b	6, 7, 8, 9, $A, $B, $77, $60, $17, $18, $19, $1A, $1B, $1C, $1D, $5D
+	dc.b	$2B, $2C, $2D, $2E, $2F, $30, $31, $32, $3E, $3F, $40, $33, $41, $42, $43, $77
+	dc.b	$47, $48, $49, $4A, $4B, $4C, $4D, $4E, $50, $44, $51, $52, $53, $54, $55, 0
+	dc.b	$4F, $50, $56, $57, $58, $59, 0, 0, $4F, $4F, $5A, $5B, $5C, $55, 0, 0
+	dc.b	$4F, $4F, $4F, $50, $5C, $54, 0, 0
+
+byte_1E342:
+	dc.b	$E1, $C0, $E2, $5C, $E1, $C1, $E1, $C2, $E1, $C3, $E1, $C4
+
+byte_1E34E:
+	dc.b	$E2, $55, $E1, $CA, $E1, $EB, $E1, $EC, $E1, $ED, $E1, $EE, $E1, $EF, $E1, $F0
+
+byte_1E35E:
+	dc.b	$C5, $C6, $C7, $C8, $C9, $C0, $FC, $FC, $FC, $FC, $FC, $FC, $FC, $FC, $FC, $FC
+	dc.b	$FC, $FC, $FC, $FC, $CA, $C8, $C9, $C0, $FC, $FC, $FC, $FC, $FC, $FC, $CA, $C8
+	dc.b	$CB, $CC, $CD, $CE, $CF, $D0, $D1, $D2, $D3, $D4, $D5, $D6, $D7, $D8, $D9, $DA
+	dc.b	$D3, $D4, $D5, $D6, $CD, $CE, $CF, $D0, $D1, $D2, $D3, $D4, $D5, $D6, $CD, $CE
+	dc.b	$DB, $DC, $DD, $DE, $DF, $E0, $E1, $E2, $E3, $E4, $DF, $E5, $E6, $E7, $E8, $E9
+	dc.b	$E3, $E4, $DF, $E5, $DD, $DE, $DF, $E0, $E1, $EA, $E3, $E4, $DF, $E5, $DD, $DE
+
+byte_1E3BE:
+	dc.b	$F1, $C0, $FC, $FC, $F2, $F3, $F4, $F5, $CF, $D0, $D1, $D2, $F6, $F7, $F8, $F9
+	dc.b	$DF, $E0, $E1, $EA, $E3, $E4, $FA, $FB
+
+; ---------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
+
+word_1D428:	dc.w 4
+	dc.b $20
+	dc.b $10
+	dc.w $D200
+	dc.l byte_1DF5A
+	dc.w $2100
+
+word_1D434:	dc.w 4
+	dc.b 8
+	dc.b $10
+	dc.w $D240
+	dc.l byte_1E15A
+	dc.w $2100
+
+; ---------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
+
+byte_1DF5A:
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+	dc.b	1, 1, 2, 3, 2, 4, 5, 6, 1, 1, 1, 1, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2
+	dc.b	7, 8, 9, $A, $B, $C, $D, $E, $F, $10, 1, 1, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 7, $11, 8, 9
+	dc.b	$16, $17, $18, $19, $1A, $B, $1B, $1C, $1D, $1E, $1F, 1, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, $20, $12, $16, $21, $17
+	dc.b	$23, $26, $E, $23, $27, $28, $29, $2A, $2B, $2C, $D, $2D, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, $2E, $23, $2F, $13, $30, $31
+	dc.b	$35, $36, $C, $D, $37, $38, $39, $27, $3A, $3B, $3C, $3D, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, $3E, $F, $A, $23, $26, $3F, $23
+	dc.b	$D, $23, $22, $2C, $43, $36, $C, $44, $34, $1C, $29, $1C, $45, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, $11, $46, $18, $35, $E, $D, $23
+	dc.b	$48, $49, $4A, $4B, $22, $4C, $4D, $4E, $22, $4F, $2A, $29, $50, $51, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, $2E, $B, $52, $23, $18, $4B, $48, $49
+	dc.b	$55, $56, $57, $58, $59, $29, $3C, $D, $5A, $23, $47, $5B, $5C, $5D, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, $5E, $49, $1A, $3F, $5F, $60, $55, $56, $E
+	dc.b	$63, $55, $64, $65, $49, $66, $67, $68, $69, $32, $24, $28, $6A, $2D, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, $3E, $4D, $5A, $63, $6B, $64, $6C, $6D, $57
+	dc.b	$D, $6C, $70, $47, $71, $72, $73, $74, $75, $59, $76, $3A, $1F, $5D, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, $77, $38, $32, $2A, $D, $78, $79, $7A, $73
+	dc.b	$48, $7F, $80, $81, $82, $83, $84, $85, $86, $7E, $2C, $53, $87, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, $88, $F, $B, $49, $66, $7F, $89, $8A, $8B
+	dc.b	$56, $E, $1C, $94, $95, $96, $97, $98, $7F, $4B, $99, $9A, 1, 1, 1, 1
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, $9B, $9C, $9D, $9C, $28, $9E, $9F, $A0
+	dc.b	$A7, $A8, $A9, $AA, $AB, $AC, $AD, $AE, $A7, $A8, $AF, $B0, $B0, $B0, $B0, $B0
+	dc.b	$B0, $B0, $B0, $B0, $B0, $B0, $B0, $B0, $B0, $B0, $B0, $B0, $A7, $B1, $A8, $A9
+	dc.b	$B8, $B8, $B8, $B9, $BA, $BB, $BC, $B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8
+	dc.b	$B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8
+
+byte_1E15A:
+	dc.b	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+	dc.b	3, 2, 4, 5, 6, 1, 1, 1, $12, $B, $13, $14, $A, $F, $15, $10
+	dc.b	$22, $19, $23, $B, $1B, $1C, $24, $25, $32, $1D, $27, $28, $29, $33, $2B, $34
+	dc.b	$18, $40, $37, $38, $39, $41, $3A, $42, $47, $2C, $43, $36, $C, $44, $34, $1C
+	dc.b	$4A, $53, $22, $4C, $4D, $4E, $54, $4F, $32, $59, $29, $3C, $61, $22, $29, $62
+	dc.b	$58, $1E, $6E, $6F, $54, $E, $69, $24, $65, $71, $7B, $7C, $44, $7D, $7E, $76
+	dc.b	$8C, $8D, $8E, $8F, $90, $91, $92, $93, $A1, $A2, $A3, $A4, $A5, $A6, $4B, $38
+	dc.b	$B2, $B3, $B4, $B5, $B6, $AE, $A9, $B7, $B8, $BD, $BE, $83, $BF, $B8, $B8, $B8
+
+; ---------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
+
 word_1D37A:	dc.w 8
 	dc.l word_1D484
 	dc.l word_1D48C
@@ -39128,6 +35187,85 @@ word_1D37A:	dc.w 8
 	dc.l word_1D4BC
 	dc.l word_1D4C8
 	dc.l word_1D4D4
+
+; ---------------------------------------------------------------------------
+
+word_1D48C:	dc.w 4
+	dc.b $B
+	dc.b 5
+	dc.w $F480
+	dc.l Map_Puyo_CloudB
+	dc.w $2200
+
+word_1D498:	dc.w 4
+	dc.b $B
+	dc.b 5
+	dc.w $F518
+	dc.l Map_Puyo_CloudB
+	dc.w $2200
+
+word_1D4A4:	dc.w 4
+	dc.b $B
+	dc.b 5
+	dc.w $F534
+	dc.l Map_Puyo_CloudB
+	dc.w $2200
+
+word_1D4B0:	dc.w 4
+	dc.b $B
+	dc.b 5
+	dc.w $F4D2
+	dc.l Map_Puyo_CloudB
+	dc.w $2200
+
+word_1D4BC:	dc.w 4
+	dc.b $B
+	dc.b 5
+	dc.w $F568
+	dc.l Map_Puyo_CloudB
+	dc.w $2200
+
+word_1D4C8:	dc.w 4
+	dc.b $B
+	dc.b 5
+	dc.w $F780
+	dc.l Map_Puyo_CloudB
+	dc.w $2200
+
+word_1D4D4:	dc.w 4
+	dc.b $B
+	dc.b 5
+	dc.w $F79C
+	dc.l Map_Puyo_CloudB
+	dc.w $2200
+
+; ---------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
+
+word_1D3BE:	dc.w 2
+	dc.l word_1D484
+	dc.l word_1D420
+
+; ---------------------------------------------------------------------------
+
+word_1D420:	dc.w 0
+	dc.b $40
+	dc.b $40
+	dc.w $C000
+	dc.w $2200
+
+; ---------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
+
+word_1D484:	dc.w 0
+	dc.b $40
+	dc.b $40
+	dc.w $E000
+	dc.w $2200
+
+; ---------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
+
 word_1D39C:	dc.w 8
 	dc.l word_1D4E0
 	dc.l word_1D4EC
@@ -39137,180 +35275,92 @@ word_1D39C:	dc.w 8
 	dc.l word_1D51C
 	dc.l word_1D528
 	dc.l word_1D534
-word_1D3BE:	dc.w 2
-	dc.l word_1D484
-	dc.l word_1D420
-	dc.l word_1D440
-	dc.l word_1D44C
-	dc.l word_1D458
-	dc.l word_1D462
-	dc.l word_1D46C
-	dc.l word_1D478
-	dc.l word_1D484
-	dc.l word_1D48C
-	dc.l word_1D498
-	dc.l word_1D4A4
-	dc.l word_1D4B0
-	dc.l word_1D4BC
-	dc.l word_1D4C8
-	dc.l word_1D4D4
-	dc.l word_1D4E0
-	dc.l word_1D4EC
-	dc.l word_1D4F8
-	dc.l word_1D504
-	dc.l word_1D510
-	dc.l word_1D51C
-	dc.l word_1D528
-	dc.l word_1D534
-word_1D420:	dc.w 0
-	dc.b $40
-	dc.b $40
-	dc.w $C000
-	dc.w $2200
-word_1D428:	dc.w 4
-	dc.b $20
-	dc.b $10
-	dc.w $D200
-	dc.l byte_1DF5A
-	dc.w $2100
-word_1D434:	dc.w 4
-	dc.b 8
-	dc.b $10
-	dc.w $D240
-	dc.l byte_1E15A
-	dc.w $2100
-word_1D440:	dc.w 4
-	dc.b $20
-	dc.b 9
-	dc.w $DA00
-	dc.l byte_1E1DA
-	dc.w $6200
-word_1D44C:	dc.w 4
-	dc.b 8
-	dc.b 9
-	dc.w $DA40
-	dc.l byte_1E2FA
-	dc.w $6200
-word_1D458:	dc.w 8
-	dc.b 2
-	dc.b 3
-	dc.w $DD00
-	dc.l byte_1E342
-word_1D462:	dc.w 8
-	dc.b 2
-	dc.b 4
-	dc.w $DCCC
-	dc.l byte_1E34E
-word_1D46C:	dc.w 4
-	dc.b $20
-	dc.b 3
-	dc.w $DE80
-	dc.l byte_1E35E
-	dc.w $E100
-word_1D478:	dc.w 4
-	dc.b 8
-	dc.b 3
-	dc.w $DEC0
-	dc.l byte_1E3BE
-	dc.w $E100
-word_1D484:	dc.w 0
-	dc.b $40
-	dc.b $40
-	dc.w $E000
-	dc.w $2200
-word_1D48C:	dc.w 4
-	dc.b $B
-	dc.b 5
-	dc.w $F480
-	dc.l byte_1E3D6
-	dc.w $2200
-word_1D498:	dc.w 4
-	dc.b $B
-	dc.b 5
-	dc.w $F518
-	dc.l byte_1E3D6
-	dc.w $2200
-word_1D4A4:	dc.w 4
-	dc.b $B
-	dc.b 5
-	dc.w $F534
-	dc.l byte_1E3D6
-	dc.w $2200
-word_1D4B0:	dc.w 4
-	dc.b $B
-	dc.b 5
-	dc.w $F4D2
-	dc.l byte_1E3D6
-	dc.w $2200
-word_1D4BC:	dc.w 4
-	dc.b $B
-	dc.b 5
-	dc.w $F568
-	dc.l byte_1E3D6
-	dc.w $2200
-word_1D4C8:	dc.w 4
-	dc.b $B
-	dc.b 5
-	dc.w $F780
-	dc.l byte_1E3D6
-	dc.w $2200
-word_1D4D4:	dc.w 4
-	dc.b $B
-	dc.b 5
-	dc.w $F79C
-	dc.l byte_1E3D6
-	dc.w $2200
+
+; ---------------------------------------------------------------------------
+
 word_1D4E0:	dc.w 4
 	dc.b $B
 	dc.b 5
 	dc.w $F832
-	dc.l byte_1E3D6
+	dc.l Map_Puyo_CloudB
 	dc.w $2200
+
 word_1D4EC:	dc.w 4
 	dc.b $B
 	dc.b 5
 	dc.w $F7CC
-	dc.l byte_1E3D6
+	dc.l Map_Puyo_CloudB
 	dc.w $2200
+
 word_1D4F8:	dc.w 4
 	dc.b $B
 	dc.b 5
 	dc.w $F864
-	dc.l byte_1E3D6
+	dc.l Map_Puyo_CloudB
 	dc.w $2200
+
 word_1D504:	dc.w 4
 	dc.b $C
 	dc.b 4
 	dc.w $FB04
-	dc.l byte_1E40E
+	dc.l Map_Puyo_CloudA
 	dc.w $2200
+
 word_1D510:	dc.w 4
 	dc.b $C
 	dc.b 4
 	dc.w $FAA4
-	dc.l byte_1E40E
+	dc.l Map_Puyo_CloudA
 	dc.w $2200
+
 word_1D51C:	dc.w 4
 	dc.b $C
 	dc.b 4
 	dc.w $FABE
-	dc.l byte_1E40E
+	dc.l Map_Puyo_CloudA
 	dc.w $2200
+
 word_1D528:	dc.w 4
 	dc.b $C
 	dc.b 4
 	dc.w $FB5C
-	dc.l byte_1E40E
+	dc.l Map_Puyo_CloudA
 	dc.w $2200
+
 word_1D534:	dc.w 4
 	dc.b 3
 	dc.b 2
 	dc.w $FC78
 	dc.l byte_1E43E
 	dc.w $2200
+
+; ---------------------------------------------------------------------------
+
+byte_1E43E:
+	dc.b	$E6, $E7, $E8, $E9, $EA, $EB
+
+; ---------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
+
+Map_Puyo_CloudB:
+	dc.b	0, 0, 0, $BB, $BC, $BD, $BE, $BF, $C0, $C1, 0, 0, $C2, $C3, $C4, $A2
+	dc.b	$C5, $C6, $C7, $C8, $C9, $CA, $CB, $CC, $CD, $CE, $CF, $D0, $D1, $D2, $D3, $D4
+	dc.b	$D5, $D6, $D7, $D8, $D9, $DA, $DB, $DC, $DD, $DE, $DF, $B1, 0, $E0, $E1, $E2
+	dc.b	$E3, $E4, $E5, $B8, $B9, $BA, 0, 0
+
+Map_Puyo_CloudA:
+	dc.b	0, $96, $97, $98, $99, $9A, $9B, $9C, $9D, $9E, 0, 0, $9F, $A0, $A1, $A2
+	dc.b	$A2, $A2, $A2, $A2, $A2, $A3, $A4, $A5, $A6, $A7, $A8, $A9, $AA, $AB, $AC, $AD
+	dc.b	$AE, $AF, $B0, $B1, 0, $B2, $B3, $B4, $B5, $B6, $B7, $B8, $B9, $BA, 0, 0
+
+; ===========================================================================
+
 word_1D540:	dc.w 2
 	dc.l word_1D5A4
 	dc.l word_1D5B0
+
+; ---------------------------------------------------------------------------
+
 word_1D54A:	dc.w $C
 	dc.l word_1D58C
 	dc.l word_1D598
@@ -39324,78 +35374,218 @@ word_1D54A:	dc.w $C
 	dc.l word_1D5F2
 	dc.l word_1D57C
 	dc.l word_1D584
+
 word_1D57C:	dc.w 0
 	dc.b $28
 	dc.b 4
 	dc.w $C000
 	dc.w $A100
+
 word_1D584:	dc.w 0
 	dc.b $28
 	dc.b 8
 	dc.w $E000
 	dc.w $2100
+
 word_1D58C:	dc.w 4
 	dc.b $20
 	dc.b 8
 	dc.w $DC10
 	dc.l byte_1E444
 	dc.w $A100
+
 word_1D598:	dc.w 4
 	dc.b 8
 	dc.b 8
 	dc.w $DC00
 	dc.l byte_1E544
 	dc.w $A100
+
 word_1D5A4:	dc.w 4
 	dc.b $15
 	dc.b $14
 	dc.w $D226
 	dc.l byte_1E584
 	dc.w $A100
+
 word_1D5B0:	dc.w 4
 	dc.b $13
 	dc.b $14
 	dc.w $D200
 	dc.l byte_1E728
 	dc.w $A200
+
 word_1D5BC:	dc.w 4
 	dc.b $20
 	dc.b $C
 	dc.w $F600
 	dc.l byte_1E8A4
 	dc.w $6200
+
 word_1D5C8:	dc.w 4
 	dc.b 8
 	dc.b $C
 	dc.w $F640
 	dc.l byte_1EA24
 	dc.w $6200
+
 word_1D5D4:	dc.w 0
 	dc.b $28
 	dc.b 8
 	dc.w $FC00
 	dc.w $62BC
+
 word_1D5DC:	dc.w 8
 	dc.b $A
 	dc.b 3
 	dc.w $FABC
 	dc.l byte_1EA84
+
 word_1D5E6:	dc.w 4
 	dc.b 3
 	dc.b 6
 	dc.w $D6A6
 	dc.l byte_1D5FE
 	dc.w $2100
+
 word_1D5F2:	dc.w 4
 	dc.b 4
 	dc.b 8
 	dc.w $D59C
 	dc.l byte_1D610
 	dc.w $2200
-byte_1D5FE:	dc.b $46, $47, 0, $6A, $6B, 0, $94, $64, 0, $97, $5D, 0, $82, $64, $9B,	$A1
-	dc.b $6B, $A2
-byte_1D610:	dc.b 0,	$20, 0,	0, 0, $27, 0, 0, 0, $2B, 0, $20, 0, $2C, 0, $27
-	dc.b 0,	$2D, 0,	$2D, 0,	$2D, 0,	$2C, 0,	$33, 0,	$2D, $38, $39, 0, $2C
+
+; ---------------------------------------------------------------------------
+
+byte_1E444:
+	dc.b	1, 2, 3, 4, 5, 6, 6, 6, 7, 8, 7, 8, 7, 9, $A, 9
+	dc.b	$A, $B, $A, $C, $D, $E, $F, $10, $11, 6, $12, $13, $14, $15, $16, $D
+	dc.b	$17, $18, $19, $1A, $1B, $18, $19, $1C, $1B, $18, $19, $1C, $1D, $1E, $1F, $20
+	dc.b	$21, $1F, $22, $23, $21, $1F, $24, $25, $26, $27, $28, $29, $21, $1F, $23, $2A
+	dc.b	$2B, $2C, $2D, $2E, $2B, $2C, $2D, $2E, $2B, $2C, $2D, $2E, $2B, $2B, $2C, $2E
+	dc.b	$2B, $2C, $2D, $2E, $2B, $2C, $2D, $2E, $2B, $2C, $2D, $2E, $2B, $2C, $2D, $2E
+	dc.b	$2F, $30, $31, $32, $2F, $30, $31, $32, $2F, $33, $34, $33, $31, $32, $2F, $30
+	dc.b	$31, $32, $2F, $2F, $30, $31, $32, $2F, $30, $31, $32, $2F, $30, $31, $32, $2F
+	dc.b	$35, $36, $36, $35, $36, $37, $35, $36, $38, $39, $3A, $3B, $35, $36, $38, $39
+	dc.b	$3B, $3A, $39, $38, $36, $35, $37, $35, $36, $35, $36, $3A, $35, $36, $35, $36
+	dc.b	$3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C
+	dc.b	$3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C
+	dc.b	$3D, $3E, $3E, $3D, $3E, $3F, $3D, $3E, $40, $40, $41, $42, $43, $44, $45, $43
+	dc.b	$42, $41, $40, $40, $3E, $3D, $3F, $3D, $3E, $3D, $3E, $41, $3D, $3E, $3D, $3E
+	dc.b	$4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A
+	dc.b	$4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A
+
+byte_1E544:
+	dc.b	$A, $4B, $4C, $4D, $4E, $4F, $50, $51, $52, $53, $54, $55, $56, $57, $58, $1C
+	dc.b	$2B, $59, $5A, $5B, $2B, $2C, $2D, $2E, $33, $31, $32, $2F, $34, $33, $31, $32
+	dc.b	$35, $36, $37, $35, $36, $38, $35, $36, $3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C
+	dc.b	$3D, $3E, $3F, $3D, $3E, $40, $3D, $3E, $4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A
+
+byte_1E584:
+	dc.b	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, $5E, $5F, $60
+	dc.b	$61, $62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, $65, $66, $67, $68, $69, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, 0, 0, $65, $66, $6C, $68, $69, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, $65, $66, $67, $6F
+	dc.b	$69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, $71, $72, $67, $6F, $69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	$74, $75, 0, 0, 0, 0, $5E, $5F, $76, $77, $78, 0, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, $7A, $7B, $7C, 0, 0, 0, $7D, $7E, $7F, $80, $81
+	dc.b	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, $83, $84, $85, 0, 0, 0
+	dc.b	$86, $87, $67, $88, $89, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, $8B
+	dc.b	$8C, $8D, 0, 0, 0, $5E, $5F, $60, $61, $62, 0, 0, 0, $46, $47, 0
+	dc.b	0, 0, 0, 0, $8F, $90, $91, 0, 0, 0, $65, $66, $6C, $68, $69, 0
+	dc.b	0, 0, $6A, $6B, 0, 0, 0, 0, 0, $92, $93, $8D, 0, 0, 0, $71
+	dc.b	$72, $67, $6F, $69, 0, 0, 0, $94, $64, 0, 0, 0, 0, 0, $95, $8C
+	dc.b	$96, 0, 0, 0, $65, $66, $6C, $68, $69, 0, 0, 0, $97, $5D, 0, 0
+	dc.b	0, 0, 0, $83, $98, $99, 0, 0, 0, $71, $72, $67, $6F, $69, 0, 0
+	dc.b	$9A, $82, $64, $9B, 0, 0, 0, 0, $8B, $9C, $91, $9D, $9E, 0, $5E, $5F
+	dc.b	$60, $61, $62, 0, $9F, $A0, $A1, $6B, $A2, $A3, $A4, $A5, 0, $92, $93, $8D
+	dc.b	$A6, $A7, $A8, $65, $66, $6C, $68, $69, $A9, $AA, $AB, $AC, $AD, $AE, $AF, $B0
+	dc.b	$B1, $B2, $95, $8C, $B3, $B4, $B5, $B6, $71, $72, $67, $6F, $69, $B7, $B5, $B6
+	dc.b	$B8, $B9, $BA, $BB, $BC, $BD, $BE, $BF, $C0, $C1, $C2, $C3, $C4, $C5, $C6, $C7
+	dc.b	$C8, $C9, $CA, $CB, $CC, $CD, $CE, $CF, $D0, $CB, $D1, $D2, $D3, $D4, $D5, $D6
+	dc.b	$D7, $D8, $D9, $DA, $DB, $DC, $DD, $DE, 6, 6, $DF, $E0, $E1, $E2, $E3, $E4
+	dc.b	$E5, $E6, $E7, $E8, $E9, $EA, $EB, $EC, $ED, $EE, $EF, 6, 6, 6, 6, $F0
+	dc.b	$F1, $F2, $F3, $F4, $F5, $F6, $F7, $F8, $F9, $FA, $FB, $FC, $FD, $FE, $FF, $FE
+	dc.b	$FF, $FE, $FF, $FE
+
+byte_1E728:
+	dc.b	0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, 0, 0, 0, 8, 9, $A, 4, 5, 6, 7, 0
+	dc.b	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, $B, 9, $C, 4, 5
+	dc.b	6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, $D, $E
+	dc.b	$F, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, $10, $11, $12, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, $13, $14, $15, 4, 5, $16, 7, 0, 0, 0, 0, 0
+	dc.b	0, 0, 0, 0, 0, 0, 0, $17, 9, $18, 4, 5, 6, 7, 0, 0
+	dc.b	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, $19, $1A, $1B, $1C, $1D, $1E
+	dc.b	$1F, 0, 0, 0, $20, 0, 0, 0, 0, 0, 0, 0, 0, $21, $22, $23
+	dc.b	$24, $25, $26, $1F, 0, 0, 0, $27, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	$28, 9, $29, $2A, 5, 6, 7, 0, 0, 0, $2B, 0, $20, 0, 0, 0
+	dc.b	0, 0, 0, $17, 9, $18, 4, 5, 6, 7, 0, 0, 0, $2C, 0, $27
+	dc.b	0, 0, 0, 0, 0, 0, $13, $14, $15, 4, 5, $16, 7, 0, 0, 0
+	dc.b	$2D, 0, $2D, 0, $2E, 0, 0, 0, 0, $10, $11, $12, 4, 5, 6, 7
+	dc.b	0, 0, 0, $2D, 0, $2C, 0, $2F, $30, $31, $32, 0, $D, $E, $F, 4
+	dc.b	5, 6, 7, 0, 0, 0, $33, 0, $2D, 0, $34, $35, $36, $37, 0, $B
+	dc.b	9, $C, 4, 5, 6, 7, 0, 0, $38, $39, 0, $2C, 0, $3A, $3B, $3C
+	dc.b	$3D, $3E, 8, 9, $A, 4, 5, 6, 7, $3F, $40, $41, $42, $43, $44, $45
+	dc.b	$46, $46, $47, $48, $49, 1, 2, 3, 4, 5, 6, 7, $4A, $4B, $4C, $4D
+	dc.b	$4E, $4F, $50, $46, $46, $51, $52, $53, $19, $1A, $1B, $1C, $1D, $1E, $1F, $54
+	dc.b	$55, $56, $57, $58, $59, $5A, $46, $5B, $5C, $5D, $5E, $5F, $60, $61, $62, $63
+	dc.b	$64, $65, $66, $46, $46, $67, $68, $69, $6A, $6B, $6C, $6D, $6E, $6F, $70, $71
+	dc.b	$72, $73, $74, $75, $76, $46, $46, $46, $46, $6B, $77, $78
+
+byte_1E8A4:
+	dc.b	$79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79
+	dc.b	$79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $79
+	dc.b	$7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A
+	dc.b	$7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A
+	dc.b	$7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B
+	dc.b	$7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B
+	dc.b	$7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C
+	dc.b	$7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C
+	dc.b	$7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D
+	dc.b	$7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D
+	dc.b	$7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E
+	dc.b	$7E, $7F, $80, $81, $82, $83, $84, $85, $86, $7E, $7E, $7E, $7E, $7E, $7E, $7E
+	dc.b	$87, $87, $87, $87, $87, $87, $87, $87, $87, $87, $87, $87, $87, $87, $87, $87
+	dc.b	$88, $89, $8A, $8B, $8C, $8D, $8E, $8F, $90, $91, $87, $87, $87, $87, $87, $87
+	dc.b	$92, $92, $92, $92, $92, $92, $92, $92, $92, $92, $92, $92, $92, $92, $93, $94
+	dc.b	$95, $96, $97, $98, $99, $9A, $9B, $9C, $9D, $9E, $9F, $A0, $92, $92, $92, $92
+	dc.b	$A1, $A1, $A1, $A1, $A1, $A1, $A1, $A1, $A1, $A1, $A1, $A1, $A2, $A3, $A4, $A5
+	dc.b	$A6, $A7, $A8, $A9, $AA, $AB, $AC, $AD, $AE, $AF, $B0, $B1, $B2, $B3, $A1, $A1
+	dc.b	$B4, $B4, $B4, $B4, $B4, $B4, $B4, $B4, $B4, $B5, $B6, $B7, $B8, $B9, $BA, $BB
+	dc.b	$BC, $BD, $BE, $BF, $C0, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $C1, $B7, $B6
+	dc.b	$C2, $C2, $C2, $C2, $C2, $C2, $C3, $C4, $C5, $C6, $BC, $BC, $BC, $BC, $BC, $BC
+	dc.b	$BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC
+	dc.b	$C7, $C8, $C9, $CA, $CB, $CC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC
+	dc.b	$BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC
+
+byte_1EA24:
+	dc.b	$79, $79, $79, $79, $79, $79, $79, $79, $7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A
+	dc.b	$7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B, $7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C
+	dc.b	$7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D, $7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E
+	dc.b	$87, $87, $87, $87, $87, $87, $87, $87, $92, $92, $92, $92, $92, $92, $92, $92
+	dc.b	$A1, $A1, $A1, $A1, $A1, $A1, $A1, $A1, $B5, $B4, $B4, $B4, $B4, $B4, $B4, $B4
+	dc.b	$C6, $C5, $C4, $C3, $C2, $C2, $C2, $C2, $BC, $BC, $BC, $BC, $CC, $CB, $CA, $C9
+
+byte_1EA84:
+	dc.b	$6A, $B7, $6A, $B6, $6A, $B5, $6A, $B4, $62, $B4, $62, $B4, $62, $B4, $62, $B4
+	dc.b	$62, $B4, $62, $B4, $62, $BC, $62, $BC, $6A, $C6, $6A, $C5, $6A, $C4, $6A, $C3
+	dc.b	$62, $C2, $62, $C2, $62, $C2, $62, $C2, $62, $BC, $62, $BC, $62, $BC, $62, $BC
+	dc.b	$62, $BC, $62, $BC, $6A, $CC, $6A, $CB, $6A, $CA, $6A, $C9
+
+byte_1D5FE:
+	dc.b	$46, $47, 0, $6A, $6B, 0, $94, $64, 0, $97, $5D, 0, $82, $64, $9B, $A1
+	dc.b	$6B, $A2
+
+byte_1D610:
+	dc.b	0, $20, 0, 0, 0, $27, 0, 0, 0, $2B, 0, $20, 0, $2C, 0, $27
+	dc.b	0, $2D, 0, $2D, 0, $2D, 0, $2C, 0, $33, 0, $2D, $38, $39, 0, $2C
+
+; ===========================================================================
+
 word_1D630:	dc.w 7
 	dc.l word_1D64E
 	dc.l word_1D656
@@ -39404,1320 +35594,141 @@ word_1D630:	dc.w 7
 	dc.l word_1D67A
 	dc.l word_1D686
 	dc.l word_1D692
+
 word_1D64E:	dc.w 0
 	dc.b $40
 	dc.b $E
 	dc.w $D200
 	dc.w $A200
+
 word_1D656:	dc.w 4
 	dc.b $20
 	dc.b $F
 	dc.w $D890
 	dc.l byte_1EAC0
 	dc.w $A100
+
 word_1D662:	dc.w 4
 	dc.b 8
 	dc.b $E
 	dc.w $D900
 	dc.l byte_1ECA0
 	dc.w $A100
+
 word_1D66E:	dc.w 4
 	dc.b $20
 	dc.b $E
 	dc.w $F640
 	dc.l byte_1ED10
 	dc.w $2200
+
 word_1D67A:	dc.w 4
 	dc.b $20
 	dc.b $E
 	dc.w $F610
 	dc.l byte_1ED10
 	dc.w $2200
+
 word_1D686:	dc.w 4
 	dc.b 8
 	dc.b $E
 	dc.w $F600
 	dc.l byte_1EED0
 	dc.w $2200
+
 word_1D692:	dc.w 0
 	dc.b $40
 	dc.b 6
 	dc.w $FD00
 	dc.w $22AE
-byte_1D69A:	dc.b 1,	2, 3, 4, 5, 6, 7, 8, 1,	2, 3, 4, 5, 6, 7, 8
-	dc.b 1,	2, 3, 4, 5, 6, 7, 8, 1,	2, 3, 4, 5, 6, 7, 8
-	dc.b $11, $12, $13, $14, $15, $16, $17,	$18, $11, $12, $13, $14, $15, $16, $17,	$18
-	dc.b $11, $12, $13, $14, $15, $16, $17,	$18, $11, $12, $13, $14, $15, $16, $17,	$18
-	dc.b $22, $23, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $28,	$29
-	dc.b $22, $23, $24, $25, $26, $27, $28,	$29, $22, $23, 0, 0, 0,	0, 0, 0
-	dc.b $34, $35, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $3A,	$3B
-	dc.b $34, $35, $36, $37, $38, $39, $3A,	$3B, $34, $35, 0, 0, 0,	0, 0, 0
-	dc.b $46, $47, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $4C,	0
-	dc.b 0,	0, 0, $49, $4A,	0, 0, 0, 0, $47, 0, 0, 0, 0, 0,	0
-	dc.b $58, $59, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $5E,	0
-	dc.b 0,	0, 0, $5B, $5C,	0, 0, 0, 0, $59, 0, 0, 0, 0, 0,	0
-	dc.b $6A, $6B, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $70,	0
-	dc.b 0,	0, 0, $6D, $6E,	0, 0, 0, 0, $6B, 0, 0, 0, 0, 0,	0
-	dc.b $7C, $7D, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $82,	0
-	dc.b 0,	0, 0, $7F, $80,	0, 0, 0, 0, $7D, 0, 0, 0, 0, 0,	0
-	dc.b $8E, $8F, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $94,	0
-	dc.b 0,	0, 0, $91, $92,	0, 0, 0, 0, $8F, 0, 0, 0, 0, 0,	0
-	dc.b $A0, $A1, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $A6,	0
-	dc.b 0,	0, 0, $A3, $A4,	0, 0, 0, 0, $A1, 0, 0, 0, 0, 0,	0
-	dc.b $11, $12, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $17,	$18
-	dc.b $11, $12, $13, $14, $15, $16, $17,	$18, $11, $12, 0, 0, 0,	0, 0, 0
-	dc.b $22, $23, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $28,	$29
-	dc.b $22, $23, $24, $25, $26, $27, $28,	$29, $22, $23, 0, 0, 0,	0, 0, 0
-	dc.b $34, $35, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $3A,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$35, 0,	0, 0, 0, 0, 0
-	dc.b $46, $47, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $4C,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$47, 0,	0, 0, 0, 0, 0
-byte_1D85A:	dc.b 1,	2, 3, 4, 5, 6, 7, 8, $11, $12, $13, $14, $15, $16, $17,	$18
-	dc.b 0,	0, 0, 0, 0, 0, $28, $29, 0, 0, 0, 0, 0,	0, $3A,	$3B
-	dc.b 0,	0, 0, 0, 0, 0, $4C, $4D, 0, 0, 0, 0, 0,	0, $5E,	$5F
-	dc.b 0,	0, 0, 0, 0, 0, $70, $71, 0, 0, 0, 0, 0,	0, $82,	$83
-	dc.b 0,	0, 0, 0, 0, 0, $94, $95, 0, 0, 0, 0, 0,	0, $A6,	$A7
-	dc.b 0,	0, 0, 0, 0, 0, $17, $18, 0, 0, 0, 0, 0,	0, $28,	$29
-	dc.b 0,	0, 0, 0, 0, 0, $3A, $3B, 0, 0, 0, 0, 0,	0, $4C,	$4D
-byte_1D8CA:	dc.b $58, $59, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $5E,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$59, 0,	0, 0, 0, 0, 0
-	dc.b $6A, $6B, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $70,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$6B, 0,	0, 0, 0, 0, 0
-	dc.b $7C, $7D, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $82,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$7D, 0,	0, 0, 0, 0, 0
-	dc.b $8E, $8F, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $94,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$8F, 0,	0, 0, 0, 0, 0
-	dc.b $A0, $A1, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $A6,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$A1, 0,	0, 0, 0, 0, 0
-	dc.b $11, $12, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $17,	$18
-	dc.b $11, $12, $13, $14, $15, $16, $17,	$18, $11, $12, 0, 0, 0,	0, 0, 0
-	dc.b $22, $23, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $28,	$29
-	dc.b $22, $23, $24, $25, $26, $27, $28,	$29, $22, $23, 0, 0, 0,	0, 0, 0
-	dc.b $34, $35, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $3A,	$3B
-	dc.b $34, $35, $36, $37, $38, $39, $3A,	$3B, $34, $35, 0, 0, 0,	0, 0, 0
-	dc.b $46, $47, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $4C,	$4D
-	dc.b $46, $47, $48, $49, $4A, $4B, $4C,	$4D, $46, $47, 0, 0, 0,	0, 0, 0
-	dc.b $58, $59, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $5E,	$5F
-	dc.b $58, $59, $5A, $5B, $5C, $5D, $5E,	$5F, $58, $59, 0, 0, 0,	0, 0, 0
-	dc.b $6A, $6B, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $70,	$71
-	dc.b $6A, $6B, $6C, $6D, $6E, $6F, $70,	$71, $6A, $6B, 0, 0, 0,	0, 0, 0
-	dc.b $7C, $7D, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $82,	$83
-	dc.b $7C, $7D, $7E, $7F, $80, $81, $82,	$83, $7C, $7D, 0, 0, 0,	0, 0, 0
-	dc.b $8E, $8F, $90, $91, $92, $93, $94,	$95, $8E, $8F, $90, $91, $92, $93, $94,	$95
-	dc.b $8E, $8F, $90, $91, $92, $93, $94,	$95, $8E, $8F, $90, $91, $92, $93, $94,	$95
-	dc.b $A0, $A1, $A2, $A3, $A4, $A5, $A6,	$A7, $A0, $A1, $A2, $A3, $A4, $A5, $A6,	$A7
-	dc.b $A0, $A1, $A2, $A3, $A4, $A5, $A6,	$A7, $A0, $A1, $A2, $A3, $A4, $A5, $A6,	$A7
-byte_1DA8A:	dc.b 0,	0, 0, 0, 0, 0, $5E, $5F, 0, 0, 0, 0, 0,	0, $70,	$71
-	dc.b 0,	0, 0, 0, 0, 0, $82, $83, 0, 0, 0, 0, 0,	0, $94,	$95
-	dc.b 0,	0, 0, 0, 0, 0, $A6, $A7, 0, 0, 0, 0, 0,	0, $17,	$18
-	dc.b 0,	0, 0, 0, 0, 0, $28, $29, 0, 0, 0, 0, 0,	0, $3A,	$3B
-	dc.b 0,	0, 0, 0, 0, 0, $4C, $4D, 0, 0, 0, 0, 0,	0, $5E,	$5F
-	dc.b 0,	0, 0, 0, 0, 0, $70, $71, 0, 0, 0, 0, 0,	0, $82,	$83
-	dc.b $8E, $8F, $90, $91, $92, $93, $94,	$95, $A0, $A1, $A2, $A3, $A4, $A5, $A6,	$A7
-byte_1DAFA:	dc.b 1,	2, 3, 4, 5, 6, 7, 8, 1,	2, 3, 4, 5, 6, 7, 8
-	dc.b 1,	2, 3, 4, 5, 6, 7, 8, 1,	2, 3, 4, 5, 6, 7, 8
-	dc.b $11, $12, $13, $14, $15, $16, $17,	$18, $11, $12, $13, $14, $15, $16, $17,	$18
-	dc.b $11, $12, $13, $14, $15, $16, $17,	$18, $11, $12, $13, $14, $15, $16, $17,	$18
-	dc.b $22, $23, 9, $A, $B, $C, $D, $E, $F, $10, 9, $A, $B, $C, $28, $29
-	dc.b $22, $23, $24, $25, $26, $27, $28,	$29, $22, $23, 9, $A, $B, $C, $D, $E
-	dc.b $34, $35, $19, $1A, $1B, $1C, $1D,	$1E, $1F, $20, $21, $1A, $1B, $1C, $3A,	$3B
-	dc.b $34, $35, $36, $37, $38, $39, $3A,	$3B, $34, $35, $19, $1A, $1B, $1C, $1D,	$1E
-	dc.b $46, $47, $2A, $2B, $2C, $2D, $2E,	$2F, $30, $31, $32, $33, $2C, $2D, $4C,	9
-	dc.b $A, $B, $C, $49, $4A, 9, $A, $B, $C, $47, $2A, $2B, $2C, $2D, $2E,	$2F
-	dc.b $58, $59, $3C, $3D, $3E, $3F, $40,	$41, $42, $43, $44, $45, $3E, $3F, $5E,	$19
-	dc.b $1A, $1B, $1C, $5B, $5C, $19, $1A,	$1B, $1C, $59, $3C, $3D, $3E, $3F, $40,	$41
-	dc.b $6A, $6B, $4E, $4F, $50, $51, $52,	$53, $54, $55, $56, $57, $50, $51, $70,	$2A
-	dc.b $2B, $2C, $2D, $6D, $6E, $2A, $2B,	$2C, $2D, $6B, $4E, $4F, $50, $51, $52,	$53
-	dc.b $7C, $7D, $60, $61, $62, $63, $64,	$65, $66, $67, $68, $69, $62, $63, $82,	$3C
-	dc.b $3D, $3E, $3F, $7F, $80, $3C, $3D,	$3E, $3F, $7D, $60, $61, $62, $63, $64,	$65
-	dc.b $8E, $8F, $72, $73, $74, $75, $76,	$77, $78, $79, $7A, $7B, $74, $75, $94,	$4E
-	dc.b $4F, $50, $51, $91, $92, $4E, $4F,	$50, $51, $8F, $72, $73, $74, $75, $76,	$77
-	dc.b $A0, $A1, $84, $85, $86, $87, $88,	$89, $8A, $8B, $8C, $8D, $86, $87, $A6,	$60
-	dc.b $61, $62, $63, $A3, $A4, $60, $61,	$62, $63, $A1, $84, $85, $86, $87, $88,	$89
-	dc.b $11, $12, $96, $97, $98, $99, $9A,	$9B, $9C, $9D, $9E, $9F, $98, $99, $17,	$72
-	dc.b $73, $74, $75, $14, $15, $72, $73,	$74, $75, $12, $96, $97, $98, $99, $9A,	$9B
-	dc.b $22, $23, 9, $A8, $A9, $AA, $AB, $AC, $AD,	$AE, $AF, $B0, $A9, $AA, $28, $84
-	dc.b $85, $86, $87, $25, $26, $84, $85,	$86, $87, $23, 9, $A8, $A9, $AA, $AB, $AC
-	dc.b $34, $35, $19, $1A, $B1, $B2, $B3,	$B4, $B5, $B6, $B7, $B8, $B1, $B2, $3A,	9
-	dc.b $A, $B, $C, $D, $E, $F, $10, 9, $A, $35, $19, $1A,	$B1, $B2, $B3, $B4
-	dc.b $46, $47, $2A, $2B, $2C, $2D, $2E,	$2F, $30, $31, $32, $33, $2C, $2D, $4C,	$19
-	dc.b $1A, $1B, $1C, $1D, $1E, $1F, $20,	$21, $1A, $47, $2A, $2B, $2C, $2D, $2E,	$2F
-byte_1DCBA:	dc.b 1,	2, 3, 4, 5, 6, 7, 8, $11, $12, $13, $14, $15, $16, $17,	$18
-	dc.b $F, $10, 9, $A, $B, $C, $28, $29, $1F, $20, $21, $1A, $1B,	$1C, $3A, $3B
-	dc.b $30, $31, $32, $33, $2C, $2D, $4C,	$4D, $42, $43, $44, $45, $3E, $3F, $5E,	$5F
-	dc.b $54, $55, $56, $57, $50, $51, $70,	$71, $66, $67, $68, $69, $62, $63, $82,	$83
-	dc.b $78, $79, $7A, $7B, $74, $75, $94,	$95, $8A, $8B, $8C, $8D, $86, $87, $A6,	$A7
-	dc.b $9C, $9D, $9E, $9F, $98, $99, $17,	$18, $AD, $AE, $AF, $B0, $A9, $AA, $28,	$29
-	dc.b $B5, $B6, $B7, $B8, $B1, $B2, $3A,	$3B, $30, $31, $32, $33, $2C, $2D, $4C,	$4D
-byte_1DD2A:	dc.b $58, $59, $3C, $3D, $3E, $3F, $40,	$41, $42, $43, $44, $45, $3E, $3F, $5E,	$2A
-	dc.b $2B, $2C, $2D, $2E, $2F, $30, $31,	$32, $33, $59, $3C, $3D, $3E, $3F, $40,	$41
-	dc.b $6A, $6B, $4E, $4F, $50, $51, $52,	$53, $54, $55, $56, $57, $50, $51, $70,	$3C
-	dc.b $3D, $3E, $3F, $40, $41, $42, $43,	$44, $45, $6B, $4E, $4F, $50, $51, $52,	$53
-	dc.b $7C, $7D, $60, $61, $62, $63, $64,	$65, $66, $67, $68, $69, $62, $63, $82,	$4E
-	dc.b $4F, $50, $51, $52, $53, $54, $55,	$56, $57, $7D, $60, $61, $62, $63, $64,	$65
-	dc.b $8E, $8F, $72, $73, $74, $75, $76,	$77, $78, $79, $7A, $7B, $74, $75, $94,	$60
-	dc.b $61, $62, $63, $64, $65, $66, $67,	$68, $69, $8F, $72, $73, $74, $75, $76,	$77
-	dc.b $A0, $A1, $84, $85, $86, $87, $88,	$89, $8A, $8B, $8C, $8D, $86, $87, $A6,	$72
-	dc.b $73, $74, $75, $76, $77, $78, $79,	$7A, $7B, $A1, $84, $85, $86, $87, $88,	$89
-	dc.b $11, $12, $96, $97, $98, $99, $9A,	$9B, $9C, $9D, $9E, $9F, $98, $99, $17,	$84
-	dc.b $85, $86, $87, $88, $89, $8A, $8B,	$8C, $8D, $12, $96, $97, $98, $99, $9A,	$9B
-	dc.b $22, $23, 9, $A8, $A9, $AA, $AB, $AC, $AD,	$AE, $AF, $B0, $A9, $AA, $28, $96
-	dc.b $97, $98, $99, $9A, $9B, $9C, $9D,	$9E, $9F, $23, 9, $A8, $A9, $AA, $AB, $AC
-	dc.b $34, $35, $19, $1A, $B1, $B2, $B3,	$B4, $B5, $B6, $B7, $B8, $B1, $B2, $3A,	9
-	dc.b $A8, $A9, $AA, $AB, $AC, $AD, $AE,	$AF, $B0, $35, $19, $1A, $B1, $B2, $B3,	$B4
-	dc.b $46, $47, $2A, $2B, $2C, $2D, $2E,	$2F, $30, $31, $32, $33, $2C, $2D, $4C,	$19
-	dc.b $1A, $B1, $B2, $B3, $B4, $B5, $B6,	$B7, $B8, $47, $2A, $2B, $2C, $2D, $2E,	$2F
-	dc.b $58, $59, $3C, $3D, $3E, $3F, $40,	$41, $42, $43, $44, $45, $3E, $3F, $5E,	$2A
-	dc.b $2B, $2C, $2D, $2E, $2F, $30, $31,	$32, $33, $59, $3C, $3D, $3E, $3F, $40,	$41
-	dc.b $6A, $6B, $4E, $4F, $50, $51, $52,	$53, $54, $55, $56, $57, $50, $51, $70,	$3C
-	dc.b $3D, $3E, $3F, $40, $41, $42, $43,	$44, $45, $6B, $4E, $4F, $50, $51, $52,	$53
-	dc.b $7C, $7D, $60, $61, $62, $63, $64,	$65, $66, $67, $68, $69, $62, $63, $82,	$4E
-	dc.b $4F, $50, $51, $52, $53, $54, $55,	$56, $57, $7D, $60, $61, $62, $63, $64,	$65
-	dc.b $8E, $8F, $72, $73, $74, $75, $76,	$77, $78, $79, $7A, $7B, $74, $75, $94,	$95
-	dc.b $8E, $8F, $90, $91, $92, $93, $94,	$95, $8E, $8F, $72, $73, $74, $75, $76,	$77
-	dc.b $A0, $A1, $84, $85, $86, $87, $88,	$89, $8A, $8B, $8C, $8D, $86, $87, $A6,	$A7
-	dc.b $A0, $A1, $A2, $A3, $A4, $A5, $A6,	$A7, $A0, $A1, $84, $85, $86, $87, $88,	$89
-byte_1DEEA:	dc.b $42, $43, $44, $45, $3E, $3F, $5E,	$5F, $54, $55, $56, $57, $50, $51, $70,	$71
-	dc.b $66, $67, $68, $69, $62, $63, $82,	$83, $78, $79, $7A, $7B, $74, $75, $94,	$95
-	dc.b $8A, $8B, $8C, $8D, $86, $87, $A6,	$A7, $9C, $9D, $9E, $9F, $98, $99, $17,	$18
-	dc.b $AD, $AE, $AF, $B0, $A9, $AA, $28,	$29, $B5, $B6, $B7, $B8, $B1, $B2, $3A,	$3B
-	dc.b $30, $31, $32, $33, $2C, $2D, $4C,	$4D, $42, $43, $44, $45, $3E, $3F, $5E,	$5F
-	dc.b $54, $55, $56, $57, $50, $51, $70,	$71, $66, $67, $68, $69, $62, $63, $82,	$83
-	dc.b $78, $79, $7A, $7B, $74, $75, $94,	$95, $8A, $8B, $8C, $8D, $86, $87, $A6,	$A7
-byte_1DF5A:	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 1, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 1, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 1, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 1, 1, 1, 1, 1
-	dc.b 1,	1, 2, 3, 2, 4, 5, 6, 1,	1, 1, 1, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 1, 1, 1, 1, 2
-	dc.b 7,	8, 9, $A, $B, $C, $D, $E, $F, $10, 1, 1, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 1, 7, $11, 8, 9
-	dc.b $16, $17, $18, $19, $1A, $B, $1B, $1C, $1D, $1E, $1F, 1, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, $20, $12,	$16, $21, $17
-	dc.b $23, $26, $E, $23,	$27, $28, $29, $2A, $2B, $2C, $D, $2D, 1, 1, 1,	1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, $2E,	$23, $2F, $13, $30, $31
-	dc.b $35, $36, $C, $D, $37, $38, $39, $27, $3A,	$3B, $3C, $3D, 1, 1, 1,	1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	$3E, $F, $A, $23, $26, $3F, $23
-	dc.b $D, $23, $22, $2C,	$43, $36, $C, $44, $34,	$1C, $29, $1C, $45, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	$11, $46, $18, $35, $E,	$D, $23
-	dc.b $48, $49, $4A, $4B, $22, $4C, $4D,	$4E, $22, $4F, $2A, $29, $50, $51, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, $2E, $B, $52, $23,	$18, $4B, $48, $49
-	dc.b $55, $56, $57, $58, $59, $29, $3C,	$D, $5A, $23, $47, $5B,	$5C, $5D, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, $5E, $49, $1A, $3F, $5F, $60,	$55, $56, $E
-	dc.b $63, $55, $64, $65, $49, $66, $67,	$68, $69, $32, $24, $28, $6A, $2D, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, $3E, $4D, $5A, $63, $6B, $64,	$6C, $6D, $57
-	dc.b $D, $6C, $70, $47,	$71, $72, $73, $74, $75, $59, $76, $3A,	$1F, $5D, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, $77, $38, $32, $2A, $D, $78, $79, $7A, $73
-	dc.b $48, $7F, $80, $81, $82, $83, $84,	$85, $86, $7E, $2C, $53, $87, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, $88, $F, $B, $49, $66, $7F, $89, $8A,	$8B
-	dc.b $56, $E, $1C, $94,	$95, $96, $97, $98, $7F, $4B, $99, $9A,	1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, $9B, $9C, $9D, $9C, $28, $9E, $9F,	$A0
-	dc.b $A7, $A8, $A9, $AA, $AB, $AC, $AD,	$AE, $A7, $A8, $AF, $B0, $B0, $B0, $B0,	$B0
-	dc.b $B0, $B0, $B0, $B0, $B0, $B0, $B0,	$B0, $B0, $B0, $B0, $B0, $A7, $B1, $A8,	$A9
-	dc.b $B8, $B8, $B8, $B9, $BA, $BB, $BC,	$B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8,	$B8
-	dc.b $B8, $B8, $B8, $B8, $B8, $B8, $B8,	$B8, $B8, $B8, $B8, $B8, $B8, $B8, $B8,	$B8
-byte_1E15A:	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 1, 1, 1, 1, 1
-	dc.b 3,	2, 4, 5, 6, 1, 1, 1, $12, $B, $13, $14,	$A, $F,	$15, $10
-	dc.b $22, $19, $23, $B,	$1B, $1C, $24, $25, $32, $1D, $27, $28,	$29, $33, $2B, $34
-	dc.b $18, $40, $37, $38, $39, $41, $3A,	$42, $47, $2C, $43, $36, $C, $44, $34, $1C
-	dc.b $4A, $53, $22, $4C, $4D, $4E, $54,	$4F, $32, $59, $29, $3C, $61, $22, $29,	$62
-	dc.b $58, $1E, $6E, $6F, $54, $E, $69, $24, $65, $71, $7B, $7C,	$44, $7D, $7E, $76
-	dc.b $8C, $8D, $8E, $8F, $90, $91, $92,	$93, $A1, $A2, $A3, $A4, $A5, $A6, $4B,	$38
-	dc.b $B2, $B3, $B4, $B5, $B6, $AE, $A9,	$B7, $B8, $BD, $BE, $83, $BF, $B8, $B8,	$B8
-byte_1E1DA:	dc.b $5D, $5E, $5F, 1, 2, 3, 4,	$60, $61, 5, $62, $63, $64, $65, $66, $60
-	dc.b $5D, $67, $68, $69, $6A, $6B, $67,	$6C, $6D, $5D, $6E, $6F, $70, $5D, $71,	5
-	dc.b $72, $C, $D, $E, $F, $10, $11, $12, $13, $B, $73, $74, $75, $76, $77, $77
-	dc.b $78, $77, $64, $79, $7A, $7B, $77,	$7C, $77, $77, $7D, $7E, $7F, $14, $15,	$16
-	dc.b $1E, $1F, $20, $21, $22, $23, $24,	$25, $26, $27, $32, $7E, $80, $7B, $81,	$82
-	dc.b $83, $58, $84, $85, $86, $87, $88,	$89, $88, $6C, $80, $8A, $8B, $28, $29,	$2A
-	dc.b $62, $33, $34, $35, $36, $37, $38,	$39, $3A, $63, 5, $4A, $88, $50, $4F, $4F
-	dc.b $4F, $4F, $4F, $4F, $4F, $4F, $4F,	$4F, $4F, $4F, $4F, $4A, $8C, $3B, $3C,	$3D
-	dc.b $64, $82, $8C, $67, $8D, $47, $8E,	$57, $4A, $89, $50, $4F, $4F, $4F, $4F,	$4F
-	dc.b $4F, $4F, $4F, $4F, $4F, $4F, $4F,	$4F, $4F, $4F, $4F, $4F, $50, $44, $45,	$46
-	dc.b $77, $8F, $90, $45, $51, $91, $87,	$6C, $92, $4F, $4F, $4F, $4F, $4F, $4F,	$4F
-	dc.b $4F, $4F, $4F, $4F, $4F, $4F, $4F,	$4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F,	$4F
-	dc.b 0,	$5C, $7C, $6C, $44, $57, $50, $93, $4F,	$4F, $4F, $4F, $4F, $4F, $4F, $4F
-	dc.b $4F, $4F, $4F, $4F, $4F, $4F, $4F,	$4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F,	$4F
-	dc.b 0,	0, $94,	$64, $88, $4F, $4F, $4F, $4F, $4F, $4F,	$4F, $4F, $4F, $4F, $4F
-	dc.b $4F, $4F, $4F, $4F, $4F, $4F, $4F,	$4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F,	$4F
-	dc.b 0,	0, $77,	$92, $4F, $4F, $4F, $4F, $4F, $4F, $4F,	$4F, $4F, $4F, $4F, $4F
-	dc.b $4F, $4F, $4F, $4F, $4F, $4F, $4F,	$4F, $4F, $4F, $4F, $4F, $4F, $4F, $4F,	$4F
-byte_1E2FA:	dc.b 6,	7, 8, 9, $A, $B, $77, $60, $17,	$18, $19, $1A, $1B, $1C, $1D, $5D
-	dc.b $2B, $2C, $2D, $2E, $2F, $30, $31,	$32, $3E, $3F, $40, $33, $41, $42, $43,	$77
-	dc.b $47, $48, $49, $4A, $4B, $4C, $4D,	$4E, $50, $44, $51, $52, $53, $54, $55,	0
-	dc.b $4F, $50, $56, $57, $58, $59, 0, 0, $4F, $4F, $5A,	$5B, $5C, $55, 0, 0
-	dc.b $4F, $4F, $4F, $50, $5C, $54, 0, 0
-byte_1E342:	dc.b $E1, $C0, $E2, $5C, $E1, $C1, $E1,	$C2, $E1, $C3, $E1, $C4
-byte_1E34E:	dc.b $E2, $55, $E1, $CA, $E1, $EB, $E1,	$EC, $E1, $ED, $E1, $EE, $E1, $EF, $E1,	$F0
-byte_1E35E:	dc.b $C5, $C6, $C7, $C8, $C9, $C0, $FC,	$FC, $FC, $FC, $FC, $FC, $FC, $FC, $FC,	$FC
-	dc.b $FC, $FC, $FC, $FC, $CA, $C8, $C9,	$C0, $FC, $FC, $FC, $FC, $FC, $FC, $CA,	$C8
-	dc.b $CB, $CC, $CD, $CE, $CF, $D0, $D1,	$D2, $D3, $D4, $D5, $D6, $D7, $D8, $D9,	$DA
-	dc.b $D3, $D4, $D5, $D6, $CD, $CE, $CF,	$D0, $D1, $D2, $D3, $D4, $D5, $D6, $CD,	$CE
-	dc.b $DB, $DC, $DD, $DE, $DF, $E0, $E1,	$E2, $E3, $E4, $DF, $E5, $E6, $E7, $E8,	$E9
-	dc.b $E3, $E4, $DF, $E5, $DD, $DE, $DF,	$E0, $E1, $EA, $E3, $E4, $DF, $E5, $DD,	$DE
-byte_1E3BE:	dc.b $F1, $C0, $FC, $FC, $F2, $F3, $F4,	$F5, $CF, $D0, $D1, $D2, $F6, $F7, $F8,	$F9
-	dc.b $DF, $E0, $E1, $EA, $E3, $E4, $FA,	$FB
-byte_1E3D6:	dc.b 0,	0, 0, $BB, $BC,	$BD, $BE, $BF, $C0, $C1, 0, 0, $C2, $C3, $C4, $A2
-	dc.b $C5, $C6, $C7, $C8, $C9, $CA, $CB,	$CC, $CD, $CE, $CF, $D0, $D1, $D2, $D3,	$D4
-	dc.b $D5, $D6, $D7, $D8, $D9, $DA, $DB,	$DC, $DD, $DE, $DF, $B1, 0, $E0, $E1, $E2
-	dc.b $E3, $E4, $E5, $B8, $B9, $BA, 0, 0
-byte_1E40E:	dc.b 0,	$96, $97, $98, $99, $9A, $9B, $9C, $9D,	$9E, 0,	0, $9F,	$A0, $A1, $A2
-	dc.b $A2, $A2, $A2, $A2, $A2, $A3, $A4,	$A5, $A6, $A7, $A8, $A9, $AA, $AB, $AC,	$AD
-	dc.b $AE, $AF, $B0, $B1, 0, $B2, $B3, $B4, $B5,	$B6, $B7, $B8, $B9, $BA, 0, 0
-byte_1E43E:	dc.b $E6, $E7, $E8, $E9, $EA, $EB
-byte_1E444:	dc.b 1,	2, 3, 4, 5, 6, 6, 6, 7,	8, 7, 8, 7, 9, $A, 9
-	dc.b $A, $B, $A, $C, $D, $E, $F, $10, $11, 6, $12, $13,	$14, $15, $16, $D
-	dc.b $17, $18, $19, $1A, $1B, $18, $19,	$1C, $1B, $18, $19, $1C, $1D, $1E, $1F,	$20
-	dc.b $21, $1F, $22, $23, $21, $1F, $24,	$25, $26, $27, $28, $29, $21, $1F, $23,	$2A
-	dc.b $2B, $2C, $2D, $2E, $2B, $2C, $2D,	$2E, $2B, $2C, $2D, $2E, $2B, $2B, $2C,	$2E
-	dc.b $2B, $2C, $2D, $2E, $2B, $2C, $2D,	$2E, $2B, $2C, $2D, $2E, $2B, $2C, $2D,	$2E
-	dc.b $2F, $30, $31, $32, $2F, $30, $31,	$32, $2F, $33, $34, $33, $31, $32, $2F,	$30
-	dc.b $31, $32, $2F, $2F, $30, $31, $32,	$2F, $30, $31, $32, $2F, $30, $31, $32,	$2F
-	dc.b $35, $36, $36, $35, $36, $37, $35,	$36, $38, $39, $3A, $3B, $35, $36, $38,	$39
-	dc.b $3B, $3A, $39, $38, $36, $35, $37,	$35, $36, $35, $36, $3A, $35, $36, $35,	$36
-	dc.b $3C, $3C, $3C, $3C, $3C, $3C, $3C,	$3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C,	$3C
-	dc.b $3C, $3C, $3C, $3C, $3C, $3C, $3C,	$3C, $3C, $3C, $3C, $3C, $3C, $3C, $3C,	$3C
-	dc.b $3D, $3E, $3E, $3D, $3E, $3F, $3D,	$3E, $40, $40, $41, $42, $43, $44, $45,	$43
-	dc.b $42, $41, $40, $40, $3E, $3D, $3F,	$3D, $3E, $3D, $3E, $41, $3D, $3E, $3D,	$3E
-	dc.b $4A, $4A, $4A, $4A, $4A, $4A, $4A,	$4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A,	$4A
-	dc.b $4A, $4A, $4A, $4A, $4A, $4A, $4A,	$4A, $4A, $4A, $4A, $4A, $4A, $4A, $4A,	$4A
-byte_1E544:	dc.b $A, $4B, $4C, $4D,	$4E, $4F, $50, $51, $52, $53, $54, $55,	$56, $57, $58, $1C
-	dc.b $2B, $59, $5A, $5B, $2B, $2C, $2D,	$2E, $33, $31, $32, $2F, $34, $33, $31,	$32
-	dc.b $35, $36, $37, $35, $36, $38, $35,	$36, $3C, $3C, $3C, $3C, $3C, $3C, $3C,	$3C
-	dc.b $3D, $3E, $3F, $3D, $3E, $40, $3D,	$3E, $4A, $4A, $4A, $4A, $4A, $4A, $4A,	$4A
-byte_1E584:	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, $5E, $5F, $60
-	dc.b $61, $62, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0
-	dc.b 0,	0, $65,	$66, $67, $68, $69, 0, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, $65, $66, $6C, $68, $69, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, $65, $66, $67,	$6F
-	dc.b $69, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	$71, $72, $67, $6F, $69, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b $74, $75, 0, 0, 0,	0, $5E,	$5F, $76, $77, $78, 0, 0, 0, 0,	0
-	dc.b 0,	0, 0, 0, 0, $7A, $7B, $7C, 0, 0, 0, $7D, $7E, $7F, $80,	$81
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $83,	$84, $85, 0, 0,	0
-	dc.b $86, $87, $67, $88, $89, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, $8B
-	dc.b $8C, $8D, 0, 0, 0,	$5E, $5F, $60, $61, $62, 0, 0, 0, $46, $47, 0
-	dc.b 0,	0, 0, 0, $8F, $90, $91,	0, 0, 0, $65, $66, $6C,	$68, $69, 0
-	dc.b 0,	0, $6A,	$6B, 0,	0, 0, 0, 0, $92, $93, $8D, 0, 0, 0, $71
-	dc.b $72, $67, $6F, $69, 0, 0, 0, $94, $64, 0, 0, 0, 0,	0, $95,	$8C
-	dc.b $96, 0, 0,	0, $65,	$66, $6C, $68, $69, 0, 0, 0, $97, $5D, 0, 0
-	dc.b 0,	0, 0, $83, $98,	$99, 0,	0, 0, $71, $72,	$67, $6F, $69, 0, 0
-	dc.b $9A, $82, $64, $9B, 0, 0, 0, 0, $8B, $9C, $91, $9D, $9E, 0, $5E, $5F
-	dc.b $60, $61, $62, 0, $9F, $A0, $A1, $6B, $A2,	$A3, $A4, $A5, 0, $92, $93, $8D
-	dc.b $A6, $A7, $A8, $65, $66, $6C, $68,	$69, $A9, $AA, $AB, $AC, $AD, $AE, $AF,	$B0
-	dc.b $B1, $B2, $95, $8C, $B3, $B4, $B5,	$B6, $71, $72, $67, $6F, $69, $B7, $B5,	$B6
-	dc.b $B8, $B9, $BA, $BB, $BC, $BD, $BE,	$BF, $C0, $C1, $C2, $C3, $C4, $C5, $C6,	$C7
-	dc.b $C8, $C9, $CA, $CB, $CC, $CD, $CE,	$CF, $D0, $CB, $D1, $D2, $D3, $D4, $D5,	$D6
-	dc.b $D7, $D8, $D9, $DA, $DB, $DC, $DD,	$DE, 6,	6, $DF,	$E0, $E1, $E2, $E3, $E4
-	dc.b $E5, $E6, $E7, $E8, $E9, $EA, $EB,	$EC, $ED, $EE, $EF, 6, 6, 6, 6,	$F0
-	dc.b $F1, $F2, $F3, $F4, $F5, $F6, $F7,	$F8, $F9, $FA, $FB, $FC, $FD, $FE, $FF,	$FE
-	dc.b $FF, $FE, $FF, $FE
-byte_1E728:	dc.b 0,	0, 0, 0, 0, 1, 2, 3, 4,	5, 6, 7, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 8,	9, $A, 4, 5, 6,	7, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, $B, 9, $C, 4, 5
-	dc.b 6,	7, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, $D, $E
-	dc.b $F, 4, 5, 6, 7, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0
-	dc.b 0,	$10, $11, $12, 4, 5, 6,	7, 0, 0, 0, 0, 0, 0, 0,	0
-	dc.b 0,	0, 0, 0, $13, $14, $15,	4, 5, $16, 7, 0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, $17, 9, $18, 4, 5, 6,	7, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $19,	$1A, $1B, $1C, $1D, $1E
-	dc.b $1F, 0, 0,	0, $20,	0, 0, 0, 0, 0, 0, 0, 0,	$21, $22, $23
-	dc.b $24, $25, $26, $1F, 0, 0, 0, $27, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b $28, 9, $29, $2A, 5, 6, 7,	0, 0, 0, $2B, 0, $20, 0, 0, 0
-	dc.b 0,	0, 0, $17, 9, $18, 4, 5, 6, 7, 0, 0, 0,	$2C, 0,	$27
-	dc.b 0,	0, 0, 0, 0, 0, $13, $14, $15, 4, 5, $16, 7, 0, 0, 0
-	dc.b $2D, 0, $2D, 0, $2E, 0, 0,	0, 0, $10, $11,	$12, 4,	5, 6, 7
-	dc.b 0,	0, 0, $2D, 0, $2C, 0, $2F, $30,	$31, $32, 0, $D, $E, $F, 4
-	dc.b 5,	6, 7, 0, 0, 0, $33, 0, $2D, 0, $34, $35, $36, $37, 0, $B
-	dc.b 9,	$C, 4, 5, 6, 7,	0, 0, $38, $39,	0, $2C,	0, $3A,	$3B, $3C
-	dc.b $3D, $3E, 8, 9, $A, 4, 5, 6, 7, $3F, $40, $41, $42, $43, $44, $45
-	dc.b $46, $46, $47, $48, $49, 1, 2, 3, 4, 5, 6,	7, $4A,	$4B, $4C, $4D
-	dc.b $4E, $4F, $50, $46, $46, $51, $52,	$53, $19, $1A, $1B, $1C, $1D, $1E, $1F,	$54
-	dc.b $55, $56, $57, $58, $59, $5A, $46,	$5B, $5C, $5D, $5E, $5F, $60, $61, $62,	$63
-	dc.b $64, $65, $66, $46, $46, $67, $68,	$69, $6A, $6B, $6C, $6D, $6E, $6F, $70,	$71
-	dc.b $72, $73, $74, $75, $76, $46, $46,	$46, $46, $6B, $77, $78
-byte_1E8A4:	dc.b $79, $79, $79, $79, $79, $79, $79,	$79, $79, $79, $79, $79, $79, $79, $79,	$79
-	dc.b $79, $79, $79, $79, $79, $79, $79,	$79, $79, $79, $79, $79, $79, $79, $79,	$79
-	dc.b $7A, $7A, $7A, $7A, $7A, $7A, $7A,	$7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A,	$7A
-	dc.b $7A, $7A, $7A, $7A, $7A, $7A, $7A,	$7A, $7A, $7A, $7A, $7A, $7A, $7A, $7A,	$7A
-	dc.b $7B, $7B, $7B, $7B, $7B, $7B, $7B,	$7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B,	$7B
-	dc.b $7B, $7B, $7B, $7B, $7B, $7B, $7B,	$7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B,	$7B
-	dc.b $7C, $7C, $7C, $7C, $7C, $7C, $7C,	$7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C,	$7C
-	dc.b $7C, $7C, $7C, $7C, $7C, $7C, $7C,	$7C, $7C, $7C, $7C, $7C, $7C, $7C, $7C,	$7C
-	dc.b $7D, $7D, $7D, $7D, $7D, $7D, $7D,	$7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D,	$7D
-	dc.b $7D, $7D, $7D, $7D, $7D, $7D, $7D,	$7D, $7D, $7D, $7D, $7D, $7D, $7D, $7D,	$7D
-	dc.b $7E, $7E, $7E, $7E, $7E, $7E, $7E,	$7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E,	$7E
-	dc.b $7E, $7F, $80, $81, $82, $83, $84,	$85, $86, $7E, $7E, $7E, $7E, $7E, $7E,	$7E
-	dc.b $87, $87, $87, $87, $87, $87, $87,	$87, $87, $87, $87, $87, $87, $87, $87,	$87
-	dc.b $88, $89, $8A, $8B, $8C, $8D, $8E,	$8F, $90, $91, $87, $87, $87, $87, $87,	$87
-	dc.b $92, $92, $92, $92, $92, $92, $92,	$92, $92, $92, $92, $92, $92, $92, $93,	$94
-	dc.b $95, $96, $97, $98, $99, $9A, $9B,	$9C, $9D, $9E, $9F, $A0, $92, $92, $92,	$92
-	dc.b $A1, $A1, $A1, $A1, $A1, $A1, $A1,	$A1, $A1, $A1, $A1, $A1, $A2, $A3, $A4,	$A5
-	dc.b $A6, $A7, $A8, $A9, $AA, $AB, $AC,	$AD, $AE, $AF, $B0, $B1, $B2, $B3, $A1,	$A1
-	dc.b $B4, $B4, $B4, $B4, $B4, $B4, $B4,	$B4, $B4, $B5, $B6, $B7, $B8, $B9, $BA,	$BB
-	dc.b $BC, $BD, $BE, $BF, $C0, $BC, $BC,	$BC, $BC, $BC, $BC, $BC, $BC, $C1, $B7,	$B6
-	dc.b $C2, $C2, $C2, $C2, $C2, $C2, $C3,	$C4, $C5, $C6, $BC, $BC, $BC, $BC, $BC,	$BC
-	dc.b $BC, $BC, $BC, $BC, $BC, $BC, $BC,	$BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC,	$BC
-	dc.b $C7, $C8, $C9, $CA, $CB, $CC, $BC,	$BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC,	$BC
-	dc.b $BC, $BC, $BC, $BC, $BC, $BC, $BC,	$BC, $BC, $BC, $BC, $BC, $BC, $BC, $BC,	$BC
-byte_1EA24:	dc.b $79, $79, $79, $79, $79, $79, $79,	$79, $7A, $7A, $7A, $7A, $7A, $7A, $7A,	$7A
-	dc.b $7B, $7B, $7B, $7B, $7B, $7B, $7B,	$7B, $7C, $7C, $7C, $7C, $7C, $7C, $7C,	$7C
-	dc.b $7D, $7D, $7D, $7D, $7D, $7D, $7D,	$7D, $7E, $7E, $7E, $7E, $7E, $7E, $7E,	$7E
-	dc.b $87, $87, $87, $87, $87, $87, $87,	$87, $92, $92, $92, $92, $92, $92, $92,	$92
-	dc.b $A1, $A1, $A1, $A1, $A1, $A1, $A1,	$A1, $B5, $B4, $B4, $B4, $B4, $B4, $B4,	$B4
-	dc.b $C6, $C5, $C4, $C3, $C2, $C2, $C2,	$C2, $BC, $BC, $BC, $BC, $CC, $CB, $CA,	$C9
-byte_1EA84:	dc.b $6A, $B7, $6A, $B6, $6A, $B5, $6A,	$B4, $62, $B4, $62, $B4, $62, $B4, $62,	$B4
-	dc.b $62, $B4, $62, $B4, $62, $BC, $62,	$BC, $6A, $C6, $6A, $C5, $6A, $C4, $6A,	$C3
-	dc.b $62, $C2, $62, $C2, $62, $C2, $62,	$C2, $62, $BC, $62, $BC, $62, $BC, $62,	$BC
-	dc.b $62, $BC, $62, $BC, $6A, $CC, $6A,	$CB, $6A, $CA, $6A, $C9
-byte_1EAC0:	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 1, 2, 0, 0, 0, 0
-	dc.b 0,	0, 3, 4, 0, 0, 0, 5, 0,	0, 0, 0, 0, 0, 0, 0
-	dc.b 6,	7, 8, 6, 9, $A,	$B, $C,	$D, $E,	$F, $10, $11, $12, $13,	9
-	dc.b $A, $14, $15, $16,	$17, 7,	8, 6, 9, $18, $19, $1A,	$C, $D,	$1B, $A
-	dc.b $1C, $1D, $1E, $1F, $20, $21, $22,	$23, $24, $25, $26, $27, $28, $29, $2A,	$2B
-	dc.b $2C, $2D, $2E, $2F, $30, $31, $32,	$33, $34, $35, $36, $37, $38, $39, $3A,	$3B
-	dc.b $3C, $3D, $3E, $3F, $40, $41, $42,	$43, $44, $45, $46, $47, $48, $49, $4A,	$4B
-	dc.b $4C, $4D, $4E, $4F, $50, $51, $52,	$53, $54, $55, $56, $57, $58, $59, $5A,	$5B
-	dc.b $5C, $5D, $5E, $5D, $5F, $60, $61,	$62, $63, $64, $65, $66, $67, $68, $62,	$61
-	dc.b $69, $6A, $6B, $6C, $6D, $6E, $6F,	$70, $71, $72, $73, $74, $75, $76, $77,	$78
-	dc.b $79, $7A, $79, $79, $79, $7B, $79,	$7B, $79, $7C, $7D, $7E, $7F, $7B, $79,	$79
-	dc.b $79, $80, $81, $82, $83, $79, $79,	$79, $84, $85, $86, $87, $88, $89, $8A,	$8B
-	dc.b $79, $8C, $79, $8C, $8D, $8E, $8D,	$8E, $79, $8C, $79, $8C, $79, $8C, $79,	$8C
-	dc.b $79, $8F, $90, $91, $92, $8C, $8C,	$79, $8C, $93, $94, $95, $96, $97, $98,	$99
-	dc.b $8D, $8E, $8D, $8E, $9A, $9B, $9C,	$9D, $9E, $8E, $8D, $7A, $8D, $8E, $8D,	$8E
-	dc.b $8D, $8E, $8D, $8E, $8D, $8E, $8D,	$8E, $8D, $8E, $9F, $A0, $A1, $A2, $A3,	$A4
-	dc.b $A5, $A6, $A5, $A6, $A7, $A8, $A9,	$AA, $8D, $A6, $A5, $A6, $AB, $A6, $AB,	$A6
-	dc.b $AC, $A6, $AB, $A6, $AB, $AC, $AB,	$A6, $AB, $A6, $AB, $A6, $AD, $AE, $AF,	$B0
-	dc.b $7A, $B1, $B2, $B2, $B3, $B1, $B1,	$B2, $B3, $B1, $B2, $B3, $B1, $B1, $B2,	$B3
-	dc.b $B1, $7A, $B2, $B1, $B3, $B1, $B2,	$B4, $B3, $B5, $B2, $B1, $8C, $79, $B3,	$B1
-	dc.b $B6, $B7, $B8, $B8, $B6, $7A, $B7,	$B6, $B8, $B6, $B8, $B6, $7A, $B7, $B8,	$B6
-	dc.b $B7, $B7, $B8, $B6, $B7, $B8, $B7,	$B9, $B6, $B7, $B9, $B6, $BA, $BB, $B6,	$B7
-	dc.b $BC, $BD, $BD, $BE, $BF, $BD, $BC,	$BD, $BD, $BC, $BD, $BD, $BC, $BD, $BD,	$BE
-	dc.b $C0, $BD, $BC, $BD, $BD, $BC, $BD,	$BD, $BC, $BD, $BD, $BC, $C1, $C2, $BC,	$C3
-	dc.b $C4, $C5, $C6, $C3, $C5, $C6, $C4,	$C5, $C6, $C4, $C5, $C6, $B5, $C5, $C6,	$C4
-	dc.b $C7, $C6, $C4, $C5, $C6, $C4, $B5,	$C6, $C8, $C9, $CA, $C4, $C5, $C6, $C4,	$C5
-	dc.b $CB, $CC, $CD, $CB, $CC, $CD, $CB,	$CC, $C8, $C9, $CA, $CD, $CB, $CC, $CD,	$CB
-	dc.b $CC, $CD, $B5, $CC, $CD, $CB, $CC,	$CD, $CE, $CF, $D0, $CB, $CC, $CD, $CB,	$CC
-	dc.b $D1, $D2, $D3, $D4, $D0, $D5, $D1,	$D2, $CE, $CF, $D0, $D5, $D1, $D2, $D3,	$D4
-	dc.b $C3, $D5, $D1, $D2, $B5, $D4, $D0,	$D5, $D1, $D2, $D3, $D4, $D0, $D5, $D1,	$7A
-byte_1ECA0:	dc.b $13, 9, $A, $B, $13, 9, 7,	8, $1E,	$1C, $D6, $D7, $D8, $1C, $D9, $DA
-	dc.b $DB, $DB, $DC, $DD, $DE, $DF, $E0,	$E1, $E2, $E3, $E4, $E2, $E3, $E4, $E2,	$E3
-	dc.b $79, $79, $79, $79, $79, $79, $79,	$79, $79, $79, $8C, $79, $79, $79, $8C,	$79
-	dc.b $8D, $8D, $8E, $8D, $8D, $8D, $8E,	$8D, $A5, $A5, $A6, $A5, $A5, $A5, $A6,	$A5
-	dc.b $B2, $B3, $B1, $B2, $B2, $7A, $B1,	$B2, $B8, $7A, $B7, $B8, $B8, $B6, $B7,	$B8
-	dc.b $BD, $BC, $BD, $BD, $BD, $BC, $BD,	$BD, $C6, $C6, $C4, $C5, $BE, $C0, $C5,	$C6
-	dc.b $CD, $CD, $CB, $CC, $C4, $C7, $CC,	$CD, $D3, $D3, $B5, $D2, $D3, $D1, $D2,	$D3
-byte_1ED10:	dc.b 1,	2, 3, 4, 5, 6, 7, 8, 9,	$A, $B,	$C, $D,	1, 2, 3
-	dc.b 4,	5, 6, 7, 8, 9, $A, $B, $C, $D, 1, 2, 3,	4, 5, 6
-	dc.b $E, $F, $10, $11, $12, $13, $14, $15, $16,	$17, $18, $19, $1A, $E,	$F, $10
-	dc.b $11, $12, $13, $14, $15, $16, $17,	$18, $19, $1A, $E, $F, $10, $11, $12, $13
-	dc.b $1B, $1C, $1D, $1E, $1F, $20, $21,	$22, $23, $24, $25, $26, $27, $1B, $1C,	$1D
-	dc.b $1E, $1F, $20, $21, $22, $23, $24,	$25, $26, $27, $1B, $1C, $1D, $1E, $1F,	$20
-	dc.b $28, $29, $2A, $2B, $2C, $2D, $2E,	$2F, $30, $31, $32, $33, $34, $28, $29,	$2A
-	dc.b $2B, $2C, $2D, $2E, $2F, $30, $31,	$32, $33, $34, $28, $29, $2A, $2B, $2C,	$2D
-	dc.b $35, $36, $37, $38, $39, $3A, $3B,	$3C, $3D, $3E, $3F, $40, $41, $35, $36,	$37
-	dc.b $38, $39, $3A, $3B, $3C, $3D, $3E,	$3F, $40, $41, $35, $36, $37, $38, $39,	$3A
-	dc.b $42, $43, $44, $45, $46, $47, $48,	$49, $4A, $4B, $4C, $4D, $4E, $42, $43,	$44
-	dc.b $45, $46, $47, $48, $49, $4A, $4B,	$4C, $4D, $4E, $42, $43, $44, $45, $46,	$47
-	dc.b $4F, $50, $51, $52, $53, $54, $55,	$56, $57, $58, $59, $5A, $5B, $4F, $50,	$51
-	dc.b $52, $53, $54, $55, $56, $57, $58,	$59, $5A, $5B, $4F, $50, $51, $52, $53,	$54
-	dc.b $66, $5D, $5E, $5F, $60, $61, $62,	$63, $64, $65, $66, $5D, $5E, $5F, $60,	$61
-	dc.b $62, $63, $64, $65, $66, $5D, $5E,	$5F, $60, $61, $62, $63, $64, $65, $66,	$5D
-	dc.b $5C, $67, $68, $69, $6A, $6B, $6C,	$6D, $6E, $6F, $5C, $67, $68, $69, $6A,	$6B
-	dc.b $6C, $6D, $6E, $6F, $5C, $67, $68,	$69, $6A, $6B, $6C, $6D, $6E, $6F, $5C,	$67
-	dc.b $70, $71, $72, $73, $74, $75, $76,	$77, $78, $79, $70, $71, $72, $73, $74,	$75
-	dc.b $76, $77, $78, $79, $70, $71, $72,	$73, $74, $75, $76, $77, $78, $79, $70,	$71
-	dc.b $7A, $7B, $7C, $7D, $7E, $7F, $80,	$81, $82, $83, $7A, $7B, $7C, $7D, $7E,	$7F
-	dc.b $80, $81, $82, $83, $7A, $7B, $7C,	$7D, $7E, $7F, $80, $81, $82, $83, $7A,	$7B
-	dc.b $92, $85, $86, $87, $88, $89, $8A,	$8B, $8C, $8D, $8E, $8F, $90, $91, $92,	$85
-	dc.b $86, $87, $88, $89, $8A, $8B, $8C,	$8D, $8E, $8F, $90, $91, $92, $85, $86,	$87
-	dc.b $84, $93, $94, $95, $96, $97, $98,	$99, $9A, $9B, $9C, $99, $9D, $9B, $84,	$93
-	dc.b $94, $95, $96, $97, $98, $99, $9A,	$9B, $9C, $99, $9D, $9B, $84, $93, $94,	$95
-	dc.b $9E, $9F, $A0, $A1, $A2, $A3, $A4,	$A5, $A6, $A7, $A8, $A9, $AA, $AB, $9E,	$9F
-	dc.b $A0, $A1, $A2, $A3, $A4, $A5, $A6,	$A7, $A8, $A9, $AA, $AB, $9E, $9F, $A0,	$A1
-byte_1EED0:	dc.b 6,	7, 8, 9, $A, $B, $C, $D, $13, $14, $15,	$16, $17, $18, $19, $1A
-	dc.b $20, $21, $22, $23, $24, $25, $26,	$27, $2D, $2E, $2F, $30, $31, $32, $33,	$34
-	dc.b $3A, $3B, $3C, $3D, $3E, $3F, $40,	$41, $47, $48, $49, $4A, $4B, $4C, $4D,	$4E
-	dc.b $54, $55, $56, $57, $58, $59, $5A,	$5B, $5E, $5F, $60, $61, $62, $63, $64,	$65
-	dc.b $68, $69, $6A, $6B, $6C, $6D, $6E,	$6F, $72, $73, $74, $75, $76, $77, $78,	$79
-	dc.b $7C, $7D, $7E, $7F, $80, $81, $82,	$83, $8A, $8B, $8C, $8D, $8E, $8F, $90,	$91
-	dc.b $98, $99, $9A, $9B, $9C, $99, $9D,	$9B, $A4, $A5, $A6, $A7, $A8, $A9, $AA,	$AB
-byte_1EF40:	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	2, 3, 1, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 4, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 5,	6, 7, 8, 9, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, $A,	$B, $C,	$D, $E,	$F, $10, $11, $12, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, $13, $14, $15, $16, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, $17, $18, $19, $1A,	$1B, $1C, $1D, $1E, $1F, $20, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, $21, $22, $23, $24, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, $25, $26, $27,	$28, $29, $2A, $2B, $2C, $2D, $2E, $2F,	1
-	dc.b $35, $36, $37, $38, $30, $31, $32,	$33, $34, $35, $36, $37, $38, $30, $31,	$39
-	dc.b $3A, $3B, $3C, $3D, $3E, $3F, $40,	$41, $42, $43, $44, $45, $46, $47, $48,	$49
-	dc.b $51, $52, $53, $54, $4C, $4D, $4E,	$4F, $50, $51, $52, $53, $54, $4C, $4D,	$55
-	dc.b $56, $57, $58, $59, $5A, $5B, $5C,	$5D, $5E, $5F, $60, $61, $62, $63, $64,	$65
-	dc.b $6C, $6D, $6E, $6F, $68, $68, $69,	$6A, $6B, $6C, $6D, $6E, $6F, $68, $68,	$68
-	dc.b $70, $71, $72, $73, $74, $75, $76,	$77, $78, $79, $7A, $7B, $7C, $7D, $7E,	$68
-	dc.b $68, $68, $80, $68, $68, $68, $68,	$68, $68, $68, $68, $80, $68, $68, $81,	$82
-	dc.b $83, $84, $85, $86, $87, $88, $89,	$8A, $8B, $8C, $8D, $8E, $8F, $90, $68,	$91
-	dc.b $68, $68, $68, $68, $68, $68, $68,	$68, $68, $68, $68, $68, $68, $95, $96,	$97
-	dc.b $98, $99, $9A, $9B, $9C, $9D, $9E,	$9F, $A0, $A1, $A2, $A3, $A4, $A5, $A6,	$A7
-	dc.b $68, $68, $68, $68, $68, $68, $AC,	$AD, $AE, $AF, $68, $68, $68, $B0, $B1,	$B2
-	dc.b $B3, $B4, $B5, $B6, $B7, $B8, $B9,	$BA, $BB, $BC, $BD, $BE, $BF, $C0, $C1,	$C2
-	dc.b $68, $68, $68, $68, $68, $C7, $C8,	$C9, $CA, $CB, $68, $68, $68, $CC, $CD,	$CE
-	dc.b $CF, $D0, $D1, $D2, $D3, $D4, $D5,	$D6, $D7, $D8, $D9, $DA, $DB, $DC, $DD,	$DE
-	dc.b $68, $68, $68, $68, $68, $E3, $E4,	$E5, $E6, $E7, $E8, $68, $E9, $EA, $EB,	$EC
-	dc.b $ED, $EE, $EF, $F0, $F1, $F2, $F3,	$F4, $F5, $F6, $F7, $F8, $F9, $FA, $FB,	$FC
-byte_1F0C0:	dc.b $4A, $4B, $32, $33, $34, $35, $36,	$37, $66, $67, $4E, $4F, $50, $51, $52,	$53
-	dc.b $68, $7F, $69, $6A, $6B, $6C, $6D,	$6E, $92, $93, $94, $68, $68, $68, $68,	$80
-	dc.b $A8, $A9, $AA, $AB, $68, $68, $68,	$68, $C3, $C4, $C5, $C6, $68, $68, $68,	$68
-	dc.b $DF, $E0, $E1, $E2, $68, $68, $68,	$68, $FD, $FE, $FF, $68, $68, $68, $68,	$68
-byte_1F100:	dc.b 1,	1, 1, 1, 1, 2, 3, 4, 5,	6, 7, 1, 8, 9, $A, $B
-	dc.b $C, $D, 1,	$E, $F,	$10, $11, $12, $13, $14, $15, $16, $17,	$18, $19, $1A
-	dc.b 1,	1, 1, 1, 1, 1, $1E, $1F, $20, $21, $22,	$23, $24, $25, 1, $26
-	dc.b $27, $28, $29, $2A, $2B, $2C, $2D,	$2E, $2F, $30, $31, $32, $33, $34, $35,	$36
-	dc.b 1,	1, 1, 1, 1, 1, 1, $3A, $3B, $3C, $3D, $3E, 1, $3F, $40,	$41
-	dc.b $42, $43, $44, 1, $45, $46, $47, $48, $49,	$4A, $4B, $4C, $4D, $4E, 1, $1E
-	dc.b 1,	1, 1, 1, 1, 1, 1, $4F, $50, $51, $52, $53, 1, 1, $54, $42
-	dc.b $42, $55, $56, 1, 1, 1, 1,	1, 1, 1, $57, $58, $59,	$5A, 1,	1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, $1E, $1E, 1, 1, 1,	1, $5B,	$5C
-	dc.b $5D, $5E, $5F, 1, 1, 1, 1,	1, 1, 1, 1, 1, 1, 1, 1,	1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 1, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 1, 1, 1, 1, 1
-byte_1F1C0:	dc.b $1B, $1C, $1D, 1, 1, 1, 1,	1, $37,	$38, $39, 1, 1,	1, 1, 1
-	dc.b $1E, 1, 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 1, 1, 1
-	dc.b 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 1, 1, 1, 1, 1
-	dc.b $60, $4D, $88, $89, $8A, $8B, $8C,	1, $8D,	$41, $8E, $8F, $81, $82, $83, $84
-	dc.b $85, $86, $20, $87, $60, $4D, $88,	$89, $8A, $8B, $8C, 1, $8D, $41, $8E, $8F
-	dc.b $80, $6D, $9A, $9B, $9C, $CA, $CB,	$21, $CC, $61, $CD, $CE, $90, $A5, $A6,	$A7
-	dc.b $C8, $C9, $40, $2D, $80, $6D, $9A,	$9B, $9C, $CA, $CB, $21, $CC, $61, $CD,	$CE
-	dc.b $89, $8A, $8B, $8C, 1, 2, 3, 4, 5,	6, 7, 8, 9, $A,	$B, $C
-	dc.b $D, $E, $F, $10, $11, $12,	$13, $14, $15, $16, $17, $18, $19, $1A,	$1B, $1C
-	dc.b $9B, $9C, $CA, $CB, $21, $22, $23,	$24, $25, $26, $27, $28, $29, $2A, $2B,	$2C
-	dc.b $2D, $2E, $2F, $30, $31, $32, $33,	$34, $35, $36, $37, $38, $39, $3A, $3B,	$3C
-	dc.b $8B, $8C, 1, $8D, $41, $42, $43, $44, $45,	$46, $47, $48, $49, $4A, $4B, $4C
-	dc.b $4D, $4E, $4F, $50, $51, $52, $53,	$54, $55, $56, $57, $58, $59, $5A, $5B,	$5C
-	dc.b $CA, $CB, $21, $CC, $61, $62, $63,	$64, $65, $66, $67, $68, $69, $6A, $6B,	$6C
-	dc.b $6D, $6E, $6F, $70, $71, $72, $73,	$74, $75, $76, $77, $78, $79, $7A, $7B,	$7C
-	dc.b $8D, $41, $8E, $8F, $81, $82, $83,	$84, $85, $86, $20, $87, $60, $4D, $88,	$89
-	dc.b $8A, $8B, $8C, 1, $8D, $41, $8E, $8F, $81,	$82, $83, $84, $85, $86, $20, $87
-	dc.b $CC, $61, $CD, $CE, $90, $91, $92,	$93, $94, $95, $96, $97, $98, $99, $9A,	$9B
-	dc.b $9C, $9D, $9E, $9F, $A0, $A1, $A2,	$A3, $A4, $A5, $A6, $A7, $A8, $A9, $AA,	$AB
-	dc.b $8E, $8F, $81, $82, $83, $B0, $B1,	$B2, $B3, $B4, $B5, $B6, $B7, $89, $8A,	$8B
-	dc.b $8C, $B8, $B9, $BA, $BB, $BC, $BD,	$BE, $BF, $84, $85, $86, $C0, $C1, $C2,	$C3
-	dc.b $CD, $CE, $90, $A5, $A6, $A7, $C8,	$C9, $40, $2D, $80, $6D, $9A, $9B, $9C,	$CA
-	dc.b $CB, $21, $CC, $61, $CD, $CE, $90,	$A5, $A6, $A7, $C8, $C9, $40, $2D, $80,	$6D
-	dc.b $82, $83, $84, $85, $CF, $D0, $87,	$60, $4D, $88, $89, $8A, $8B, $8C, 1, $8D
-	dc.b $41, $8E, $8F, $81, $82, $83, $84,	$85, $86, $20, $87, $60, $4D, $88, $89,	$8A
-	dc.b $A5, $A6, $A7, $C8, $D1, $D2, $2D,	$80, $6D, $9A, $9B, $9C, $CA, $CB, $21,	$CC
-	dc.b $61, $CD, $CE, $90, $A5, $A6, $A7,	$C8, $C9, $40, $2D, $80, $6D, $9A, $9B,	$9C
-	dc.b $84, $85, $86, $20, $87, $60, $4D,	$88, $89, $8A, $8B, $8C, 1, $8D, $41, $8E
-	dc.b $8F, $81, $82, $83, $84, $85, $86,	$20, $87, $60, $4D, $88, $89, $8A, $8B,	$8C
-	dc.b $A7, $C8, $C9, $40, $D3, $D4, $6D,	$9A, $9B, $9C, $CA, $CB, $21, $CC, $61,	$CD
-	dc.b $CE, $90, $A5, $A6, $A7, $C8, $C9,	$40, $2D, $80, $6D, $9A, $9B, $9C, $CA,	$CB
-	dc.b $20, $87, $60, $4D, $D5, $D6, $8A,	$8B, $8C, 1, $8D, $41, $8E, $8F, $81, $82
-	dc.b $83, $84, $85, $86, $20, $87, $60,	$4D, $88, $89, $8A, $8B, $8C, 1, $8D, $87
-	dc.b $40, $2D, $80, $6D, $9A, $9B, $9C,	$CA, $CB, $21, $CC, $61, $CD, $CE, $90,	$A5
-	dc.b $A6, $A7, $C8, $C9, $40, $2D, $80,	$6D, $9A, $9B, $9C, $CA, $CB, $21, $CC,	$2D
-	dc.b $60, $4D, $88, $89, $D7, $D8, $8C,	1, $8D,	$41, $8E, $8F, $81, $82, $83, $84
-	dc.b $85, $86, $20, $87, $60, $4D, $88,	$89, $8A, $8B, $8C, 1, $8D, $87, $60, $4D
-	dc.b $80, $6D, $9A, $9B, $D9, $DA, $CB,	$21, $CC, $61, $CD, $CE, $90, $A5, $A6,	$A7
-	dc.b $C8, $C9, $40, $2D, $80, $6D, $9A,	$9B, $9C, $CA, $CB, $21, $CC, $2D, $80,	$6D
-	dc.b $89, $8A, $8B, $8C, 1, $8D, $41, $8E, $8F,	$81, $82, $83, $84, $85, $86, $20
-	dc.b $87, $60, $4D, $88, $89, $8A, $8B,	$8C, 1,	$8D, $87, $60, $4D, $88, $89, $8A
-	dc.b $9B, $9C, $CA, $CB, $DB, $DC, $61,	$CD, $CE, $90, $A5, $A6, $A7, $C8, $C9,	$40
-	dc.b $2D, $80, $6D, $9A, $9B, $9C, $CA,	$CB, $21, $CC, $2D, $80, $6D, $9A, $9B,	$9C
-	dc.b $8B, $8C, 1, $8D, $DD, $DE, $8F, $81, $82,	$83, $84, $85, $86, $20, $87, $60
-	dc.b $4D, $88, $89, $8A, $8B, $8C, 1, $8D, $87,	$60, $4D, $88, $89, $8A, $8B, $8C
-	dc.b $CA, $CB, $21, $CC, $2D, $80, $CE,	$90, $A5, $A6, $A7, $C8, $C9, $40, $2D,	$80
-	dc.b $6D, $9A, $9B, $9C, $CA, $CB, $21,	$CC, $2D, $80, $6D, $9A, $9B, $9C, $CA,	$CB
-	dc.b $8D, $41, $8E, $8F, $DF, $E0, $83,	$84, $85, $86, $20, $87, $60, $4D, $88,	$89
-	dc.b $8A, $8B, $8C, 1, $8D, $87, $60, $4D, $88,	$89, $8A, $8B, $8C, 1, $8D, $87
-	dc.b $CC, $61, $CD, $CE, $E1, $E2, $A6,	$A7, $C8, $C9, $40, $2D, $80, $6D, $9A,	$9B
-	dc.b $9C, $CA, $CB, $21, $CC, $2D, $80,	$6D, $9A, $9B, $9C, $CA, $CB, $21, $CC,	$2D
-	dc.b $8E, $8F, $81, $82, $83, $84, $85,	$86, $20, $87, $60, $4D, $88, $89, $8A,	$8B
-	dc.b $8C, 1, $8D, $87, $60, $4D, $88, $89, $8A,	$8B, $8C, 1, $8D, $87, $60, $4D
-	dc.b $CD, $CE, $90, $A5, $A6, $A7, $C8,	$C9, $40, $2D, $80, $6D, $9A, $9B, $9C,	$CA
-	dc.b $CB, $21, $CC, $2D, $80, $6D, $9A,	$9B, $9C, $CA, $CB, $21, $CC, $2D, $80,	$6D
-	dc.b $82, $83, $8B, $85, $86, $20, $87,	$60, $4D, $88, $89, $8A, $8B, $8C, 1, $8D
-	dc.b $87, $60, $4D, $88, $89, $8A, $8B,	$8C, 1,	$8D, $87, $60, $4D, $88, $89, $8A
-	dc.b $A5, $A6, $CA, $C8, $C9, $40, $2D,	$80, $6D, $9A, $9B, $9C, $CA, $CB, $21,	$CC
-	dc.b $2D, $80, $6D, $9A, $9B, $9C, $CA,	$CB, $21, $CC, $2D, $80, $6D, $9A, $9B,	$9C
-	dc.b $81, $82, $83, $84, $85, $86, $20,	$87, $90, $A5, $A6, $A7, $C8, $C9, $40,	$2D
-	dc.b $1D, $1E, $1F, $20, $87, $60, $4D,	$88, $3D, $3E, $3F, $40, $2D, $80, $6D,	$9A
-	dc.b $5D, $5E, $5F, $60, $4D, $88, $89,	$8A, $7D, $7E, $7F, $80, $6D, $9A, $9B,	$9C
-	dc.b $60, $4D, $88, $89, $8A, $8B, $8C,	1, $AC,	$AD, $AE, $AF, $9C, $CA, $CB, $21
-	dc.b $C4, $C5, $C6, $C7, $8C, 1, $8D, $87, $9A,	$9B, $9C, $CA, $CB, $21, $CC, $2D
-	dc.b $8B, $8C, 1, $8D, $87, $60, $4D, $88, $CA,	$CB, $21, $CC, $2D, $80, $6D, $9A
-	dc.b 1,	$8D, $87, $60, $4D, $88, $89, $8A, $21,	$CC, $2D, $80, $6D, $9A, $9B, $9C
-	dc.b $60, $4D, $88, $89, $8A, $8B, $8C,	1, $80,	$6D, $9A, $9B, $9C, $CA, $CB, $21
-	dc.b $88, $89, $8A, $8B, $8C, 1, $8D, $87, $9A,	$9B, $9C, $CA, $CB, $21, $CC, $2D
-	dc.b $8B, $8C, 1, $8D, $87, $60, $4D, $88, $CA,	$CB, $21, $CC, $2D, $80, $6D, $9A
-	dc.b 1,	$8D, $41, $8E, $4D, $88, $89, $8A, $21,	$CC, $61, $CD, $6D, $9A, $9B, $9C
-	dc.b $60, $4D, $88, $89, $8A, $8B, $8C,	1, $80,	$6D, $9A, $9B, $9C, $CA, $CB, $21
-	dc.b $88, $89, $8A, $8B, $8C, 1, $8D, $87, $9A,	$9B, $9C, $CA, $CB, $21, $CC, $2D
-	dc.b $8B, $8C, 1, $8D, $87, $60, $4D, $88, $CA,	$CB, $21, $CC, $2D, $80, $6D, $9A
-	dc.b $86, $20, $C9, $40, $87, $60, $2D,	$80, $88, $89, $9A, $9B, $8A, $8B, $9C,	$CA
-	dc.b 1,	$8D, $21, $CC, $41, $8E, $61, $CD, $81,	$82, $90, $A5
-byte_1F66C:	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	1, 2, 3, 4, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 5
-	dc.b 6,	7, 8, 9, $A, $B, $C, 0,	0, 0, 0, 0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, $D,	$E, $F,	$10, $11, $12, $13, $14, $15, $16, $17
-	dc.b $18, 0, 0,	0, 0, 0, 0, 0, 0, 0, $19, $1A, $1B, $1C, $1D, $1E
-	dc.b $1F, $20, $21, $22, $23, $24, $25,	$26, $27, $28, 0, 0, 0,	0, 0, 0
-	dc.b 0,	0, $29,	$2A, $2B, $2C, $2D, $2E, $2F, $30, $31,	$32, $33, $34, $35, $36
-	dc.b $37, $38, 0, 0, 0,	0, 0, 0, 0, 0, $39, $3A, $3B, $3C, $3D,	$3E
-	dc.b $3F, $40, $41, $42, $43, $44, $45,	$46, $47, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	0, $48,	$49, $4A, $4B, $4C, $4D, $4E, $4F, $50,	$51, $52, $53, $54, $55
-	dc.b $56, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	$57, $58, $59, $5A, $5B
-	dc.b $5C, $5D, $5E, $5F, $60, $61, $62,	$63, $64, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	0, $65,	$66, $67, $68, $69, $6A, $6B, $6C, $6D,	$6E, $6F, $70, $71, $72
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $73,	$74, $75, $76, $77, $78
-	dc.b $79, $7A, $7B, $7C, $7D, $7E, $7F,	$80, 0,	0, 0, 0, 0, 0, 0, 0
-	dc.b 0,	0, $81,	$82, $83, $84, $85, $86, $87, $88, $89,	$8A, $8B, $8C, $8D, $8E
-	dc.b $8F, $90, 0, 0, $91, $92, $93, $94, 0, 0, 0, $95, $96, $97, $98, $99
-	dc.b $9A, $9B, $9C, $9D, $9E, $9F, $A0,	$A1, $A2, $A3, $A4, 0, $A5, $A6, $A7, $A8
-	dc.b 0,	0, 0, $A9, $AA,	$AB, $AC, $AD, $AE, $AF, $B0, $B1, $B2,	$B3, $B4, $B5
-	dc.b $B6, $B7, $B8, 0, $B9, $BA, $5E, $BB, 0, 0, 0, 0, $BC, $BD, $5E, $BE
-	dc.b $BF, $C0, $C1, $C2, $C3, $C4, $C5,	$C6, $C7, $9C, $C8, $C9, $CA, $CB, $CC,	$CD
-	dc.b 0,	0, 0, 0, $CE, $CF, $D0,	$D1, $D2, $D3, $C0, $C0, $D4, $D5, $D6,	$D7
-	dc.b $D8, $9C, $D9, $DA, $DB, $DC, $DD,	0, 0, 0, 0, 0, $DE, $DF, $E0, $E1
-	dc.b $E2, $E3, $C0, $E4, $E5, $E6, $E7,	$E8, $E9, $EA, $EB, $EC, $ED, $EE, $EF,	0
-byte_1F7EC:	dc.b 0,	0, 0, 0, 1, 2, 3, 4, 5,	6, 7, 8, 9, $A,	$B, $C
-	dc.b $D, 0, $E,	$F, $10, $11, 0, 0, 0, 0, 0, 0,	0, $12,	$13, $14
-	dc.b $15, $16, $17, $18, $19, $1A, $1B,	$1C, $1D, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, $1E, $1F, $20, $21, $22, $23,	$24, $25, $26
-	dc.b $27, $28, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $29,	$2A
-	dc.b $2B, $2C, $2D, $2E, $2F, $30, $31,	$32, $33, $34, $35, 0, 0, 0, 0,	0
-byte_1F84C:	dc.b $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $C5, $C6, $C7, $C8, $C9, $CA
-	dc.b $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F
-	dc.b $D3, $D3, $D3, $D3, $D3, $D3, $D3,	$D3, $D4, $D5, $D6, $D7, $D8, $D8, $D9,	$DA
-	dc.b $DB, $DC, $D3, $D3, $D3, $D3, $D3,	$D3, $D3, $D3, $D3, $D3, $D3, $D3, $D3,	$D3
-	dc.b $DD, $DD, $DD, $DD, $DD, $DD, $DD,	$DE, $DF, $D8, $D8, $D8, $D8, $D8, $D8,	$D8
-	dc.b $E0, $E1, $E2, $DD, $DD, $DD, $DD,	$DD, $DD, $DD, $DD, $DD, $DD, $DD, $DD,	$DD
-	dc.b $E3, $E3, $E3, $E3, $E3, $E3, $E3,	$E4, $E5, $D8, $D8, $D8, $D8, $D8, $D8,	$D8
-	dc.b $D8, $E0, $E6, $E3, $E3, $E3, $E3,	$E3, $E3, $E3, $E3, $E3, $E3, $E3, $E3,	$E3
-byte_1F8CC:	dc.b $C0, $C1, $C2, $C3, $C4, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, $CB, $CC, $CD, $CE, $CF, $D0,	$D1, $D2, $F
-byte_1F8EC:	dc.b 1,	2, 3, 4, 5, 6, 7, 8, 9,	$A, $B,	$C, $D,	$E, $F,	$F
-	dc.b $F, $F, $10, $11, $12, $13, $14, $15, $16,	$17, $18, $19, $1A, $1B, $1C, $1D
-	dc.b $1E, $1F, $20, $21, $22, $23, $24,	$25, $26, $27, $28, $29, $F, $F, $F, $F
-	dc.b $F, $F, $2A, $2B, $2C, $2D, $2E, $2F, $30,	$31, $32, $33, $34, $35, $36, $37
-	dc.b $38, $39, $3A, $3B, $3C, $3D, $3E,	$3F, $40, $41, $42, $43, $44, $F, $F, $F
-	dc.b $F, $F, $F, $F, $45, $46, $47, $48, $49, $4A, $4B,	$4C, $4D, $4E, $4F, $50
-	dc.b $51, $52, $53, $54, $55, $56, $57,	$58, $59, $5A, $5B, $5C, $5D, $F, $F, $F
-	dc.b $F, $F, $5E, $5F, $60, $61, $62, $63, $64,	$65, $66, $67, $68, $69, $6A, $6B
-	dc.b $6C, $F, $6D, $F, $6E, $6F, $70, $71, $72,	$73, $74, $F, $F, $F, $F, $F
-	dc.b $75, $76, $77, $78, $79, $7A, $7B,	$7C, $7D, $7E, $7F, $80, $81, $82, $83,	$84
-	dc.b $F, $F, $85, $F, $F, $F, $F, $86, $F, $F, $F, $F, $F, $F, $F, $87
-	dc.b $88, $89, $8A, $8B, $F, $8C, $8D, $8E, $8F, $90, $91, $92,	$93, $94, $95, $F
-	dc.b $F, $96, $97, $98,	$99, $9A, $9B, $F, $F, $F, $F, $F, $F, $F, $F, $F
-	dc.b $F, $F, $F, $F, $F, $9C, $9D, $9E,	$9F, $A0, $F, $A1, $A2,	$F, $F,	$F
-	dc.b $A3, $A4, $A5, $A6, $A7, $A8, $A9,	$AA, $F, $F, $F, $F, $F, $F, $F, $F
-	dc.b $F, $F, $F, $F, $F, $F, $F, $F, $F, $AB, $AC, $AD,	$AE, $AF, $B0, $B1
-	dc.b $B2, $B3, $B4, $B5, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F, $F
-	dc.b $F, $F, $F, $F, $F, $F, $B6, $B7, $B8, $B9, $BA, $BB, $BC,	$BD, $BE, $BF
-	dc.b $C0, $C1, $C2, $C3, $C4, $F, $F, $F, $F, $F, $C5, $C6, $C7, $C8, $C9, $CA
-	dc.b $F, $F, $F, $F, $F, $F, $F, $CB, $CC, $CD,	$CE, $CF, $D0, $D1, $D2, $F
-	dc.b $D3, $D3, $D3, $D3, $D3, $D3, $D3,	$D3, $D4, $D5, $D6, $D7, $D8, $D8, $D9,	$DA
-	dc.b $DB, $DC, $D3, $D3, $D3, $D3, $D3,	$D3, $D3, $D3, $D3, $D3, $D3, $D3, $D3,	$D3
-	dc.b $DD, $DD, $DD, $DD, $DD, $DD, $DD,	$DE, $DF, $D8, $D8, $D8, $D8, $D8, $D8,	$D8
-	dc.b $E0, $E1, $E2, $DD, $DD, $DD, $DD,	$DD, $DD, $DD, $DD, $DD, $DD, $DD, $DD,	$DD
-	dc.b $E3, $E3, $E3, $E3, $E3, $E3, $E3,	$E4, $E5, $D8, $D8, $D8, $D8, $D8, $D8,	$D8
-	dc.b $D8, $E0, $E6, $E3, $E3, $E3, $E3,	$E3, $E3, $E3, $E3, $E3, $E3, $E3, $E3,	$E3
-byte_1FA8C:	dc.b 1,	2, 3, 4, 5, 6, 7, 8, 9,	$A, $B,	$C, $D,	$E, $F,	$10
-	dc.b $11, $12, $13, $14, $15, $16, $17,	$18, $19, $1A, $1B, $1C, $1D, $1E, $1F,	$20
-	dc.b $21, $22, $23, $24, $25, $26, $27,	$28, $29, $2A, $2B, $2C, $2D, $2E, $2F,	$30
-	dc.b $31, $32, $33, $34, $35, $36, $37,	$38, $39, $3A, $3B, $3C, $3D, $3E, $3F,	$40
-	dc.b $41, $42, $43, $44, $45, $46, $47,	$48, $49, $4A, $4B, $4C, $4D, $4E, $4F,	$50
-	dc.b $51, $52, $53, $54, $55, $56, $57,	$58, $59, $5A, $5B, $5C, $5D, $5E, $5F,	$60
-	dc.b $61, $62, $63, $64, $65, $66, $67,	$68, $69, $6A, $6B, $6C, $6D, $6E, $6F,	$70
-	dc.b $71, $72, $73, $74, $75, $76, $77,	$78, $79, $7A, $7B, $7C, $7D, $7E, $7F,	$80
-	dc.b $81, $82, $83, $84, $85, $86, $87,	$88, $89, $8A, $8B, $8C, $8D, $8E, $8F,	$90
-	dc.b $91, $92, $93, $94, $95, $96, $97,	$98, $99, $9A, $9B, $9C, $9D, $9E, $9F,	$A0
-	dc.b $A1, $A2, $A3, $A4, $A5, $A6, $A7,	$A8, $A9, $AA, $AB, $AC, $AD, $AE, $AF,	$B0
-	dc.b $B1, $B2, $B3, $B4, $B5, $B6, $B7,	$B8, $B9, $BA, $BB, $BC, $BD, $BE, $BF,	$C0
-	dc.b $C1, $C2, $C3, $C4, $C5, $C6, $C7,	$C8, $C9, $CA, $CB, $CC, $CD, $CE, $CF,	$D0
-	dc.b $D1, $D2, $D3, 4, $D4, $D5, $D6, $D7, 4, $D8, $D9,	$DA, $DB, $DC, $DD, $DE
-byte_1FB6C:	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $E0, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $E1, $DF, $E2, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$E3, $DF, $E4, $DF, $DF, $DF, $DF, $E5,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $E6,	$DF
-	dc.b $E7, $DF, $E8, $E9, $DF, $EA, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $E6, $DF, $DF,	$E2
-	dc.b $EB, $DF, $DF, $EC, $ED, $DF, $DF,	$E5, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $EE, $DF, $E1,	$EF, $DF, $F0, $F1, $DF, $EA, $DF, $DF,	$DF
-	dc.b $DF, $DF, $E8, $DF, $DF, $ED, $F2,	$F3, $E2, $E5, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $F4, $F5, $EA, $DF,	$DF, $DF, $DF, $DF, $F6, $DF, $DF, $E4,	$DF
-	dc.b $DF, $DF, $DF, $DF, $F7, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $F8, $F9, $DF, $DF,	$DF, $FA, $FB, $E0, $FC, $DF, $EA, $DF,	$DF
-	dc.b $F4, $F4, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $E2, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$FD, $DF, $E3, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $E3, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $FD, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $E2,	$DF, $FE, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $EA, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $E1, $E3,	$DF, $DF, $F2, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF, $DF, $DF, $DF, $DF, $DF, $DF, $DF,	$DF
-	dc.b 1,	2, 3, 4, 5, 6, 7, 8, 9,	$A, $B,	$C, $D,	$E, $F,	$10
-	dc.b $11, $12, $13, $14, $15, $16, $17,	$18, $19, $1A, $1B, $1C, $1D, $1E, $1F,	$20
-	dc.b $21, $22, $23, $24, $25, $26, $27,	$28, $29, $2A, $2B, $2C, $2D, $2E, $2F,	$30
-	dc.b $31, $32, $33, $34, $35, $36, $37,	$38, $39, $3A, $3B, $3C, $3D, $3E, $3F,	$40
-	dc.b $41, $42, $43, $44, $45, $46, $47,	$48, $49, $4A, $4B, $4C, $4D, $4E, $4F,	$50
-	dc.b $51, $52, $53, $54, $55, $56, $57,	$58, $59, $5A, $5B, $5C, $5D, $5E, $5F,	$60
-	dc.b $61, $62, $63, $64, $65, $66, $67,	$68, $69, $6A, $6B, $6C, $6D, $6E, $6F,	$70
-	dc.b $71, $72, $73, $74, $75, $76, $77,	$78, $79, $7A, $7B, $7C, $7D, $7E, $7F,	$80
-	dc.b $81, $82, $83, $84, $85, $86, $87,	$88, $89, $8A, $8B, $8C, $8D, $8E, $8F,	$90
-	dc.b $91, $92, $93, $94, $95, $96, $97,	$98, $99, $9A, $9B, $9C, $9D, $9E, $9F,	$A0
-	dc.b $A1, $A2, $A3, $A4, $A5, $A6, $A7,	$A8, $A9, $AA, $AB, $AC, $AD, $AE, $AF,	$B0
-	dc.b $B1, $B2, $B3, $B4, $B5, $B6, $B7,	$B8, $B9, $BA, $BB, $BC, $BD, $BE, $BF,	$C0
-	dc.b $C1, $C2, $C3, $C4, $C5, $C6, $C7,	$C8, $C9, $CA, $CB, $CC, $CD, $CE, $CF,	$D0
-	dc.b $D1, $D2, $D3, 4, $D4, $D5, $D6, $D7, 4, $D8, $D9,	$DA, $DB, $DC, $DD, $DE
-byte_1FDEC:	dc.b $42, 2, $42, $16, $42, $17, $42, $18, $42,	$19, $42, $1A, $42, 2, $42, $16
-	dc.b $42, $17, $42, $1B, $42, $19, $42,	$1A, $42, 2, $42, $16, $42, $17, $42, $1B
-	dc.b $42, $19, $42, $1A, $42, 2, $42, $16, $42,	$17, $42, $1B, $42, $19, $42, $1A
-	dc.b $42, 2, $42, $16, $42, $17, $42, $1B, $42,	$19, $42, $1A, $42, 2, $42, $16
-	dc.b $42, $17, $42, $1B, $42, $19, $42,	$1A, $42, 2, $42, $16, $42, $17, $42, $1B
-	dc.b $42, $1C, $42, $1D, $42, $1E, $42,	$1F, $42, $1C, $42, $1C, $42, $1C, $42,	$1D
-	dc.b $42, $1E, $42, $1F, $42, $1C, $42,	$1C, $42, $1C, $42, $1D, $42, $1E, $42,	$1F
-	dc.b $42, $1C, $42, $1C, $42, $1C, $42,	$1D, $42, $1E, $42, $1F, $42, $1C, $42,	$1C
-	dc.b $42, $1C, $42, $1D, $42, $1E, $42,	$1F, $42, $1C, $42, $1C, $42, $1C, $42,	$1D
-	dc.b $42, $1E, $42, $1F, $42, $1C, $42,	$1C, $42, $1C, $42, $1D, $42, $1E, $42,	$1F
-	dc.b $42, $20, $42, $21, $42, $22, $42,	$23, $42, $24, $42, $25, $42, $26, $42,	$27
-	dc.b $42, $22, $42, $28, $42, $29, $42,	$25, $42, $26, $42, $27, $42, $22, $42,	$28
-	dc.b $42, $29, $42, $25, $42, $26, $42,	$27, $42, $22, $42, $28, $42, $29, $42,	$25
-	dc.b $42, $26, $42, $27, $42, $22, $42,	$28, $42, $29, $42, $25, $42, $26, $42,	$27
-	dc.b $42, $22, $42, $28, $42, $29, $42,	$25, $42, $26, $42, $27, $42, $22, $42,	$28
-	dc.b $42, $2A, $42, $2B, $42, $2C, $42,	$2D, $42, $2E, $42, $2F, $42, $30, $42,	$2B
-	dc.b $42, $31, $42, $2D, $42, $2E, $42,	$2F, $42, $30, $42, $2B, $42, $31, $42,	$2D
-	dc.b $42, $2E, $42, $2F, $42, $30, $42,	$2B, $42, $31, $42, $2D, $42, $2E, $42,	$2F
-	dc.b $42, $30, $42, $2B, $42, $31, $42,	$2D, $42, $2E, $42, $2F, $42, $30, $42,	$2B
-	dc.b $42, $31, $42, $2D, $42, $2E, $42,	$2F, $42, $30, $42, $2B, $42, $31, $42,	$2D
-	dc.b $42, $32, $42, $33, $42, $34, $42,	$35, $42, $36, $42, $37, $42, $38, $42,	$33
-	dc.b $42, $34, $42, $35, $42, $36, $42,	$37, $42, $38, $42, $33, $42, $34, $42,	$35
-	dc.b $42, $36, $42, $37, $42, $38, $42,	$33, $42, $34, $42, $35, $42, $36, $42,	$37
-	dc.b $42, $38, $42, $33, $42, $34, $42,	$35, $42, $36, $42, $37, $42, $38, $42,	$33
-	dc.b $42, $34, $42, $35, $42, $36, $42,	$37, $42, $38, $42, $33, $42, $34, $42,	$35
-	dc.b $42, $39, $42, $3A, $42, $3B, $42,	$3C, $42, $3D, $42, $3E, $42, $39, $42,	$3A
-	dc.b $42, $3B, $42, $3C, $42, $3D, $42,	$3E, $4A, $3D, $42, $3A, $42, $3B, $42,	$3C
-	dc.b $42, $3D, $42, $3E, $42, $39, $42,	$3A, $42, $3B, $42, $3C, $42, $3D, $42,	$3E
-	dc.b $42, $39, $42, $3A, $42, $3B, $42,	$3C, $42, $3D, $42, $3E, $42, $39, $42,	$3A
-	dc.b $42, $3B, $42, $3C, $42, $3D, $42,	$3E, $42, $39, $42, $3A, $42, $3B, $42,	$3C
-	dc.b $42, $3F, $42, $40, $42, $41, $42,	$42, $42, $43, $42, $44, $42, $3F, $42,	$40
-	dc.b $42, $41, $42, $42, $42, $43, $42,	$44, $42, $3F, $42, $40, $42, $41, $42,	$42
-	dc.b $42, $43, $42, $44, $42, $3F, $42,	$40, $42, $41, $42, $42, $42, $43, $42,	$44
-	dc.b $42, $3F, $42, $40, $42, $41, $42,	$42, $42, $43, $42, $44, $42, $3F, $42,	$40
-	dc.b $42, $41, $42, $42, $42, $43, $42,	$44, $42, $3F, $42, $40, $42, $41, $42,	$42
-	dc.b $42, $45, $42, $46, $42, $47, $4A,	$46, $4A, $45, $42, $48, $42, $45, $42,	$46
-	dc.b $42, $47, $4A, $46, $4A, $45, $42,	$48, $42, $45, $42, $49, $42, $47, $4A,	$46
-	dc.b $4A, $45, $42, $48, $42, $45, $42,	$49, $42, $47, $4A, $46, $4A, $45, $42,	$48
-	dc.b $42, $45, $42, $46, $42, $47, $4A,	$46, $4A, $45, $42, $48, $42, $45, $42,	$46
-	dc.b $42, $47, $4A, $46, $4A, $45, $42,	$48, $42, $45, $42, $46, $42, $47, $4A,	$46
-byte_2006C:	dc.b $42, $4A, $42, $4B, $42, $4C, $42,	$4D, $4A, $4A, $42, $4E, $42, $4A, $42,	$4F
-	dc.b $42, $50, $42, $51, $4A, $4A, $42,	$4E, $42, $4A, $42, $52, $42, $53, $42,	$54
-	dc.b $4A, $4A, $42, $4E, $42, $4A, $4A,	$51, $4A, $50, $4A, $4F, $4A, $4A, $42,	$4E
-	dc.b $42, $4A, $4A, $4D, $4A, $4C, $4A,	$4B, $4A, $4A, $42, $4E, $42, $4A, $42,	$4B
-	dc.b $42, $4C, $42, $4D, $4A, $4A, $42,	$4E, $42, $4A, $42, $4F, $42, $50, $42,	$51
-	dc.b $42, $56, $42, $57, $42, $58, $42,	$59, $4A, $56, $42, $5A, $42, $56, $42,	$5B
-	dc.b $42, $5C, $42, $5D, $4A, $56, $42,	$5A, $42, $56, $42, $5E, $42, $5F, $42,	$60
-	dc.b $4A, $56, $42, $5A, $42, $56, $4A,	$5D, $4A, $5C, $4A, $5B, $4A, $56, $42,	$5A
-	dc.b $42, $56, $4A, $59, $4A, $58, $4A,	$57, $4A, $56, $42, $5A, $42, $56, $42,	$57
-	dc.b $42, $58, $42, $59, $4A, $56, $42,	$5A, $42, $56, $42, $5B, $42, $5C, $42,	$5D
-	dc.b $42, $62, $42, $63, $42, $64, $4A,	$63, $4A, $62, $42, $65, $42, $62, $42,	$63
-	dc.b $42, $66, $4A, $63, $4A, $62, $42,	$65, $42, $62, $42, $63, $42, $67, $4A,	$63
-	dc.b $4A, $62, $42, $65, $42, $62, $42,	$68, $42, $69, $4A, $63, $4A, $62, $42,	$65
-	dc.b $42, $62, $42, $63, $42, $6A, $4A,	$63, $4A, $62, $42, $65, $42, $62, $42,	$63
-	dc.b $42, $69, $4A, $63, $4A, $62, $42,	$65, $42, $62, $42, $63, $42, $6A, $4A,	$63
-	dc.b $42, $6B, $52, $3A, $52, $3B, $52,	$3C, $4A, $6B, $42, $6C, $42, $6B, $52,	$3A
-	dc.b $52, $3B, $52, $3C, $4A, $6B, $42,	$6C, $42, $6B, $52, $3A, $52, $3B, $52,	$3C
-	dc.b $4A, $6B, $42, $6C, $42, $6B, $52,	$3A, $52, $3B, $52, $3C, $4A, $6B, $42,	$6C
-	dc.b $42, $6B, $52, $3A, $52, $3B, $52,	$3C, $4A, $6B, $42, $6C, $42, $6B, $52,	$3A
-	dc.b $52, $3B, $52, $3C, $4A, $6B, $42,	$6C, $42, $6B, $52, $3A, $52, $3B, $52,	$3C
-byte_201AC:	dc.b 0,	1, 2, 3, 4, 0, 0, 0, 0,	9, $A, $B, $C, 0, 0, 0
-	dc.b 0,	0, $13,	$14, $15, 0, 0,	0, $1B,	$1C, $1D, $1E, $1F, $20, $21, $22
-	dc.b $29, $2A, $2B, $2C, $2D, $2E, $2F,	$30, $39, $3A, $3B, $3C, $3D, $3E, $3F,	$40
-	dc.b 0,	0, $49,	$4A, $4B, $4C, 0, 0
-byte_201E4:	dc.b 0,	0, 5, 6, 7, 8, 0, 0, 0,	0, $D, $E, $F, $10, $11, $12
-	dc.b 0,	0, 0, $16, $17,	$18, $19, $1A, 0, $23, $24, $25, $26, $27, $28,	0
-	dc.b $31, $32, $33, $34, $35, $36, $37,	$38, $41, $42, $43, $44, $45, $46, $47,	$48
-	dc.b $4D, $4E, $4F, $50, $51, $52, $53,	$54
-byte_2021C:	dc.b 0,	1, 2, 3, 4, 0, 0, 0, 0,	9, $A, $B, $C, 0, 0, 0
-	dc.b 0,	0, $13,	$14, $15, 0, 0,	0, $1B,	$1C, $1D, $1E, $1F, $20, $21, $22
-	dc.b $29, $2A, $2B, $2C, $2D, $2E, $2F,	$30, $39, $3A, $3B, $3C, $3D, $3E, $3F,	$40
-	dc.b 0,	0, $49,	$4A, $4B, $4C, 0, 0
-byte_20254:	dc.b 0,	0, 5, 6, 7, 8, 0, 0, 0,	0, $D, $E, $F, $10, $11, $12
-	dc.b 0,	0, 0, $16, $17,	$18, $19, $1A, 0, $23, $24, $25, $26, $27, $28,	0
-	dc.b $31, $32, $33, $34, $35, $36, $37,	$38, $41, $42, $43, $44, $45, $46, $47,	$48
-	dc.b $4D, $4E, $4F, $50, $51, $52, $53,	$54, 5,	6, $13,	$14, $15, $16, $17, $16
-	dc.b $1C, 5, 2,	$A, 1, 2, 3, $F, $10, 2, 7, 8, 2, 6, $33, $34
-	dc.b $35, $3C, 5, $F, $10, $D, $E, 3, 2, 6, $33, $34, $35, $36,	$37, $36
-	dc.b $3C, 5, 1,	2, 6, 5, 3, $11, $12, 2, 4, 1, 2, 3, 4,	3
-	dc.b 4,	1, 2, $11, $12,	4, 3, 3, 2, 6, 0, 0, 0,	0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $13, $14, $15, $16, $17,	$16, $17, $18, $19, $1A
-	dc.b $1B, $1C, 0, 0, 0,	0, 0, 0, $1B, $1C, 0, 0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $33, $34, $35, $36, $37,	$36, $37, $38, $39, $3A
-	dc.b $3B, $3C, 0, 0, 0,	0, 0, 0, $3B, $3C, 0, 0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	5, 6, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, 5, 6, 0,	0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	5, 6, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, $10, 6, 0, 0, 0,	0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	5, 6, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, $12, 6, 0, 0, 0,	0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	5, 6, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, 5, 6, 0,	0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	5, 6, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, $1B, $1C, 0, 0, 0, 0, 0,	0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	5, 6, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, $3B, $3C, 0, 0, 0, 0, 0,	0
-	dc.b 0,	0, 0, 0, 0, 0, 5, 1, 6,	5, $F, $10, $B,	$C, 4, 1
-	dc.b 2,	6, 0, 0, 0, 0, 0, 0, 2,	6, 0, 0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 5, 1, 2,	3, $11,	$12, $D, $E, 7,	8
-	dc.b 2,	6, 0, 0, 0, 0, 0, 0, 9,	6, 0, 0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, $A, 6, 0, 0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, 2, 4, 1,	2, 3, 4, 3, 6
-	dc.b 6,	5, 1, 2, 3, 6, $13, $14, 0, 0, 0, 0, 0,	0, $33,	$34
-	dc.b 0,	0, 0, 0, 0, 0, 5, 1, 0,	0, 0, 0, 0, 0, 5, 9
-	dc.b 0,	0, 0, 0, 0, 0, 5, $A, 0, 0, 0, 0, 0, 0,	$13, $14
-	dc.b 0,	0, 0, 0, 0, 0, $33, $34, 0, 0, 0, 0, 0,	0, 5, 6
-	dc.b 0,	0, 0, 0, 0, 0, 5, 6, 0,	0, 0, 0, 0, 0, 5, 1
-	dc.b 0,	0, 0, 0, 0, 0, 5, $F, 0, 0, 0, 0, 0, 0,	5, $11
-	dc.b 0,	0, 0, 0, 0, 0, 5, 6, 5,	6, 0, 0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, 5, 6, 0,	0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, 2, 6, 0,	0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, 5, 6, 0,	0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, $1B, $1C, 0, 0, 0, 0, 0,	0
-	dc.b 0,	0, 0, 0, 0, 0, $1D, 0, 0, 0, 0,	0, 0, 0, 0, 0
-	dc.b 0,	$1D, 0,	0, 0, 0, 0, 0, $3B, $3C, 0, 0, 0, 0, 0,	0
-	dc.b 0,	0, 0, 0, 0, 0, 5, $B, $C, 9, 3,	6, $13,	$14, $15, $1A
-	dc.b $1B, $1C, 0, 0, 0,	0, 0, 0, 5, 6, 0, 0, 0,	0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 5, $D, $E, $A, 2, 6, $33, $34, $35, $3A
-	dc.b $3B, $3C, 0, 0, 0,	0, 0, 0, $10, 6, 0, 0, 0, 0, 0,	0
-	dc.b 0,	0, 0, 0, 0, 0, $13, $14, $15, $16, $17,	$18, $1B, $1C, 5, 2
-	dc.b 4,	6, 0, 0, 0, 0, 0, 0, $12, 6, 0,	0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, $33, $34, $35, $36, $37,	$38, $3B, $3C, 5, 7
-	dc.b 8,	6, 0, 0, 0, 0, 0, 0, 5,	6, 0, 0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 5, 4, 1,	3, 2, 4, 4, 4, 1, $F
-	dc.b $10, 6, 0,	0, 0, 0, 0, 0, $1B, $1C, 0, 0, 0, 0, 0,	0
-	dc.b 0,	0, 0, 0, 0, 0, 5, $B, $C, 3, 2,	4, 4, 4, 1, $11
-	dc.b $12, 6, 0,	0, 0, 0, 0, 0, $3B, $3C, 0, 0, 0, 0, 0,	0
-	dc.b 0,	0, 0, 0, 0, 0, 5, $D, $E, 6, 5,	4, 1, 9, 2, 4
-	dc.b 2,	6, 0, 0, 0, 0, 0, 0, $1B, $18, $15, $14, $15, $16, $17,	$18
-	dc.b $19, $15, $16, $1A, $1B, $18, $15,	$1A, $1B, $1C, 5, $F, $10, $A, 6, $13
-	dc.b $1B, $18, $15, $14, $15, $16, $17,	$18, $3B, $38, $35, $34, $35, $36, $37,	$38
-	dc.b $39, $35, $36, $3A, $3B, $38, $35,	$34, $3B, $3C, 5, $11, $12, 4, 6, $33
-	dc.b $3B, $38, $35, $34, $35, $36, $37,	$38, 0,	0, 0, 0, 0, 0, 5, $F
-	dc.b 0,	0, 0, 0, 0, 0, 5, $11, 0, 0, 0,	0, 0, 0, 5, 6
-	dc.b 0,	0, 0, 0, 0, 0, 5, 2, 0,	0, 0, 0, 0, 0, $13, $14
-	dc.b 0,	0, 0, 0, 0, 0, $33, $34, 0, 0, 0, 0, 0,	0, 5, 9
-	dc.b 0,	0, 0, 0, 0, 0, 5, $A, 0, 0, 0, 0, 0, 0,	5, 2
-	dc.b 0,	0, 0, 0, 0, 0, $13, $14, 0, 0, 0, 0, 0,	0, $33,	$34
-	dc.b 0,	0, 0, 0, 0, 0, 5, 6, $19, $15, $16, $1A, $1B, $18, $15,	$1A
-	dc.b $39, $35, $36, $3A, $3B, $38, $35,	$34, $52, $53, $54, $55, $56, $57, $58,	$59
-	dc.b $5A, $55, $56, $57, $58, $59, $5A,	$55, $56, $57, $58, $59, $5A, $55, $56,	$57
-	dc.b $58, $59, $5A, $55, $56, $57, $58,	$59, $5C, $49, $4A, $4B, $4C, $4D, $4E,	$4F
-	dc.b $50, $4B, $4C, $4D, $4E, $4F, $50,	$4B, $4C, $4D, $4E, $4F, $50, $4B, $4C,	$4D
-	dc.b $4E, $4F, $50, $4B, $4C, $4D, $4E,	$4F, $52, $53, $54, $55, $56, $57, $58,	$59
-	dc.b $5A, $55, $56, $57, $58, $59, $5A,	$55, $56, $57, $58, $59, $5A, $55, $56,	$57
-	dc.b $58, $59, $5A, $55, $56, $57, $58,	$59, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $4C, $4D, $4E, $4F, $50, $4B, $4C,	$4D
-	dc.b $4E, $4F, $50, $41, $42, $43, $44,	$45, $52, $53, $54, $21, $22, $23, $24,	$25
-	dc.b $26, $21, $22, $23, $24, $25, $5A,	$55, $56, $57, $58, $59, $5A, $55, $56,	$57
-	dc.b $58, $59, $5A, $21, $22, $23, $24,	$25, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $42, $43, $44, $4F, $50, $4B, $42,	$43
-	dc.b $44, $4F, $50, $41, $42, $43, $44,	$45, $52, $53, $54, $21, $22, $23, $24,	$25
-	dc.b $26, $21, $22, $23, $24, $25, $5A,	$55, $22, $23, $24, $59, $5A, $55, $22,	$23
-	dc.b $24, $59, $5A, $21, $22, $23, $24,	$25, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $42, $43, $44, $4F, $50, $4B, $42,	$43
-	dc.b $44, $4F, $50, $41, $42, $43, $44,	$45, $52, $53, $54, $21, $22, $23, $24,	$25
-	dc.b $26, $21, $22, $23, $24, $25, $5A,	$55, $22, $23, $24, $59, $5A, $55, $22,	$23
-	dc.b $24, $59, $5A, $21, $22, $23, $24,	$25, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $42, $43, $44, $4F, $50, $4B, $42,	$43
-	dc.b $44, $4F, $50, $41, $42, $43, $44,	$45, $52, $53, $54, $21, $22, $23, $24,	$25
-	dc.b $26, $21, $22, $23, $24, $25, $5A,	$55, $56, $57, $58, $59, $5A, $55, $56,	$57
-	dc.b $58, $59, $5A, $21, $22, $23, $24,	$25, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $4C, $4D, $4E, $4F, $50, $4B, $4C,	$4D
-	dc.b $4E, $4F, $50, $41, $42, $43, $44,	$45, $52, $53, $54, $21, $22, $23, $24,	$25
-	dc.b $26, $21, $22, $23, $24, $25, $5A,	$55, $56, $57, $58, $59, $5A, $55, $56,	$57
-	dc.b $58, $59, $5A, $21, $22, $23, $24,	$25, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $42, $43, $44, $45, $46, $41, $42,	$43
-	dc.b $44, $4F, $50, $41, $42, $43, $44,	$45, $5A, $55, $56, $57, $58, $59, $5A,	$5B
-	dc.b $50, $4B, $4C, $4D, $4E, $4F, $50,	$51, $5A, $55, $56, $57, $58, $59, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $26, $21, $22, $23, $24, $25, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $26, $21, $22, $23, $24, $25, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $26, $21, $22, $23, $24, $25, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $26, $21, $22, $23, $24, $25, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $26, $21, $22, $23, $24, $25, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $52, $53, $54, $21, $22, $23, $24,	$25
-	dc.b $26, $21, $22, $23, $24, $25, $5A,	$55, $22, $23, $24, $25, $26, $21, $22,	$23
-	dc.b $24, $25, $5A, $21, $22, $23, $24,	$25, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $42, $43, $44, $45, $46, $41, $42,	$43
-	dc.b $44, $45, $50, $41, $42, $43, $44,	$45, $52, $53, $54, $21, $22, $23, $24,	$25
-	dc.b $26, $21, $22, $23, $24, $25, $5A,	$55, $22, $23, $24, $25, $26, $21, $22,	$23
-	dc.b $24, $59, $5A, $21, $22, $23, $24,	$25, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $42, $43, $44, $45, $46, $41, $42,	$43
-	dc.b $44, $45, $50, $41, $42, $43, $44,	$45, $52, $53, $54, $21, $22, $23, $24,	$25
-	dc.b $26, $21, $22, $23, $24, $25, $5A,	$55, $22, $23, $24, $25, $26, $21, $22,	$23
-	dc.b $24, $25, $5A, $21, $22, $23, $24,	$25, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $42, $43, $44, $45, $46, $41, $42,	$43
-	dc.b $44, $45, $50, $41, $42, $43, $44,	$45, $52, $53, $54, $21, $22, $23, $24,	$25
-	dc.b $26, $21, $22, $23, $24, $25, $5A,	$55, $56, $57, $58, $59, $5A, $55, $56,	$57
-	dc.b $58, $59, $5A, $21, $22, $23, $24,	$25, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $4C, $4D, $4E, $4F, $50, $4B, $4C,	$4D
-	dc.b $4E, $4F, $50, $41, $42, $43, $44,	$45, $52, $53, $54, $21, $22, $23, $24,	$25
-	dc.b $26, $21, $22, $23, $24, $25, $5A,	$55, $56, $57, $58, $59, $5A, $55, $56,	$57
-	dc.b $58, $59, $5A, $21, $22, $23, $24,	$25, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $4C, $4D, $4E, $4F, $50, $4B, $4C,	$4D
-	dc.b $4E, $4F, $50, $41, $42, $43, $44,	$45, $52, $53, $54, $21, $22, $23, $24,	$25
-	dc.b $26, $21, $22, $23, $24, $25, $5A,	$55, $56, $57, $58, $59, $5A, $55, $56,	$57
-	dc.b $58, $59, $5A, $21, $22, $23, $24,	$25, $5C, $49, $4A, $41, $42, $43, $44,	$45
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$4B, $4C, $4D, $4E, $4F, $50, $4B, $4C,	$4D
-	dc.b $4E, $4F, $50, $41, $42, $43, $44,	$45, $52, $53, $54, $55, $56, $57, $58,	$59
-	dc.b $5A, $55, $56, $57, $58, $59, $5A,	$55, $56, $57, $58, $59, $5A, $55, $56,	$57
-	dc.b $58, $59, $5A, $55, $56, $57, $58,	$59, $5C, $49, $4A, $4B, $4C, $4D, $4E,	$4F
-	dc.b $50, $4B, $4C, $4D, $4E, $4F, $50,	$4B, $4C, $4D, $4E, $4F, $50, $4B, $4C,	$4D
-	dc.b $4E, $4F, $50, $4B, $4C, $4D, $4E,	$4F, $26, $21, $22, $23, $24, $25, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $26, $21, $22, $23, $24, $25, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $26, $21, $22, $23, $24, $25, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $26, $21, $22, $23, $24, $25, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $26, $21, $22, $23, $24, $25, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $26, $21, $22, $23, $24, $25, $5A,	$5B
-	dc.b $46, $41, $42, $43, $44, $45, $50,	$51, $5A, $55, $56, $57, $58, $59, $5A,	$5B
-	dc.b $50, $4B, $4C, $4D, $4E, $4F, $50,	$51
-byte_20B4C:	dc.b $17, $18, $19, $1A, $1B, $1C, $1D,	$1E, $E7, $E6, $E5, $E4, $E3, $E2, $1F,	$20
-	dc.b $21, $22, $23, $24, $EC, $EB, $EA,	$E9, $E8, $25, $19, $1A, $1B, $1C, $1D,	$1E
-	dc.b $26, $27, $28, $29, $2A, $2B, $2C,	$2D, $F4, $F3, $F2, $F1, $F0, $EF, $2E,	$2F
-	dc.b $30, $31, $32, $33, $F9, $F8, $F7,	$F6, $F5, $34, $28, $29, $2A, $2B, $2C,	$2D
-	dc.b $35, $DF, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $36,	$37
-	dc.b $38, $39, 0, 0, 0,	0, $FC,	$FB, $FA, $3A, 0, 0, 0,	0, 0, 0
-	dc.b $3B, $3C, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $3D,	$3E
-	dc.b $3F, $40, $41, $41, $41, $41, $FF,	$FE, $FD, $42, 0, 0, 0,	0, 0, 0
-	dc.b $43, $44, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $36,	0
-	dc.b 0,	0, 0, $45, $46,	0, 0, 0, 0, $47, 0, 0, 0, 0, 0,	0
-	dc.b $48, $49, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $3D,	0
-	dc.b 0,	0, 0, $4A, $4B,	0, 0, 0, 0, $4C, 0, 0, 0, 0, 0,	0
-	dc.b $3B, $3C, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $36,	0
-	dc.b 0,	0, 0, $45, $46,	0, 0, 0, 0, $47, 0, 0, 0, 0, 0,	0
-	dc.b $43, $44, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $3D,	0
-	dc.b 0,	0, 0, $4A, $4B,	0, 0, 0, 0, $47, 0, 0, 0, 0, 0,	0
-	dc.b $48, $49, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $36,	0
-	dc.b 0,	0, 0, $45, $46,	0, 0, 0, 0, $4C, 0, 0, 0, 0, 0,	0
-	dc.b $3B, $3C, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $3D,	0
-	dc.b 0,	0, 0, $4A, $4B,	0, 0, 0, 0, $47, 0, 0, 0, 0, 0,	0
-	dc.b $43, $44, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $4D,	$4E
-	dc.b $4F, $4E, $4F, $4E, $4F, $4E, $4F,	$4E, $4F, $50, 0, 0, 0,	0, 0, 0
-	dc.b $48, $49, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $51,	$52
-	dc.b $53, $52, $53, $52, $53, $52, $53,	$52, $53, $54, 0, 0, 0,	0, 0, 0
-	dc.b $3B, $3C, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $36,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$47, 0,	0, 0, 0, 0, 0
-	dc.b $43, $44, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $3D,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$4C, 0,	0, 0, 0, 0, 0
-	dc.b $48, $49, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $36,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$47, 0,	0, 0, 0, 0, 0
-	dc.b $3B, $3C, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $3D,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$4C, 0,	0, 0, 0, 0, 0
-	dc.b $43, $44, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $36,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$47, 0,	0, 0, 0, 0, 0
-	dc.b $48, $49, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $3D,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$4C, 0,	0, 0, 0, 0, 0
-	dc.b $3B, $3C, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $36,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	$47, 0,	0, 0, 0, 0, 0
-	dc.b $43, $44, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $57,	$58
-	dc.b $5A, $5C, $5E, $5F, $60, $61, $62,	$63, $64, $47, 0, 0, 0,	0, 0, 0
-	dc.b $48, $49, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $65,	$66
-	dc.b 0,	0, 0, 0, 0, $67, $68, $69, $6A,	$54, 0,	0, 0, 0, 0, 0
-	dc.b $3B, $3C, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $6B,	$6C
-	dc.b 0,	0, 0, 0, 0, $6D, $6E, $6F, $70,	$71, 0,	0, 0, 0, 0, 0
-	dc.b $43, $44, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $72,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, $73, $74, $54, 0, 0, 0, 0, 0,	0
-	dc.b $48, $49, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $75,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, $76, $77, $78, 0, 0, 0, 0, 0,	0
-	dc.b $3B, $3C, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $79,	$7A
-	dc.b $7B, 0, 0,	0, 0, 0, 0, 0, 0, $7C, 0, 0, 0,	0, 0, 0
-	dc.b $43, $44, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $7D,	$7E
-	dc.b $7F, 0, 0,	0, 0, 0, 0, 0, 0, $80, 0, 0, 0,	0, 0, 0
-	dc.b $48, $49, 9, $B, 9, $B, 9,	$B, 9, $B, 9, $B, 9, $B, $81, $82
-	dc.b $83, $84, $85, $86, $87, $88, $89,	$8A, $8B, $8C, 9, $B, 9, $B, 9,	$B
-	dc.b $3B, $3C, $A, $C, $A, $C, $A, $C, $A, $C, $A, $C, $A, $C, $8D, $8E
-	dc.b $8F, $90, $91, $5D, $92, $5B, $59,	$56, $55, $78, $A, $C, $A, $C, $A, $C
-byte_20ECC:	dc.b $E7, $E6, $E5, $E4, $E3, $E2, $E1,	$E0, $F4, $F3, $F2, $F1, $F0, $EF, $EE,	$ED
-	dc.b 0,	0, 0, 0, 0, 0, $35, $DF, 0, 0, 0, 0, 0,	0, $3B,	$3C
-	dc.b 0,	0, 0, 0, 0, 0, $43, $44, 0, 0, 0, 0, 0,	0, $48,	$49
-	dc.b 0,	0, 0, 0, 0, 0, $3B, $3C, 0, 0, 0, 0, 0,	0, $43,	$44
-	dc.b 0,	0, 0, 0, 0, 0, $48, $49, 0, 0, 0, 0, 0,	0, $3B,	$3C
-	dc.b 0,	0, 0, 0, 0, 0, $43, $44, 0, 0, 0, 0, 0,	0, $48,	$49
-	dc.b 0,	0, 0, 0, 0, 0, $3B, $3C, 0, 0, 0, 0, 0,	0, $43,	$44
-	dc.b 0,	0, 0, 0, 0, 0, $48, $49, 0, 0, 0, 0, 0,	0, $3B,	$3C
-	dc.b 0,	0, 0, 0, 0, 0, $43, $44, 0, 0, 0, 0, 0,	0, $48,	$49
-	dc.b 0,	0, 0, 0, 0, 0, $3B, $3C, 0, 0, 0, 0, 0,	0, $43,	$44
-	dc.b 0,	0, 0, 0, 0, 0, $48, $49, 0, 0, 0, 0, 0,	0, $3B,	$3C
-	dc.b 0,	0, 0, 0, 0, 0, $43, $44, 0, 0, 0, 0, 0,	0, $48,	$49
-	dc.b 0,	0, 0, 0, 0, 0, $3B, $3C, 0, 0, 0, 0, 0,	0, $43,	$44
-	dc.b 9,	$B, 9, $B, 9, $B, $48, $49, $A,	$C, $A,	$C, $A,	$C, $3B, $3C
-byte_20FAC:	dc.b 1,	3, $19,	$1A, $1B, $1C, $1D, $1E, $E7, $E6, $E5,	$E4, $E3, $E2, 1, 3
-	dc.b 1,	3, 1, 3, 1, 3, 1, 3, 1,	3, $19,	$1A, $1B, $1C, $1D, $1E
-	dc.b 3,	3, $28,	$29, $2A, $2B, $2C, $2D, $F4, $F3, $F2,	$F1, $F0, $EF, 3, 1
-	dc.b 3,	1, 3, 1, 3, 1, 3, 1, 3,	1, $28,	$29, $2A, $2B, $2C, $2D
-	dc.b 1,	1, 1, 3, 1, 3, 1, 3, 1,	3, 1, 3, 1, 3, 1, 3
-	dc.b 1,	3, 1, 3, 1, 3, 1, 3, 1,	3, 3, 3, 1, 3, 1, 3
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 1,	3, 1, 3, 1, 3, 1, 3, 1,	3, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 3,	1, 3, 1, 3, 1, 3, 1, 3,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 8,	6, 8, 2, 1, 2, 8, 6, 8,	1, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 7,	5, 7, 1, 2, 1, 7, 5, 7,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 8,	6, 8, 2, 1, 2, 8, 6, 8,	1, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 7,	5, 7, 1, 2, 1, 7, 5, 7,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 8,	6, 8, 2, 1, 2, 8, 6, 8,	1, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 3,	1, 3, 1, 3, 1, 3, 1, 3,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 1,	3, 1, 3, 1, 3, 1, 3, 2,	1, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 3,	1, 3, 1, 3, 1, 3, 1, 3,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 8,	6, 8, 6, 8, 6, 8, 6, 8,	1, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 7,	5, 7, 5, 7, 5, 7, 5, 7,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 8,	6, 8, 6, 8, 6, 8, 6, 8,	1, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 7,	5, 7, 5, 7, 5, 7, 5, 7,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 8,	6, 8, 6, 8, 6, 8, 6, 8,	1, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 7,	5, 7, 5, 7, 5, 7, 5, 7,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 1,	3, 1, 3, 1, 3, 1, 3, 1,	1, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 3,	1, 3, 1, 3, 1, 3, 1, 3,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 1,	3, 1, 3, 1, 3, 1, 3, 1,	1, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 3,	1, 3, 1, 3, 1, 3, 1, 3,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 1,	3, 1, 3, 1, 3, 1, 3, 1,	1, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 3,	1, 3, 1, 3, 1, 3, 1, 3,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 1,	3, 1, 3, 1, 3, 1, 3, 1,	1, 2, 8, 6, 8, 6, 8
-	dc.b 1,	2, 1, 7, 5, 7, 5, 7, 5,	7, 5, 7, 5, 7, 2, 1
-	dc.b 3,	1, 3, 1, 3, 1, 3, 1, 3,	2, 1, 7, 5, 7, 5, 7
-	dc.b 2,	1, 2, 8, 6, 8, 6, 8, 6,	8, 6, 8, 6, 8, 1, 2
-	dc.b 1,	3, 1, 3, 1, 3, 1, 3, 1,	1, 2, 8, 6, 8, 6, 8
-byte_2132C:	dc.b $E7, $E6, $E5, $E4, $E3, $E2, 1, 3, $F4, $F3, $F2,	$F1, $F0, $EF, 3, 1
-	dc.b 1,	3, 1, 3, 1, 3, 1, 3, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-	dc.b 5,	7, 5, 7, 5, 7, 5, 7, 6,	8, 6, 8, 6, 8, 6, 8
-byte_2140C:	dc.b $1D, $1E, $1F, $20, $15, $16, $25,	$26, $27, $28, 5, 6, $1D, $1E, $1F, $20
-	dc.b $D, $E, $1D, $1E, $1F, $20, $15, $16, $1D,	$1E, $1F, $20, 5, 6, $25, $26
-	dc.b $21, $22, $23, $24, $17, $18, $29,	$2A, $2B, $2C, 7, 8, $21, $22, $23, $24
-	dc.b $F, $10, $21, $22,	$23, $24, $17, $18, $21, $22, $23, $24,	7, 8, $29, $2A
-	dc.b 9,	$A, 0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	$11, $2E
-	dc.b $31, $32, $35, $36, $31, $32, $35,	$36, $39, $1A, 0, 0, 0,	0, 0, 0
-	dc.b $B, $C, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, $2F, $30
-	dc.b $33, $34, $37, $30, $33, $34, $37,	$30, $33, $3C, 0, 0, 0,	0, 0, 0
-	dc.b 3,	3, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 3, 0
-	dc.b 0,	0, 0, 5, 6, 0, 0, 0, 0,	3, 0, 0, 0, 0, 0, 0
-	dc.b 4,	4, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 4, 0
-	dc.b 0,	0, 0, 7, 8, 0, 0, 0, 0,	4, 0, 0, 0, 0, 0, 0
-	dc.b $D, $E, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 1, 0
-	dc.b 0,	0, 0, 1, 1, 0, 0, 0, 0,	1, 0, 0, 0, 0, 0, 0
-	dc.b $F, $10, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 2, 0
-	dc.b 0,	0, 0, 2, 2, 0, 0, 0, 0,	2, 0, 0, 0, 0, 0, 0
-	dc.b $11, $12, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 3, 0
-	dc.b 0,	0, 0, 5, 6, 0, 0, 0, 0,	3, 0, 0, 0, 0, 0, 0
-	dc.b $13, $14, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 4, 0
-	dc.b 0,	0, 0, 7, 8, 0, 0, 0, 0,	4, 0, 0, 0, 0, 0, 0
-	dc.b $15, $16, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 9, $A
-	dc.b $D, $E, $15, $16, $D, $E, $15, $16, 9, $A,	0, 0, 0, 0, 0, 0
-	dc.b $17, $18, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, $B, $C
-	dc.b $F, $10, $17, $18,	$F, $10, $17, $18, $B, $C, 0, 0, 0, 0, 0, 0
-	dc.b $19, $1A, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 3, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	3, 0, 0, 0, 0, 0, 0
-	dc.b $1B, $1C, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 4, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	4, 0, 0, 0, 0, 0, 0
-byte_215CC:	dc.b $AA, $50, 5, $55, $5A, $A5, $55, $50, $AA,	$50, 5,	$55, $5A, $A5, $55, $50
-	dc.b $A, 0, 0, 0, 0, 0,	0, 0, $A, 0, 0,	0, 0, 0, 0, 0
-	dc.b 6,	0, 0, $10, 0, 0, 4, 0, 6, 0, 0,	$10, 0,	0, 4, 0
-	dc.b $A, 0, 0, 0, $80, 2, 0, 0,	$A, 0, 0, 0, $80, 2, 0,	0
-	dc.b $A, 0, 0, $10, $80, 2, 4, 0, $A, 0, 0, $10, $80, 2, 4, 0
-	dc.b $A, 0, 0, $50, $A0, $A, 5,	0, $A, 0, 0, $50, $A0, $A, 5, 0
-	dc.b $A, 0, 0, 0, 0, 0,	0, 0, $A, 0, 0,	0, 0, 0, 0, 0
-byte_2163C:	dc.b $27, $28, $D, $E, $1D, $1E, $1F, $20, $2B,	$2C, $F, $10, $21, $22,	$23, $24
-	dc.b 0,	0, 0, 0, 0, 0, 9, $A, 0, 0, 0, 0, 0, 0,	$B, $C
-	dc.b 0,	0, 0, 0, 0, 0, 3, 3, 0,	0, 0, 0, 0, 0, 4, 4
-	dc.b 0,	0, 0, 0, 0, 0, $15, $16, 0, 0, 0, 0, 0,	0, $17,	$18
-	dc.b 0,	0, 0, 0, 0, 0, $19, $1A, 0, 0, 0, 0, 0,	0, $1B,	$1C
-	dc.b 0,	0, 0, 0, 0, 0, $D, $E, 0, 0, 0,	0, 0, 0, $F, $10
-	dc.b 0,	0, 0, 0, 0, 0, $11, $12, 0, 0, 0, 0, 0,	0, $13,	$14
-byte_216AC:	dc.b 5,	$AA, 5,	$AA, 0,	$A0, 0,	$A0, 0,	$90, 0,	$90, 0,	$A0, 0,	$A0
-	dc.b 0,	$A0, 0,	$A0, 0,	$A0, 0,	$A0, 0,	$A0, 0,	$A0
-byte_216C8:	dc.b 3,	3, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 2, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	2, 0, 0, 0, 0, 0, 0
-	dc.b 4,	4, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 4, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	4, 0, 0, 0, 0, 0, 0
-	dc.b 9,	$A, 0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	2, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	2, 0, 0, 0, 0, 0, 0
-	dc.b $B, $C, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 3, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	3, 0, 0, 0, 0, 0, 0
-	dc.b $D, $E, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 4, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	4, 0, 0, 0, 0, 0, 0
-	dc.b $F, $10, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 2, 4
-	dc.b 2,	4, 2, 2, 2, 2, 4, 2, 4,	2, 0, 0, 0, 0, 0, 0
-	dc.b $11, $12, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 3, 1
-	dc.b $25, $26, $27, $28, $1D, $1E, $1F,	$20, 1,	3, 0, 0, 0, 0, 0, 0
-	dc.b $13, $14, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 4, 2
-	dc.b $29, $2A, $2B, $2C, $21, $22, $23,	$24, 2,	4, 0, 0, 0, 0, 0, 0
-	dc.b $15, $16, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 1, 3
-	dc.b 5,	6, 5, 6, 9, $A,	9, $A, 3, 1, 0,	0, 0, 0, 0, 0
-	dc.b $17, $18, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 2, 4
-	dc.b 7,	8, 7, 8, $B, $C, $B, $C, 4, 2, 0, 0, 0,	0, 0, 0
-	dc.b $19, $1A, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 3, 1
-	dc.b $25, $26, $27, $28, $1D, $1E, $1F,	$20, 1,	3, 0, 0, 0, 0, 0, 0
-	dc.b $1B, $1C, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 4, 2
-	dc.b $29, $2A, $2B, $2C, $21, $22, $23,	$24, 2,	4, 0, 0, 0, 0, 0, 0
-	dc.b 5,	6, $25,	$26, $27, $28, $1D, $1E, $1F, $20, $25,	$26, $27, $28, 5, 6
-	dc.b $2D, $2E, $31, $32, $35, $36, $39,	$3A, 5,	6, $25,	$26, $27, $28, $1D, $1E
-	dc.b 7,	8, $29,	$2A, $2B, $2C, $21, $22, $23, $24, $29,	$2A, $2B, $2C, 7, 8
-	dc.b $2F, $30, $33, $34, $37, $38, $3B,	$3C, 7,	8, $29,	$2A, $2B, $2C, $21, $22
-byte_21888:	dc.b 6,	0, 0, 0, 0, 0, 0, 0, 6,	0, 0, $20, 0, 0, 8, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, $50, $10,	4, 5, 0
-	dc.b 0,	0, 0, 0, $AA, $55, 0, 0, 0, 0, 0, 0, $AA, $55, 0, 0
-	dc.b 0,	0, 0, $A0, 5, $50, $A, 0, 0, 0,	0, $A0,	5, $50,	$A, 0
-	dc.b 0,	0, 0, $50, 0, 0, 5, 0, 0, 0, 0,	$50, 0,	0, 5, 0
-	dc.b $AA, $5A, $55, 5, $AA, $AA, $50, $55, $AA,	$5A, $55, 5, $AA, $AA, $50, $55
-byte_218F8:	dc.b 0,	0, 0, 0, 0, 0, 3, 3, 0,	0, 0, 0, 0, 0, 4, 4
-	dc.b 0,	0, 0, 0, 0, 0, 9, $A, 0, 0, 0, 0, 0, 0,	$B, $C
-	dc.b 0,	0, 0, 0, 0, 0, $15, $16, 0, 0, 0, 0, 0,	0, $17,	$18
-	dc.b 0,	0, 0, 0, 0, 0, $19, $1A, 0, 0, 0, 0, 0,	0, $1B,	$1C
-	dc.b 0,	0, 0, 0, 0, 0, $D, $E, 0, 0, 0,	0, 0, 0, $F, $10
-	dc.b 0,	0, 0, 0, 0, 0, $11, $12, 0, 0, 0, 0, 0,	0, $13,	$14
-	dc.b $1F, $20, $25, $26, $27, $28, 5, 6, $23, $24, $29,	$2A, $2B, $2C, 7, 8
-byte_21968:	dc.b 0,	$90, 0,	$90, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, $A5, $AA, $A5, $AA
-byte_21984:	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $70, $71, $70, $71, $70, $71, $70,	$71
-	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $70, $71, $70, $71, $70, $71, $70,	$71
-	dc.b $72, $73, $72, $73, $72, $73, $72,	$73, $72, $73, $72, $73, $72, $73, $72,	$73
-	dc.b $72, $73, $72, $73, $72, $73, $72,	$73, $72, $73, $72, $73, $72, $73, $72,	$73
-	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $70, $71, $70, $71, $70, $71, $70,	$71
-	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $70, $71, $70, $71, $70, $71, $70,	$71
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $72, $73, $72, $73, $72, $73, $72,	$73, $72, $73, $72, $6F, $6E, $6F, $6E,	$6F
-	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $70, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6E, $6F, $6E, $73, $72, $73, $6E,	$6F, $6E, $73, $72, $6F, $6E, $6F, $6E,	$6F
-	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $6C, $6D, $6C, $71, $70, $71, $6C,	$6D, $6C, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6E, $6F, $6E, $73, $72, $73, $6E,	$6F, $6E, $73, $72, $6F, $6E, $6F, $6E,	$6F
-	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $6C, $6D, $6C, $71, $70, $71, $6C,	$6D, $6C, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6E, $6F, $6E, $73, $72, $73, $6E,	$6F, $6E, $73, $72, $6F, $6E, $6F, $6E,	$6F
-	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $70, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $72, $73, $72, $73, $72, $73, $72,	$73, $72, $73, $72, $6F, $6E, $6F, $6E,	$6F
-	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $70, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6E, $6F, $6E, $6F, $6E, $6F, $6E,	$6F, $6E, $73, $72, $6F, $6E, $6F, $6E,	$6F
-byte_21B44:	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $72, $73, $72, $73, $72, $73, $72,	$73
-	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-byte_21BB4:	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $6C,	$6D, $6C, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6E, $6F, $6E, $6F, $6E, $6F, $6E,	$6F, $6E, $73, $72, $6F, $6E, $6F, $6E,	$6F
-	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $6C,	$6D, $6C, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6E, $6F, $6E, $6F, $6E, $6F, $6E,	$6F, $6E, $73, $72, $6F, $6E, $6F, $6E,	$6F
-	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $6C,	$6D, $6C, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $72, $73, $72, $73, $72, $73, $72,	$73, $72, $73, $72, $6F, $6E, $6F, $6E,	$6F
-	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $70, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $72, $73, $72, $73, $72, $73, $72,	$73, $72, $73, $72, $6F, $6E, $6F, $6E,	$6F
-	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $70, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $72, $73, $72, $73, $72, $73, $72,	$73, $72, $73, $72, $6F, $6E, $6F, $6E,	$6F
-	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $70, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $72, $73, $72, $73, $72, $73, $72,	$73, $72, $73, $72, $6F, $6E, $6F, $6E,	$6F
-	dc.b $70, $71, $70, $6D, $6C, $6D, $6C,	$6D, $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71
-	dc.b $70, $71, $70, $71, $70, $71, $70,	$71, $70, $71, $70, $6D, $6C, $6D, $6C,	$6D
-	dc.b $72, $73, $72, $6F, $6E, $6F, $6E,	$6F, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $72, $73, $72, $73, $72, $73, $72,	$73, $72, $73, $72, $6F, $6E, $6F, $6E,	$6F
-byte_21D74:	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-	dc.b $6C, $6D, $6C, $6D, $6C, $6D, $70,	$71, $6E, $6F, $6E, $6F, $6E, $6F, $72,	$73
-byte_21DE4:	dc.b 1,	2, 3, 4, 5, 6, 7, 8, 9,	$A, $B,	0, $C, $D, $E, $F
-	dc.b $10, $11, $12, $13, $14, $15, $16,	$17, $18, $19, $1A, $1B, $1C, $1D, $1E,	$1F
-	dc.b $20, $21, $22, $23, $24, $25, $26,	$27, $28, $29, $2A, $2B, $2C, $2D, $2E,	$2F
-byte_21E14:	dc.b $29, $3B, $4D, $5F, $71, $83, $95,	$A7, $18, $29, $3B, $4D, $5F, $71, $83,	$95
-	dc.b $A7, 0
-byte_21E26:	dc.b $18, $11, $12, $13, $14, $15, $16,	$17, $18, $11, $12, $13, $14, $15, $16,	$17
-	dc.b $18, $11, $12, $13, $14, $15, $16,	$29, $22, $23, $24, $25, $26, $27, $28,	$29
-	dc.b $22, $23, $24, $25, $26, $27, $28,	$29, $22, $23, $24, $25, $26, $27, $3B,	$34
-	dc.b $35, $36, $37, $38, $39, $3A, $3B,	$34, $35, $36, $37, $38, $39, $3A, $3B,	$34
-	dc.b $35, $36, $37, $38, $39, $4D, $46,	$47, $48, $49, $4A, $4B, $4C, $4D, $46,	$47
-	dc.b $48, $49, $4A, $4B, $4C, $4D, $46,	$47, $48, $49, $4A, $4B, $5F, $58, $59,	$5A
-	dc.b $5B, $5C, $5D, $5E, $5F, $58, $59,	$5A, $5B, $5C, $5D, $5E, $5F, $58, $59,	$5A
-	dc.b $5B, $5C, $5D, $71, $6A, $6B, $6C,	$6D, $6E, $6F, $70, $71, $6A, $6B, $6C,	$6D
-	dc.b $6E, $6F, $70, $71, $6A, $6B, $6C,	$6D, $6E, $6F, $83, $7C, $7D, $7E, $7F,	$80
-	dc.b $81, $82, $83, $7C, $7D, $7E, $7F,	$80, $81, $82, $83, $7C, $7D, $7E, $7F,	$80
-	dc.b $81, $95, $8E, $8F, $90, $91, $92,	$93, $94, $95, $8E, $8F, $90, $91, $92,	$93
-	dc.b $94, $95, $8E, $8F, $90, $91, $92,	$93
-byte_21EDE:	dc.b 0,	0, 0, 0, 0, 0, 1, 2, 0,	0, 0, 0, 0, 0, 0, 3
-	dc.b 4,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 5
-	dc.b 6,	7, 8, 9, $A, $B, $C, 7,	8, 9, $D, 7, 8,	$E, $F,	7
-	dc.b 8,	9, $D, $10, $C,	7, 8, 9, $D, $11, $12, 0, 0, $13, $14, $15
-	dc.b $16, $17, $18, $19, $1A, $15, $16,	$17, $18, $15, $16, $17, $18, $15, $16,	$17
-	dc.b $18, $1B, $1C, $15, $16, $17, $18,	$1D, $1E, 0, 0,	$1F, $20, $21, $21, $21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21, $21,	$22
-	dc.b $23, $21, $21, $21, $21, $24, $25,	0, 0, $26, $27,	$21, $80, $81, $82, $83
-	dc.b $84, $85, $86, $87, $88, $89, $8A,	$8B, $8C, $8D, $8E, $8F, $90, $91, $92,	$93
-	dc.b $94, $95, $96, $28, $27, 0, 0, $29, $2A, $2B, $A0,	$A1, $A2, $A3, $A4, $A5
-	dc.b $A6, $A7, $A8, $A9, $AA, $AB, $AC,	$AD, $AE, $AF, $B0, $B1, $B2, $B3, $B4,	$B5
-	dc.b $B6, $2C, $2D, 0, 0, $2E, $2F, $30, $21, $21, $21,	$21, $21, $21, $21, $21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21, $21,	$31
-	dc.b $32, 0, $33, $34, $35, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $36, $35,	0
-	dc.b $37, $38, $39, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21, $21,	$21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $3A, $39, 0, 0, $29
-	dc.b $2D, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21, $21,	$21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $3B, $3C, $3D, $3E, 0, $2E, $32, $21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21, $21,	$21
-	dc.b $21, $21, $21, $21, $21, $21, $3F,	$40, $41, $42, 0, $43, $35, $21, $21, $21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21, $21,	$21
-	dc.b $21, $21, $21, $21, $21, $36, $35,	0, 0, $44, $39,	$21, $21, $21, $21, $21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21, $21,	$21
-	dc.b $21, $21, $21, $3A, $39, 0, 0, $45, $46, $21, $21,	$21, $21, $21, $21, $21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21, $21,	$21
-	dc.b $21, $47, $46, 0, 0, $48, $25, $21, $21, $21, $21,	$21, $21, $21, $21, $21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21, $21,	$49
-	dc.b $4A, $4B, 0, $43, $35, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $36, $4C,	$4D
-	dc.b 0,	$44, $39, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $3A, $39, 0, 0, $4E
-	dc.b $4F, $21, $21, $21, $21, $21, $21,	$21, $21, $21, $21, $21, $21, $21, $21,	$21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$21, $21, $50, $4F, 0, 0, $51, $52, $21
-	dc.b $21, $21, $21, $21, $21, $21, $53,	$54, $21, $21, $21, $21, $21, $21, $21,	$21
-	dc.b $21, $21, $21, $21, $21, $21, $21,	$55, $56, 0, 0,	$57, $58, 7, 8,	9
-	dc.b $D, 7, 8, 9, $59, $5A, $C,	7, 8, 9, $D, 7,	8, 9, $D, $10
-	dc.b $C, 9, $D,	$10, $C, $5B, $5C, 0, 0, $5D, $5E, $5F,	$60, $61, $62, $63
-	dc.b $64, $61, $62, $65, $66, $5F, $61,	$62, $62, $5F, $60, $61, $62, $65, $63,	$64
-	dc.b $62, $65, $66, $67, $68, 0, 0, 0, 0, 0, 0,	0, 0, $69, $6A,	0
-	dc.b 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, $69, $6A, 0, 0
-	dc.b 0,	0, 0, 0
-byte_22172:	dc.b 1,	$70, 1,	$71, 1,	$72, 1,	$73, 1,	$74, 1,	$75, 1,	$76, 1,	$77
-	dc.b 1,	$78, 1,	$79, 1,	$7A, 1,	$7B, 1,	$7C, 1,	$72, 1,	$7D, 1,	$7E
-	dc.b 1,	$7F, 1,	$80, 1,	$72, 1,	$7D, 1,	$81, 1,	$82, 1,	$74, 1,	$83
-	dc.b 1,	$84, 1,	$85, 1,	$86, 1,	$87, 1,	$88, 1,	$89, 1,	$8A, 1,	$8B
-	dc.b 1,	$8C, 1,	$8D, 1,	$8E, 1,	$8F, 1,	$90, 1,	$86, 1,	$91, 1,	$92
-	dc.b 1,	$93, 1,	$94, 1,	$86, 1,	$91, 1,	$95, 1,	$96, 1,	$88, 1,	$97
-	dc.b 1,	$98, 1,	$99, 1,	$9A, 0,	$DD, 1,	$9B, 1,	$9C, 0,	$C1, 1,	$9D
-	dc.b 0,	$C1, 1,	$9E, 1,	$9F, 1,	$9F, 1,	$A0, 1,	$9A, 0,	$DD, 1,	$A1
-	dc.b 9,	$A1, 1,	$A2, 1,	$9A, 0,	$DD, 1,	$9B, 0,	$DD, 1,	$9B, 1,	$A0
-byte_22202:	dc.b 1,	$A3, 1,	$A4, 1,	$A5, 1,	$A6, 1,	$A7, 1,	$A8, 1,	$A9, 1,	$70
-	dc.b 1,	$AA, 0,	0, 0, 0, 1, $AB, 1, $AC, 1, $A5, 1, $A6, 1, $7E
-	dc.b 1,	$7F, 1,	$80, 1,	$72, 1,	$7D, 1,	$81, 1,	$82, 1,	$74, 1,	$83
-	dc.b 1,	$AD, $11, $A4, 1, $AE, 1, $AF, $11, $7E, 1, $B0, 1, $B1, 1, $84
-	dc.b 1,	$B2, 1,	$B3, 0,	0, 1, $B4, 1, $B5, 1, $AE, 1, $AF, 1, $92
-	dc.b 1,	$93, 1,	$94, 1,	$86, 1,	$91, 1,	$95, 1,	$B6, 1,	$88, 1,	$97
-	dc.b 8,	$C1, 9,	$A1, 1,	$B7, 0,	0, 0, 0, 1, $B8, $19, $7E, 1, $98
-	dc.b 1,	$99, 1,	$B9, 0,	0, 1, $BA, 1, $A0, 1, $B7, 0, 0, 1, $A1
-	dc.b 9,	$A1, 1,	$A2, 1,	$9A, 0,	$DD, 1,	$9B, 0,	$DD, 1,	$9B, 1,	$A0
-byte_22292:	dc.b 0,	$D1, 1,	$74, 1,	$BB, 1,	$BC, 1,	$BD, 1,	$74, 1,	$BE, 1,	$7A
-	dc.b 1,	$BF, 1,	$72, 1,	$C0, 1,	$C1, 1,	$70, 1,	$C2, 1,	$74, 1,	$83
-	dc.b 1,	$7E, 1,	$7F, 1,	$80, 1,	$72, 1,	$7D, 1,	$81, 1,	$82, 1,	$74
-	dc.b 1,	$83, 1,	$C3, 1,	$88, 1,	$C4, 1,	$C5, 1,	$C6, 1,	$88, 1,	$C7
-	dc.b 1,	$8E, 1,	$C8, 1,	$86, 1,	$C9, 1,	$CA, 1,	$84, 1,	$CB, 1,	$88
-	dc.b 1,	$97, 1,	$92, 1,	$93, 1,	$94, 1,	$86, 1,	$91, 1,	$95, 1,	$B6
-	dc.b 1,	$88, 1,	$97, 0,	0, 1, $9B, 1, $9C, 0, $C1, 1, $CC, 1, $9B
-	dc.b 1,	$9F, 1,	$9F, 1,	$A0, 1,	$9A, 1,	$CD, 1,	$A0, 1,	$98, 1,	$99
-	dc.b 1,	$9B, 1,	$A0, 1,	$A1, 9,	$A1, 1,	$A2, 1,	$9A, 0,	$DD, 1,	$9B
-	dc.b 0,	$DD, 1,	$9B, 1,	$A0
-byte_22328:	dc.b $10, $E2, 1, $72, 1, $7D, 1, $A5, 1, $CE, 1, $CF, 1, $D0, 1, $7C
-	dc.b 1,	$72, 1,	$D1, 1,	$D2, 1,	$D3, 1,	$70, 1,	$AA, 1,	$D4, 1,	$86
-	dc.b 1,	$91, 1,	$AE, 1,	$AF, 1,	$D5, 1,	$D6, 1,	$90, 1,	$86, 1,	$D7
-	dc.b 1,	$D8, 1,	$D9, 1,	$84, 1,	$B2, 0,	0, 1, $9A, 1, $DA, 1, $B7
-	dc.b 0,	0, 9, $B9, 1, $DB, 1, $A0, 1, $9A, 1, $DC, 1, $DD, 1, $CC
-	dc.b 1,	$98, 1,	$DE
-byte_2237C:	dc.b 1,	$70, 1,	$DF, 1,	$CF, 1,	$E0, 1,	$78, 1,	$79, 1,	$7A, 1,	$E1
-	dc.b 1,	$CF, 1,	$E0, 1,	$84, 1,	$B2, 1,	$D5, 1,	$E2, 1,	$8C, 1,	$8D
-	dc.b 1,	$8E, 1,	$E3, 1,	$D5, 1,	$E4, 1,	$98, 1,	$99, 9,	$B9, 0,	$E2
-	dc.b 0,	$C1, 1,	$9E, 1,	$9F, 1,	$A0, 9,	$B9, 0,	0
-byte_223B8:	dc.b $10, $E2, 1, $72, 1, $E5, 1, $72, 1, $D1, 1, $D2, 1, $D3, 1, $CF
-	dc.b 1,	$D0, 1,	$E6, 1,	$76, 1,	$E7, 1,	$E8, 1,	$E9, 1,	$74, 1,	$83
-	dc.b 1,	$D4, 1,	$86, 1,	$EA, 1,	$86, 1,	$D7, 1,	$D8, 1,	$D9, 1,	$D5
-	dc.b 1,	$D6, 1,	$EB, 1,	$8A, 1,	$EC, 1,	$ED, 1,	$EE, 1,	$88, 1,	$97
-	dc.b 0,	0, 1, $EF, 0, $DD, 1, $9A, 1, $DC, 1, $DD, 1, $CC, 9, $B9
-	dc.b 1,	$F0, 1,	$F1, 0,	$C1, 1,	$B7, 1,	$F2, 1,	$99, 1,	$9B, 1,	$A0
-	
+
 ; ---------------------------------------------------------------------------
 
-	if RegionCheckCode=0
-Str_RegionLockNTSC:	
-	include "resource/text/Region/Wrong Region NTSC.asm"
-					
-Str_RegionLockPAL:
-	include "resource/text/Region/Wrong Region PAL.asm"
-					
-	else
+byte_1EAC0:
+	dc.b	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0
+	dc.b	0, 0, 3, 4, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0
+	dc.b	6, 7, 8, 6, 9, $A, $B, $C, $D, $E, $F, $10, $11, $12, $13, 9
+	dc.b	$A, $14, $15, $16, $17, 7, 8, 6, 9, $18, $19, $1A, $C, $D, $1B, $A
+	dc.b	$1C, $1D, $1E, $1F, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $2A, $2B
+	dc.b	$2C, $2D, $2E, $2F, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $3A, $3B
+	dc.b	$3C, $3D, $3E, $3F, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $4A, $4B
+	dc.b	$4C, $4D, $4E, $4F, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $5A, $5B
+	dc.b	$5C, $5D, $5E, $5D, $5F, $60, $61, $62, $63, $64, $65, $66, $67, $68, $62, $61
+	dc.b	$69, $6A, $6B, $6C, $6D, $6E, $6F, $70, $71, $72, $73, $74, $75, $76, $77, $78
+	dc.b	$79, $7A, $79, $79, $79, $7B, $79, $7B, $79, $7C, $7D, $7E, $7F, $7B, $79, $79
+	dc.b	$79, $80, $81, $82, $83, $79, $79, $79, $84, $85, $86, $87, $88, $89, $8A, $8B
+	dc.b	$79, $8C, $79, $8C, $8D, $8E, $8D, $8E, $79, $8C, $79, $8C, $79, $8C, $79, $8C
+	dc.b	$79, $8F, $90, $91, $92, $8C, $8C, $79, $8C, $93, $94, $95, $96, $97, $98, $99
+	dc.b	$8D, $8E, $8D, $8E, $9A, $9B, $9C, $9D, $9E, $8E, $8D, $7A, $8D, $8E, $8D, $8E
+	dc.b	$8D, $8E, $8D, $8E, $8D, $8E, $8D, $8E, $8D, $8E, $9F, $A0, $A1, $A2, $A3, $A4
+	dc.b	$A5, $A6, $A5, $A6, $A7, $A8, $A9, $AA, $8D, $A6, $A5, $A6, $AB, $A6, $AB, $A6
+	dc.b	$AC, $A6, $AB, $A6, $AB, $AC, $AB, $A6, $AB, $A6, $AB, $A6, $AD, $AE, $AF, $B0
+	dc.b	$7A, $B1, $B2, $B2, $B3, $B1, $B1, $B2, $B3, $B1, $B2, $B3, $B1, $B1, $B2, $B3
+	dc.b	$B1, $7A, $B2, $B1, $B3, $B1, $B2, $B4, $B3, $B5, $B2, $B1, $8C, $79, $B3, $B1
+	dc.b	$B6, $B7, $B8, $B8, $B6, $7A, $B7, $B6, $B8, $B6, $B8, $B6, $7A, $B7, $B8, $B6
+	dc.b	$B7, $B7, $B8, $B6, $B7, $B8, $B7, $B9, $B6, $B7, $B9, $B6, $BA, $BB, $B6, $B7
+	dc.b	$BC, $BD, $BD, $BE, $BF, $BD, $BC, $BD, $BD, $BC, $BD, $BD, $BC, $BD, $BD, $BE
+	dc.b	$C0, $BD, $BC, $BD, $BD, $BC, $BD, $BD, $BC, $BD, $BD, $BC, $C1, $C2, $BC, $C3
+	dc.b	$C4, $C5, $C6, $C3, $C5, $C6, $C4, $C5, $C6, $C4, $C5, $C6, $B5, $C5, $C6, $C4
+	dc.b	$C7, $C6, $C4, $C5, $C6, $C4, $B5, $C6, $C8, $C9, $CA, $C4, $C5, $C6, $C4, $C5
+	dc.b	$CB, $CC, $CD, $CB, $CC, $CD, $CB, $CC, $C8, $C9, $CA, $CD, $CB, $CC, $CD, $CB
+	dc.b	$CC, $CD, $B5, $CC, $CD, $CB, $CC, $CD, $CE, $CF, $D0, $CB, $CC, $CD, $CB, $CC
+	dc.b	$D1, $D2, $D3, $D4, $D0, $D5, $D1, $D2, $CE, $CF, $D0, $D5, $D1, $D2, $D3, $D4
+	dc.b	$C3, $D5, $D1, $D2, $B5, $D4, $D0, $D5, $D1, $D2, $D3, $D4, $D0, $D5, $D1, $7A
 
-Str_RegionLockJapan:	
-	include "resource/text/Region/Wrong Region Japan.asm"
-					
-Str_RegionLockUSA:
-	include "resource/text/Region/Wrong Region USA.asm"	
+byte_1ECA0:
+	dc.b	$13, 9, $A, $B, $13, 9, 7, 8, $1E, $1C, $D6, $D7, $D8, $1C, $D9, $DA
+	dc.b	$DB, $DB, $DC, $DD, $DE, $DF, $E0, $E1, $E2, $E3, $E4, $E2, $E3, $E4, $E2, $E3
+	dc.b	$79, $79, $79, $79, $79, $79, $79, $79, $79, $79, $8C, $79, $79, $79, $8C, $79
+	dc.b	$8D, $8D, $8E, $8D, $8D, $8D, $8E, $8D, $A5, $A5, $A6, $A5, $A5, $A5, $A6, $A5
+	dc.b	$B2, $B3, $B1, $B2, $B2, $7A, $B1, $B2, $B8, $7A, $B7, $B8, $B8, $B6, $B7, $B8
+	dc.b	$BD, $BC, $BD, $BD, $BD, $BC, $BD, $BD, $C6, $C6, $C4, $C5, $BE, $C0, $C5, $C6
+	dc.b	$CD, $CD, $CB, $CC, $C4, $C7, $CC, $CD, $D3, $D3, $B5, $D2, $D3, $D1, $D2, $D3
 
-Str_RegionLockEurope:	
-	include "resource/text/Region/Wrong Region Europe.asm"
-					
-Str_RegionLockAsia:
-	include "resource/text/Region/Wrong Region Asia.asm"						
-					endc
+byte_1ED10:
+	dc.b	1, 2, 3, 4, 5, 6, 7, 8, 9, $A, $B, $C, $D, 1, 2, 3
+	dc.b	4, 5, 6, 7, 8, 9, $A, $B, $C, $D, 1, 2, 3, 4, 5, 6
+	dc.b	$E, $F, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $1A, $E, $F, $10
+	dc.b	$11, $12, $13, $14, $15, $16, $17, $18, $19, $1A, $E, $F, $10, $11, $12, $13
+	dc.b	$1B, $1C, $1D, $1E, $1F, $20, $21, $22, $23, $24, $25, $26, $27, $1B, $1C, $1D
+	dc.b	$1E, $1F, $20, $21, $22, $23, $24, $25, $26, $27, $1B, $1C, $1D, $1E, $1F, $20
+	dc.b	$28, $29, $2A, $2B, $2C, $2D, $2E, $2F, $30, $31, $32, $33, $34, $28, $29, $2A
+	dc.b	$2B, $2C, $2D, $2E, $2F, $30, $31, $32, $33, $34, $28, $29, $2A, $2B, $2C, $2D
+	dc.b	$35, $36, $37, $38, $39, $3A, $3B, $3C, $3D, $3E, $3F, $40, $41, $35, $36, $37
+	dc.b	$38, $39, $3A, $3B, $3C, $3D, $3E, $3F, $40, $41, $35, $36, $37, $38, $39, $3A
+	dc.b	$42, $43, $44, $45, $46, $47, $48, $49, $4A, $4B, $4C, $4D, $4E, $42, $43, $44
+	dc.b	$45, $46, $47, $48, $49, $4A, $4B, $4C, $4D, $4E, $42, $43, $44, $45, $46, $47
+	dc.b	$4F, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $5A, $5B, $4F, $50, $51
+	dc.b	$52, $53, $54, $55, $56, $57, $58, $59, $5A, $5B, $4F, $50, $51, $52, $53, $54
+	dc.b	$66, $5D, $5E, $5F, $60, $61, $62, $63, $64, $65, $66, $5D, $5E, $5F, $60, $61
+	dc.b	$62, $63, $64, $65, $66, $5D, $5E, $5F, $60, $61, $62, $63, $64, $65, $66, $5D
+	dc.b	$5C, $67, $68, $69, $6A, $6B, $6C, $6D, $6E, $6F, $5C, $67, $68, $69, $6A, $6B
+	dc.b	$6C, $6D, $6E, $6F, $5C, $67, $68, $69, $6A, $6B, $6C, $6D, $6E, $6F, $5C, $67
+	dc.b	$70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $70, $71, $72, $73, $74, $75
+	dc.b	$76, $77, $78, $79, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $70, $71
+	dc.b	$7A, $7B, $7C, $7D, $7E, $7F, $80, $81, $82, $83, $7A, $7B, $7C, $7D, $7E, $7F
+	dc.b	$80, $81, $82, $83, $7A, $7B, $7C, $7D, $7E, $7F, $80, $81, $82, $83, $7A, $7B
+	dc.b	$92, $85, $86, $87, $88, $89, $8A, $8B, $8C, $8D, $8E, $8F, $90, $91, $92, $85
+	dc.b	$86, $87, $88, $89, $8A, $8B, $8C, $8D, $8E, $8F, $90, $91, $92, $85, $86, $87
+	dc.b	$84, $93, $94, $95, $96, $97, $98, $99, $9A, $9B, $9C, $99, $9D, $9B, $84, $93
+	dc.b	$94, $95, $96, $97, $98, $99, $9A, $9B, $9C, $99, $9D, $9B, $84, $93, $94, $95
+	dc.b	$9E, $9F, $A0, $A1, $A2, $A3, $A4, $A5, $A6, $A7, $A8, $A9, $AA, $AB, $9E, $9F
+	dc.b	$A0, $A1, $A2, $A3, $A4, $A5, $A6, $A7, $A8, $A9, $AA, $AB, $9E, $9F, $A0, $A1
+
+byte_1EED0:
+	dc.b	6, 7, 8, 9, $A, $B, $C, $D, $13, $14, $15, $16, $17, $18, $19, $1A
+	dc.b	$20, $21, $22, $23, $24, $25, $26, $27, $2D, $2E, $2F, $30, $31, $32, $33, $34
+	dc.b	$3A, $3B, $3C, $3D, $3E, $3F, $40, $41, $47, $48, $49, $4A, $4B, $4C, $4D, $4E
+	dc.b	$54, $55, $56, $57, $58, $59, $5A, $5B, $5E, $5F, $60, $61, $62, $63, $64, $65
+	dc.b	$68, $69, $6A, $6B, $6C, $6D, $6E, $6F, $72, $73, $74, $75, $76, $77, $78, $79
+	dc.b	$7C, $7D, $7E, $7F, $80, $81, $82, $83, $8A, $8B, $8C, $8D, $8E, $8F, $90, $91
+	dc.b	$98, $99, $9A, $9B, $9C, $99, $9D, $9B, $A4, $A5, $A6, $A7, $A8, $A9, $AA, $AB
+
+; ---------------------------------------------------------------------------
+
+Str_DevLockPriv:	
+	include "resource/text/Region/Wrong Region Private.asm"	
+	even
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -40726,14 +35737,14 @@ GetRegion:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-RegionLockout:
-	include "src/subroutines/region/region lockout.asm" 
-	
-ActRegionLockout:
-	include "src/actors/region lockout.asm"
-	
-RegionLock_Print:
-	include "src/subroutines/region/region lock print.asm" 
+DeveloperLock:
+	include "src/subroutines/devlock/developer check.asm" 
+
+ActDeveloperCheck:
+	include "src/actors/developer check.asm"
+
+DevLock_Print:
+	include "src/subroutines/devlock/developer check print.asm" 
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -40775,9 +35786,10 @@ ChecksumError:
 
 Str_ChecksumWarning:
 	include "resource/text/checksum/Checksum - Line 1.asm" 
-	
+	even
 Str_ChecksumIncorrect:
 	include "resource/text/checksum/Checksum - Line 2.asm" 
+	even
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -40785,7 +35797,6 @@ ActChecksumError:
 	include "src/actors/checksum error.asm" 
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ActSoundTest:
 	move.w	#2,d0
@@ -40801,7 +35812,7 @@ ActSoundTest_Update:
 	bne.w	.Exit
 	btst	#4,d0
 	bne.w	.StopSound
-	andi.b	#SFX_THUD,d0
+	andi.b	#$60,d0
 	bne.w	.PlaySound
 	move.b	(byte_FF110C).l,d0
 	or.b	(byte_FF1112).l,d0
@@ -40908,7 +35919,7 @@ ActSoundTest_Update:
 .PlayNonSFX:
 	lsl.w	#2,d0
 	lsl.w	#2,d1
-	lea	(off_229EC).l,a1
+	lea	(ST_Select_NoSFX).l,a1
 	movea.l	(a1,d1.w),a2
 	movea.l	(a2,d0.w),a1
 	move.b	(a1),d0
@@ -40945,7 +35956,7 @@ SoundTest_PlayCmd:
 	clr.w	d0
 	move.b	$15(a0),d0
 	lsl.w	#2,d0
-	lea	(off_229F8).l,a1
+	lea	(ST_BGM_Index).l,a1
 	movea.l	(a1,d0.w),a2
 	move.b	(a2),(byte_FF012E).l
 
@@ -40953,8 +35964,11 @@ locret_228D4:
 	rts
 ; ---------------------------------------------------------------------------
 byte_228D6:	dc.b $F1
+
 byte_228D7:	dc.b 0
-byte_228D8:	dc.b 0
+
+byte_228D8:
+	dc.b 0
 	dc.b $F2
 	dc.b 0
 	dc.b 0
@@ -40979,24 +35993,22 @@ byte_228D8:	dc.b 0
 
 
 sub_228EC:
-	move.w	#2,d0
+	moveq	#2,d0
 
 loc_228F0:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	bsr.w	SoundTest_SelNonSFX
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	dbf	d0,loc_228F0
 	rts
 ; End of function sub_228EC
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 SoundTest_SelNonSFX:
 	move.w	d0,d1
 	lsl.w	#2,d1
-	lea	(off_229EC).l,a1
+	lea	(ST_Select_NoSFX).l,a1
 	movea.l	(a1,d1.w),a2
 	move.b	$15(a0,d0.w),d1
 	lsl.w	#2,d1
@@ -41020,7 +36032,6 @@ asc_2293E:	dc.b "                      "
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 sub_22956:
 	move.w	#5,d0
 	move.w	#$79C,d5
@@ -41037,18 +36048,16 @@ loc_22962:
 	rts
 ; End of function sub_22956
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_22980:
 	lea	(stage_text_buffer).l,a1
 	move.w	#$2020,(a1)
 	move.b	#$FF,2(a1)
 	cmp.w	$26(a0),d0
-	bne.w	loc_229A6
+	bne.s	loc_229A6
 	btst	#0,(frame_count+1).l
-	beq.w	loc_229A6
+	beq.s	loc_229A6
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -41064,18 +36073,16 @@ loc_229A6:
 	rts
 ; End of function sub_22980
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_229C2:
 	clr.w	d1
 	move.b	$12(a0,d0.w),d1
 	move.w	d0,d2
 	subq.w	#3,d2
-	bcs.w	loc_229E6
+	bcs.s	loc_229E6
 	lsl.w	#2,d2
-	lea	(off_229EC).l,a1
+	lea	(ST_Select_NoSFX).l,a1
 	movea.l	(a1,d2.w),a2
 	lsl.w	#2,d1
 	movea.l	(a2,d1.w),a1
@@ -41089,145 +36096,313 @@ loc_229E6:
 ; End of function sub_229C2
 
 ; ---------------------------------------------------------------------------
-off_229EC:
-	dc.l off_229F8
-	dc.l off_22AC8
-	dc.l off_22B90
-off_229F8:
-	dc.l byte_22A60
-	dc.l byte_22A64
-	dc.l byte_22A68
-	dc.l byte_22A6C
-	dc.l byte_22A70
-	dc.l byte_22A74
-	dc.l byte_22A78
-	dc.l byte_22A7C
-	dc.l byte_22A80
-	dc.l byte_22A84
-	dc.l byte_22A88
-	dc.l byte_22A8C
-	dc.l byte_22A90
-	dc.l byte_22A94
-	dc.l byte_22A98
-	dc.l byte_22A9C
-	dc.l byte_22AA0
-	dc.l byte_22AA4
-	dc.l byte_22AA8
-	dc.l byte_22AAC
-	dc.l byte_22AB0
-	dc.l byte_22AB4
-	dc.l byte_22AB8
-	dc.l byte_22ABC
-	dc.l byte_22AC0
-	dc.l byte_22AC4
-byte_22A60:	dc.b 1,	$20, $20, $FF
-byte_22A64:	dc.b 2,	$20, $20, $FF
-byte_22A68:	dc.b 3,	$20, $20, $FF
-byte_22A6C:	dc.b 4,	$20, $20, $FF
-byte_22A70:	dc.b 5,	$20, $20, $FF
-byte_22A74:	dc.b 6,	$20, $20, $FF
-byte_22A78:	dc.b 7,	$20, $20, $FF
-byte_22A7C:	dc.b 8,	$20, $20, $FF
-byte_22A80:	dc.b 9,	$20, $20, $FF
-byte_22A84:	dc.b $A, $20, $20, $FF
-byte_22A88:	dc.b $B, $20, $20, $FF
-byte_22A8C:	dc.b $C, $20, $20, $FF
-byte_22A90:	dc.b $D, $20, $20, $FF
-byte_22A94:	dc.b $E, $20, $20, $FF
-byte_22A98:	dc.b $F, $20, $20, $FF
-byte_22A9C:	dc.b $10, $20, $20, $FF
-byte_22AA0:	dc.b $11, $20, $20, $FF
-byte_22AA4:	dc.b $12, $20, $20, $FF
-byte_22AA8:	dc.b $13, $20, $20, $FF
-byte_22AAC:	dc.b $14, $20, $20, $FF
-byte_22AB0:	dc.b $15, $20, $20, $FF
-byte_22AB4:	dc.b $16, $20, $20, $FF
-byte_22AB8:	dc.b $17, $20, $20, $FF
-byte_22ABC:	dc.b $18, $20, $20, $FF
-byte_22AC0:	dc.b $19, $20, $20, $FF
-byte_22AC4:	dc.b $1A, $20, $20, $FF
-off_22AC8:
-	dc.l byte_22B24
-	dc.l byte_22B28
-	dc.l byte_22B2C
-	dc.l byte_22B30
-	dc.l byte_22B34
-	dc.l byte_22B38
-	dc.l byte_22B3C
-	dc.l byte_22B40
-	dc.l byte_22B44
-	dc.l byte_22B48
-	dc.l byte_22B4C
-	dc.l byte_22B50
-	dc.l byte_22B54
-	dc.l byte_22B58
-	dc.l byte_22B5C
-	dc.l byte_22B60
-	dc.l byte_22B64
-	dc.l byte_22B68
-	dc.l byte_22B6C
-	dc.l byte_22B70
-	dc.l byte_22B74
-	dc.l byte_22B78
-	dc.l byte_22B7C
-byte_22B24:	dc.b $81, $20, $20, $FF
-byte_22B28:	dc.b $82, $20, $20, $FF
-byte_22B2C:	dc.b $83, $20, $20, $FF
-byte_22B30:	dc.b $84, $20, $20, $FF
-byte_22B34:	dc.b $85, $20, $20, $FF
-byte_22B38:	dc.b $86, $20, $20, $FF
-byte_22B3C:	dc.b $87, $20, $20, $FF
-byte_22B40:	dc.b $88, $20, $20, $FF
-byte_22B44:	dc.b $89, $20, $20, $FF
-byte_22B48:	dc.b $8A, $20, $20, $FF
-byte_22B4C:	dc.b $8B, $20, $20, $FF
-byte_22B50:	dc.b $8C, $20, $20, $FF
-byte_22B54:	dc.b $8D, $20, $20, $FF
-byte_22B58:	dc.b $8E, $20, $20, $FF
-byte_22B5C:	dc.b $8F, $20, $20, $FF
-byte_22B60:	dc.b $90, $20, $20, $FF
-byte_22B64:	dc.b $91, $20, $20, $FF
-byte_22B68:	dc.b $92, $20, $20, $FF
-byte_22B6C:	dc.b $93, $20, $20, $FF
-byte_22B70:	dc.b $94, $20, $20, $FF
-byte_22B74:	dc.b $95, $20, $20, $FF
-byte_22B78:	dc.b $96, $20, $20, $FF
-byte_22B7C:	dc.b $97, $20, $20, $FF
+ST_Select_NoSFX:
+	dc.l ST_BGM_Index
+	dc.l ST_Voice_Index
+	dc.l ST_Command_Index
+
+ST_BGM_Index:
+	dc.l ST_BGM_Title
+	dc.l ST_BGM_Menu
+	dc.l ST_BGM_Password
+	dc.l ST_BGM_Stage_Intro_A
+	dc.l ST_BGM_Stage_Intro_B
+	dc.l ST_BGM_Stage_Intro_C
+	dc.l ST_BGM_Stage_Intro_D
+	dc.l ST_BGM_Stage_BGM_A
+	dc.l ST_BGM_Stage_BGM_B
+	dc.l ST_BGM_Stage_BGM_C
+	dc.l ST_BGM_Stage_BGM_D
+	dc.l ST_BGM_Versus
+	dc.l ST_BGM_Exercise
+	dc.l ST_BGM_Role_Call
+	dc.l ST_BGM_Credits
+	dc.l ST_BGM_Danger
+	dc.l ST_BGM_Game_Over
+	dc.l ST_BGM_Win
+	dc.l ST_BGM_Final_Win
+	dc.l ST_BGM_Proto_Title
+	dc.l ST_BGM_Puyo_Brave
+	dc.l ST_BGM_Puyo_Theme
+	dc.l ST_BGM_Unused_Stage_BGM
+	dc.l ST_BGM_Puyo_Win
+	dc.l ST_BGM_Unused_Ending
+	dc.l ST_BGM_Silence
+
+ST_BGM_Title:
+	dc.b 1,	"Title", $20, $FF
+	even
+
+ST_BGM_Menu:
+	dc.b 2,	"Menu", $20, $FF
+	even
+
+ST_BGM_Password:
+	dc.b 3,	"Password", $20, $FF
+	even
+
+ST_BGM_Stage_Intro_A:
+	dc.b 4, "Stage Intro A", $20, $FF
+	even
+
+ST_BGM_Stage_Intro_B:
+	dc.b 5, "Stage Intro B", $20, $FF
+	even
+
+ST_BGM_Stage_Intro_C:
+	dc.b 6,	"Stage Intro C", $20, $FF
+	even
+
+ST_BGM_Stage_Intro_D:
+	dc.b 7,	"Stage Intro D", $20, $FF
+	even
+
+ST_BGM_Stage_BGM_A:
+	dc.b 8,	"Stage BGM A", $20, $FF
+	even
+
+ST_BGM_Stage_BGM_B:
+	dc.b 9,	"Stage BGM B", $20, $FF
+	even
+
+ST_BGM_Stage_BGM_C:
+	dc.b $A, "Stage BGM C", $20, $FF
+	even
+
+ST_BGM_Stage_BGM_D:
+	dc.b $B, "Stage BGM D", $20, $FF
+	even
+
+ST_BGM_Versus:
+	dc.b $C, "Versus", $20, $FF
+	even
+
+ST_BGM_Exercise:
+	dc.b $D, "Exercise", $20, $FF
+	even
+
+ST_BGM_Role_Call
+	dc.b $E, "Role Call", $20, $FF
+	even
+
+ST_BGM_Credits:
+	dc.b $F, "Credits", $20, $FF
+	even
+
+ST_BGM_Danger:
+	dc.b $10, "Danger", $20, $FF
+	even
+
+ST_BGM_Game_Over:
+	dc.b $11, "Game Over", $20, $FF
+	even
+
+ST_BGM_Win:
+	dc.b $12, "Win", $20, $FF
+	even
+
+ST_BGM_Final_Win:
+	dc.b $13, "Final Win", $20, $FF
+	even
+
+ST_BGM_Proto_Title:
+	dc.b $14, "Proto Title", $20, $FF
+	even
+
+ST_BGM_Puyo_Brave:
+	dc.b $15, "Brave of Puyo Puyo", $20, $FF
+	even
+
+ST_BGM_Puyo_Theme:
+	dc.b $16, "Theme of Puyo Puyo", $20, $FF
+	even
+
+ST_BGM_Unused_Stage_BGM:
+	dc.b $17, "Unused Stage BGM", $20, $FF
+	even
+
+ST_BGM_Puyo_Win:
+	dc.b $18, "Puyo Win", $20, $FF
+	even
+
+ST_BGM_Unused_Ending:
+	dc.b $19, "Unused Ending", $20, $FF
+	even
+
+ST_BGM_Silence:
+	dc.b $1A, "Silence", $20, $FF
+	even
+
+ST_Voice_Index:
+	dc.l ST_Voice_81
+	dc.l ST_Voice_82
+	dc.l ST_Voice_83
+	dc.l ST_Voice_84
+	dc.l ST_Voice_85
+	dc.l ST_Voice_86
+	dc.l ST_Voice_87
+	dc.l ST_Voice_88
+	dc.l ST_Voice_89
+	dc.l ST_Voice_8A
+	dc.l ST_Voice_8B
+	dc.l ST_Voice_8C
+	dc.l ST_Voice_8D
+	dc.l ST_Voice_8E
+	dc.l ST_Voice_8F
+	dc.l ST_Voice_90
+	dc.l ST_Voice_91
+	dc.l ST_Voice_92
+	dc.l ST_Voice_93
+	dc.l ST_Voice_94
+	dc.l ST_Voice_95
+	dc.l ST_Voice_96
+	dc.l ST_Voice_97
+
+ST_Voice_81:
+	dc.b $81, "P1 Combo 1", $20, $FF
+	even
+
+ST_Voice_82:
+	dc.b $82, "P1 Combo 2", $20, $FF
+	even
+
+ST_Voice_83:
+	dc.b $83, "P1 Combo 3", $20, $FF
+	even
+
+ST_Voice_84:
+	dc.b $84, "P1 Combo 4", $20, $FF
+	even
+
+ST_Voice_85:
+	dc.b $85, "P2 Combo 1", $20, $FF
+	even
+
+ST_Voice_86:
+	dc.b $86, "P2 Combo 2", $20, $FF
+	even
+
+ST_Voice_87:
+	dc.b $87, "Eggmobile", $20, $FF
+	even
+
+ST_Voice_88:
+	dc.b $88, "Garbage 1", $20, $FF
+	even
+
+ST_Voice_89:
+	dc.b $89, "Garbage 2", $20, $FF
+	even
+
+ST_Voice_8A:
+	dc.b $8A, "Garbage 3", $20, $FF
+	even
+
+ST_Voice_8B:
+	dc.b $8B, $20, $20, $FF
+	even
+
+ST_Voice_8C:
+	dc.b $8C, $20, $20, $FF
+	even
+
+ST_Voice_8D:
+	dc.b $8D, "P2 Combo 3", $20, $FF
+	even
+
+ST_Voice_8E:
+	dc.b $8E, "P2 Combo 4", $20, $FF
+	even
+
+ST_Voice_8F:
+	dc.b $8F, $20, $20, $FF
+	even
+
+ST_Voice_90:
+	dc.b $90, "Robotnik Lose", $20, $FF
+	even
+
+ST_Voice_91:
+	dc.b $91, "Bean Cheer", $20, $FF
+	even
+
+ST_Voice_92:
+	dc.b $92, "Thunder 1", $20, $FF
+	even
+
+ST_Voice_93:
+	dc.b $93, "Thunder 2", $20, $FF
+	even
+
+ST_Voice_94:
+	dc.b $94, "Thunder 3", $20, $FF
+	even
+
+ST_Voice_95:
+	dc.b $95, "Thunder 4", $20, $FF
+	even
+
+ST_Voice_96:
+	dc.b $96, "Eggmobile Leave", $20, $FF
+	even
+
+ST_Voice_97:
+	dc.b $97, "Vanish", $20, $FF
+	even
+
+ST_Voice_98:
 	dc.b $98, $20, $20, $FF
+	even
+
+ST_Voice_99:
 	dc.b $99, $20, $20, $FF
+	even
+
+ST_Voice_9A:
 	dc.b $9A, $20, $20, $FF
+	even
+
+ST_Voice_9B:
 	dc.b $9B, $20, $20, $FF
-off_22B90:	dc.l byte_22BA0
-	dc.l byte_22BAE
-	dc.l byte_22BB8
-	dc.l byte_22BC6
-byte_22BA0:	dc.b $FE
-	dc.b "music clear"
-	dc.b $FF
-	dc.b 0
-byte_22BAE:	dc.b $FD
-	dc.b "fade out"
-	dc.b $FF
-byte_22BB8:	dc.b $FF
-	dc.b "pause on off"
-	dc.b $FF
-byte_22BC6:	dc.b $6F
-	dc.b "se clear"
-	dc.b $FF
-	dc.b $F5
-	dc.b "rebirth"
-	dc.b $FF
-	dc.b 0
+	even
+
+ST_Command_Index:
+	dc.l ST_Command_MusClear
+	dc.l ST_Command_FadeOut
+	dc.l ST_Command_Pause
+	dc.l ST_Command_SEClear
+
+ST_Command_MusClear:
+	dc.b $FE, "music clear", $FF
+	even
+
+ST_Command_FadeOut:
+	dc.b $FD, "fade out", $FF
+	even
+
+ST_Command_Pause:
+	dc.b $FF, "pause on off", $FF
+	even
+
+ST_Command_SEClear:
+	dc.b $6F, "se clear", $FF
+	even
+
+ST_Command_Rebirth:
+	dc.b $F5, "rebirth", $FF
+	even
+
 	dc.b $F6
 aPauseOn:	dc.b "pause on"
 	dc.b $FF
+	even
+
 	dc.b $F7
 aPauseOff:	dc.b "pause off"
 	dc.b $FF
-	dc.b 0
+	even
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 Options_SetupPlanes:
 	move.b	#$FF,(use_plane_a_buffer).l
@@ -41251,9 +36426,7 @@ Options_SetupPlanes:
 	bra.w	Options_ClearPlaneA
 ; End of function Options_SetupPlanes
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 SpawnOptionsActor:
 	lea	(ActOptions).l,a1
@@ -41266,9 +36439,7 @@ SpawnOptionsActor:
 	rts
 ; End of function SpawnOptionsActor
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 Options_ClearPlaneA:
 	lea	(plane_a_buffer).l,a1
@@ -41280,14 +36451,12 @@ Options_ClearPlaneA:
 	rts
 ; End of function Options_ClearPlaneA
 
-
 ; =============== S U B	R O U T	I N E =======================================
 
-
 Options_DrawStrings:
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	bsr.s	Options_ClearPlaneA
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	lsl.w	#2,d0
 	movea.l	OptionsModeStrings(pc,d0.w),a2
 	move.w	(a2)+,d0
@@ -41305,10 +36474,12 @@ Options_DrawStrings:
 ; End of function Options_DrawStrings
 
 ; ---------------------------------------------------------------------------
-OptionsModeStrings:dc.l	OptionsStrings
+OptionsModeStrings:
+	dc.l	OptionsStrings
 	dc.l InputTestStrings
 	dc.l SoundTestStrings
-InputTestStrings:dc.w $C
+
+InputTestStrings:	dc.w $C
 	dc.l OptStr_InputTest
 	dc.l OptStr_PressStartAndA
 	dc.l OptStr_Pads
@@ -41321,66 +36492,91 @@ InputTestStrings:dc.w $C
 	dc.l OptStr_ButtonLeft
 	dc.l OptStr_ToExit
 	dc.l OptStr_Start
-OptStr_InputTest:dc.w $11E
+
+OptStr_InputTest:
+	dc.w $11E
 	dc.w $A200
 	dc.b "input test"
 	dc.b $FF
 	even
-OptStr_PressStartAndA:dc.w $B88
+
+OptStr_PressStartAndA:
+	dc.w $B88
 	dc.w $A200
 	dc.b "press start button and a button"
 	dc.b $FF
 	even
-OptStr_ToExit:	dc.w $CBA
+
+OptStr_ToExit:
+	dc.w $CBA
 	dc.w $A200
 	dc.b "to exit"
 	dc.b $FF
 	even
-OptStr_Pads:	dc.w $222
+
+OptStr_Pads:
+	dc.w $222
 	dc.w $E200
 	dc.b "pad1  pad2"
 	dc.b $FF
 	even
-OptStr_Start:	dc.w $316
+
+OptStr_Start:
+	dc.w $316
 	dc.w $8200
 	dc.b "start:"
 	dc.b $FF
 	even
-OptStr_ButtonA:	dc.w $410
+
+OptStr_ButtonA:
+	dc.w $410
 	dc.w $8200
 	dc.b "button a:"
 	dc.b $FF
 	even
-OptStr_ButtonB:	dc.w $510
+
+OptStr_ButtonB:
+	dc.w $510
 	dc.w $8200
 	dc.b "button b:"
 	dc.b $FF
 	even
-OptStr_ButtonC:	dc.w $610
+
+OptStr_ButtonC:
+	dc.w $610
 	dc.w $8200
 	dc.b "button c:"
 	dc.b $FF
 	even
-OptStr_ButtonUp:dc.w $790
+
+OptStr_ButtonUp:
+	dc.w $790
 	dc.w $8200
 	dc.b "      up:"
 	dc.b $FF
 	even
-OptStr_ButtonDown:dc.w $890
+
+OptStr_ButtonDown:
+	dc.w $890
 	dc.w $8200
 	dc.b "    down:"
 	dc.b $FF
 	even
-OptStr_ButtonRight:dc.w	$990
+
+OptStr_ButtonRight:
+	dc.w	$990
 	dc.w $8200
 	dc.b "   right:"
 	dc.b $FF
 	even
-OptStr_ButtonLeft:dc.w $A90
+
+OptStr_ButtonLeft:
+	dc.w $A90
 	dc.w $8200
 	dc.b "    left:"
 	dc.b $FF
 	even
+
 OptionsStrings:	dc.w $A
 	dc.l OptStr_Options
 	dc.l OptStr_Players
@@ -41392,55 +36588,78 @@ OptionsStrings:	dc.w $A
 	dc.l OptStr_VSMode
 	dc.l OptStr_Sampling
 	dc.l OptStr_KeyAssign
-OptStr_Options:	dc.w $120
+
+OptStr_Options:
+	dc.w $120
 	dc.w $A200
 	dc.b "options"
 	dc.b $FF
-OptStr_Players:	dc.w $312
+	even
+
+OptStr_Players:
+	dc.w $312
 	dc.w $E200
 	dc.b "player 1       player 2"
 	dc.b $FF
-OptStr_PressStartExit:dc.w $C8E
+	even
+
+OptStr_PressStartExit:
+	dc.w $C8E
 	dc.w $A200
 	dc.b "press start button to exit"
 	dc.b $FF
-	dc.b 0
-OptStr_AssignA:	dc.w $40C
+	even
+
+OptStr_AssignA:
+	dc.w $40C
 	dc.w $E200
 	dc.b "a:              a:"
 	dc.b $FF
-	dc.b 0
-OptStr_AssignB:	dc.w $50C
+	even
+
+OptStr_AssignB:
+	dc.w $50C
 	dc.w $E200
 	dc.b "b:              b:"
 	dc.b $FF
-	dc.b 0
-OptStr_AssignC:	dc.w $60C
+	even
+
+OptStr_AssignC:
+	dc.w $60C
 	dc.w $E200
 	dc.b "c:              c:"
 	dc.b $FF
-	dc.b 0
-OptStr_COMLevel:dc.w $78C
+	even
+
+OptStr_COMLevel:
+	dc.w $78C
 	dc.w $E200
 	dc.b "vs.com level   :"
 	dc.b $FF
-	dc.b 0
-OptStr_VSMode:	dc.w $88C
+	even
+
+OptStr_VSMode:
+	dc.w $88C
 	dc.w $E200
 	dc.b "1p vs.2p mode  :"
 	dc.b $FF
-	dc.b 0
-OptStr_Sampling:dc.w $98C
+	even
+
+OptStr_Sampling:
+	dc.w $98C
 	dc.w $E200
 	dc.b "sampling       :"
 	dc.b $FF
-	dc.b 0
-OptStr_KeyAssign:dc.w $21A
+	even
+
+OptStr_KeyAssign:
+	dc.w $21A
 	dc.w $E200
 	dc.b "key assignment"
 	dc.b $FF
-	dc.b 0
-SoundTestStrings:dc.w 8
+	even
+
+SoundTestStrings:	dc.w 8
 	dc.l OptStr_SoundTest
 	dc.l OptStr_PressStartExit2
 	dc.l OptStr_Sound1
@@ -41449,56 +36668,71 @@ SoundTestStrings:dc.w 8
 	dc.l OptStr_BGM
 	dc.l OptStr_Voice
 	dc.l OptStr_SndCmd
-OptStr_SoundTest:dc.w $11C
+
+OptStr_SoundTest:
+	dc.w $11C
 	dc.w $8200
 	dc.b "sound test"
 	dc.b $FF
-	dc.b 0
-OptStr_PressStartExit2:dc.w $C8E
+	even
+
+OptStr_PressStartExit2:
+	dc.w $C8E
 	dc.w $E200
 	dc.b "press start button to exit"
 	dc.b $FF
-	dc.b 0
-OptStr_Sound1:	dc.w $292
+	even
+
+OptStr_Sound1:
+	dc.w $292
 	dc.w $E200
 	dc.b "se1:"
 	dc.b $FF
-	dc.b 0
-OptStr_Sound2:	dc.w $392
+	even
+
+OptStr_Sound2:
+	dc.w $392
 	dc.w $E200
 	dc.b "se2:"
 	dc.b $FF
-	dc.b 0
-OptStr_Sound3:	dc.w $492
+	even
+
+OptStr_Sound3:
+	dc.w $492
 	dc.w $E200
 	dc.b "se3:"
 	dc.b $FF
-	dc.b 0
-OptStr_BGM:	dc.w $592
+	even
+
+OptStr_BGM:
+	dc.w $592
 	dc.w $E200
 	dc.b "bgm:"
 	dc.b $FF
-	dc.b 0
-OptStr_Voice:	dc.w $68E
+	even
+
+OptStr_Voice:
+	dc.w $68E
 	dc.w $E200
 	dc.b "voice:"
 	dc.b $FF
-	dc.b 0
-OptStr_SndCmd:	dc.w $78A
+	even
+
+OptStr_SndCmd:
+	dc.w $78A
 	dc.w $E200
 	dc.b "command:"
 	dc.b $FF
-	dc.b 0
+	even
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 Options_PrintSelect:
 	move.w	#$8200,d6
 	btst	#0,$26(a0)
 	beq.w	Options_Print
 	cmp.b	$2C(a0),d0
-	bne.w	loc_22F46
+	bne.s	loc_22F46
 	move.w	#$C200,d6
 	bra.w	Options_Print
 ; ---------------------------------------------------------------------------
@@ -41511,7 +36745,6 @@ loc_22F46:
 
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 Options_Print:
 	lea	((plane_a_buffer+2)).l,a2
@@ -41531,9 +36764,7 @@ Options_Print:
 	rts
 ; End of function Options_Print
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 Options_PrintRaw:
 	lea	((plane_a_buffer+2)).l,a2
@@ -41555,7 +36786,8 @@ Options_PrintRaw:
 ; End of function Options_PrintRaw
 
 ; ---------------------------------------------------------------------------
-Options_CharConv:dc.b $11
+Options_CharConv:
+	dc.b $11
 	dc.b $12
 	dc.b $13
 	dc.b $14
@@ -41717,12 +36949,7 @@ ActOptions_Update:
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 OptionsCtrl:
-
-; FUNCTION CHUNK AT 00023014 SIZE 00000066 BYTES
-; FUNCTION CHUNK AT 00023422 SIZE 00000046 BYTES
-
 	move.b	#2,d2
 	cmp.b	(swap_controls).l,d0
 	bne.w	.CheckButtons
@@ -41852,9 +37079,9 @@ OptionsCtrl:
 
 .Select:
 	cmpi.b	#6,aField2C(a0,d0.w)
-	beq.w	.InputTest
+	beq.s	.InputTest
 	cmpi.b	#7,aField2C(a0,d0.w)
-	beq.w	.SoundTest
+	beq.s	.SoundTest
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -41875,9 +37102,7 @@ OptionsCtrl:
 	jmp	(ActorDeleteSelf).l
 ; End of function OptionsCtrl
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 PrintMainOptions:
 	bsr.w	PrintP1CtrlOption
@@ -41890,9 +37115,7 @@ PrintMainOptions:
 	rts
 ; End of function PrintMainOptions
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 PrintP1CtrlOption:
 	lea	(player_1_a).l,a2
@@ -41902,9 +37125,7 @@ PrintP1CtrlOption:
 	bra.w	loc_2325A
 ; End of function PrintP1CtrlOption
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 PrintP2CtrlOption:
 	lea	(player_2_a).l,a2
@@ -41914,7 +37135,7 @@ PrintP2CtrlOption:
 
 loc_2325A:
 	btst	#0,aField26(a0)
-	bne.w	loc_23268
+	bne.s	loc_23268
 	move.w	#$8200,d6
 
 loc_23268:
@@ -41929,7 +37150,7 @@ loc_23270:
 	movea.l	PlayerCtrlOptStrings(pc,d0.w),a1
 	movem.l	d3-d6/a2,-(sp)
 	cmp.b	(a0,d4.w),d3
-	bne.w	loc_23288
+	bne.s	loc_23288
 	swap	d6
 
 loc_23288:
@@ -41943,21 +37164,23 @@ loc_23288:
 ; End of function PrintP2CtrlOption
 
 ; ---------------------------------------------------------------------------
-PlayerCtrlOptStrings:dc.l OptStr_DontUse
+PlayerCtrlOptStrings:
+	dc.l OptStr_DontUse
 	dc.l OptStr_TurnLeft
 	dc.l OptStr_TurnRight
-OptStr_DontUse:	dc.b "don",$27,"t use   "
-	dc.b $FF
-	dc.b 0
-OptStr_TurnLeft:dc.b "turn left  $"
-	dc.b $FF
-	dc.b 0
-OptStr_TurnRight:dc.b "turn right #"
-	dc.b $FF
-	dc.b 0
+OptStr_DontUse:
+	dc.b "don't use   ", $FF
+	even
+
+OptStr_TurnLeft:
+	dc.b "turn left  $", $FF
+	even
+
+OptStr_TurnRight:
+	dc.b "turn right #", $FF
+	even
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_232D4:
 	move.w	#$7AE,d5
@@ -41970,21 +37193,28 @@ sub_232D4:
 ; End of function sub_232D4
 
 ; ---------------------------------------------------------------------------
-COMLevelStrings:dc.l OptStr_Hardest
+COMLevelStrings:
+	dc.l OptStr_Hardest
 	dc.l OptStr_Hard
 	dc.l OptStr_Normal
 	dc.l OptStr_Easy
-OptStr_Hardest:	dc.b "hardest"
-	dc.b $FF
-OptStr_Hard:	dc.b "hard   "
-	dc.b $FF
-OptStr_Normal:	dc.b "normal "
-	dc.b $FF
-OptStr_Easy:	dc.b "easy   "
-	dc.b $FF
+
+OptStr_Hardest:	
+	dc.b "hardest", $FF
+	even
+OptStr_Hard:
+	dc.b "hard   ", $FF
+	even
+
+OptStr_Normal:
+	dc.b "normal ", $FF
+	even
+
+OptStr_Easy:
+	dc.b "easy   ", $FF
+	even
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 PrintVSModeOption:
 	move.w	#$8AE,d5
@@ -41996,10 +37226,10 @@ PrintVSModeOption:
 .PrintMatchCount:
 	lsl.w	#2,d0
 	movea.l	VSModeMatches(pc,d0.w),a1
-	movem.l	d0,-(sp)
+	move.l	d0,-(sp)
 	move.w	#$C200,d6
 	bsr.w	Options_Print
-	movem.l	(sp)+,d0
+	move.l	(sp)+,d0
 	lea	(OptStr_GameMatch).l,a1
 	move.w	#$8B0,d5
 	cmpi.w	#$14,d0
@@ -42012,10 +37242,12 @@ PrintVSModeOption:
 ; End of function PrintVSModeOption
 
 ; ---------------------------------------------------------------------------
-OptStr_GameMatch:dc.b " game match "
-	dc.b $FF
-	dc.b 0
-VSModeMatches:	dc.l VSMode_1Match
+OptStr_GameMatch:
+	dc.b " game match ", $FF
+	even
+
+VSModeMatches:
+	dc.l VSMode_1Match
 	dc.l VSMode_3Match
 	dc.l VSMode_5Match
 	dc.l VSMode_7Match
@@ -42023,24 +37255,47 @@ VSModeMatches:	dc.l VSMode_1Match
 	dc.l VSMode_11Match
 	dc.l VSMode_13Match
 	dc.l VSMode_15Match
-VSMode_1Match:	dc.b 2,	$20, $FF, 0
-VSMode_3Match:	dc.b 4,	$20, $FF, 0
-VSMode_5Match:	dc.b 6,	$20, $FF, 0
-VSMode_7Match:	dc.b 8,	$20, $FF, 0
-VSMode_9Match:	dc.b $A, $20, $FF, 0
-VSMode_11Match:	dc.b 2,	2, $FF,	0
-VSMode_13Match:	dc.b 2,	4, $FF,	0
-VSMode_15Match:	dc.b 2,	6, $FF,	0
+
+VSMode_1Match:
+	dc.b 2,	$20, $FF
+	even
+
+VSMode_3Match:
+	dc.b 4,	$20, $FF
+	even
+
+VSMode_5Match:
+	dc.b 6,	$20, $FF
+	even
+
+VSMode_7Match:
+	dc.b 8,	$20, $FF
+	even
+
+VSMode_9Match:
+	dc.b $A, $20, $FF
+	even
+
+VSMode_11Match:
+	dc.b 2,	2, $FF
+	even
+
+VSMode_13Match:
+	dc.b 2,	4, $FF
+	even
+
+VSMode_15Match:
+	dc.b 2,	6, $FF
+	even
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 PrintSamplingOption:
 	move.b	#5,d0
 	move.w	#$9AE,d5
 	lea	(OptStr_On).l,a1
 	tst.b	(disable_samples).l
-	beq.w	loc_233CE
+	beq.s	loc_233CE
 	lea	(OptStr_Off).l,a1
 
 loc_233CE:
@@ -42048,13 +37303,16 @@ loc_233CE:
 ; End of function PrintSamplingOption
 
 ; ---------------------------------------------------------------------------
-OptStr_On:	dc.b "on "
+OptStr_On:
+	dc.b "on "
 	dc.b $FF
-OptStr_Off:	dc.b "off"
+	even
+OptStr_Off:
+	dc.b "off"
 	dc.b $FF
+	even
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 PrintInputTest:
 	move.b	#6,d0
@@ -42064,12 +37322,12 @@ PrintInputTest:
 ; End of function PrintInputTest
 
 ; ---------------------------------------------------------------------------
-OptStr_InputTest2:dc.b "input test"
+OptStr_InputTest2:
+	dc.b "input test"
 	dc.b $FF
-	dc.b 0
+	even
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_233F8:
 	tst.w	(sound_test_enabled).l
@@ -42084,9 +37342,10 @@ locret_23414:
 ; End of function sub_233F8
 
 ; ---------------------------------------------------------------------------
-OptStr_SoundTest2:dc.b "sound test"
+OptStr_SoundTest2:
+	dc.b "sound test"
 	dc.b $FF
-	dc.b 0
+	even
 ; ---------------------------------------------------------------------------
 ; START	OF FUNCTION CHUNK FOR OptionsCtrl
 
@@ -42100,11 +37359,11 @@ ActInputTest_Update:
 	move.b	(p1_ctrl_hold).l,d0
 	andi.b	#$C0,d0
 	eori.b	#$C0,d0
-	beq.w	loc_2345A
+	beq.s	loc_2345A
 	move.b	(p2_ctrl_hold).l,d0
 	andi.b	#$C0,d0
 	eori.b	#$C0,d0
-	beq.w	loc_2345A
+	beq.s	loc_2345A
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -42115,7 +37374,6 @@ loc_2345A:
 ; END OF FUNCTION CHUNK	FOR OptionsCtrl
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_23468:
 	move.b	(p1_ctrl_hold).l,d0
@@ -42129,7 +37387,7 @@ loc_23480:
 	lea	(byte_234AE).l,a1
 	move.w	#$E500,d6
 	ror.l	#1,d0
-	bcs.w	loc_2349C
+	bcs.s	loc_2349C
 	lea	(byte_234B2).l,a1
 	move.w	#$C500,d6
 
@@ -42143,7 +37401,9 @@ loc_2349C:
 
 ; ---------------------------------------------------------------------------
 byte_234AE:	dc.b $19, $18, $FF, 0
+
 byte_234B2:	dc.b $2C, $2D, $FF, 0
+
 word_234B6:	dc.w $7B0, $8B0, $AB0, $9B0, $530, $630, $430, $330
 	dc.w $7A4, $8A4, $AA4, $9A4, $524, $624, $424, $324
 
@@ -42159,6 +37419,11 @@ LockoutBypassCode:
 
 ; =============== S U B	R O U T	I N E =======================================
 
+SetDemoOpponent:
+	include	"src/subroutines/Demo/SetDemoOpponent.asm"
+	even
+
+; =============== S U B	R O U T	I N E =======================================
 
 sub_23536:
 	movem.l	d0-d3/a1-a2,-(sp)
@@ -42176,9 +37441,7 @@ loc_2355A:
 	rts
 ; End of function sub_23536
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 sub_23566:
 	move.w	#$56,d2
@@ -42188,7 +37451,7 @@ loc_2356C:
 	move.w	(a1)+,d1
 	eor.w	d1,d0
 	lsr.w	#1,d0
-	bcc.w	loc_2357A
+	bcc.s	loc_2357A
 	eori.w	#$8810,d0
 
 loc_2357A:
@@ -42217,7 +37480,6 @@ ComboVoices:	dc.b 0
 	dc.b VOI_P2_COMBO_4
 
 ; =============== S U B	R O U T	I N E =======================================
-
 
 SpawnGarbageGlow:
 	btst	#1,(level_mode).l
@@ -42263,9 +37525,7 @@ SpawnGarbageGlow:
 	rts
 ; End of function SpawnGarbageGlow
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ActGarbageGlow:
 	tst.b	aField2B(a0)
@@ -42280,7 +37540,7 @@ ActGarbageGlow:
 	move.w	#$1F,$26(a0)
 	move.l	#$1800000,d0
 	jsr	(GetPuyoFieldID).l
-	beq.w	loc_23674
+	beq.s	loc_23674
 	move.l	#$C00000,d0
 
 loc_23674:
@@ -42299,7 +37559,7 @@ loc_23674:
 	move.w	$A(a0),$1E(a0)
 	move.b	#$80,d0
 	jsr	(GetPuyoFieldID).l
-	beq.w	loc_236C4
+	beq.s	loc_236C4
 	eori.b	#$80,d0
 
 loc_236C4:
@@ -42311,14 +37571,14 @@ loc_236C4:
 	swap	d2
 	add.w	d2,$A(a0)
 	subq.w	#1,$26(a0)
-	bcs.w	loc_236E6
+	bcs.s	loc_236E6
 	rts
 ; ---------------------------------------------------------------------------
 
 loc_236E6:
 	move.l	#byte_2375E,aAnim(a0)
 	tst.b	aPlayerID(a0)
-	beq.w	loc_236FE
+	beq.s	loc_236FE
 	move.l	#byte_2378C,aAnim(a0)
 
 loc_236FE:
@@ -42326,7 +37586,7 @@ loc_236FE:
 	move.b	aField2B(a0),d1
 	subq.b	#1,d1
 	cmpi.b	#4,d1
-	bcs.w	loc_23712
+	bcs.s	loc_23712
 	move.b	#3,d1
 
 loc_23712:
@@ -42334,14 +37594,14 @@ loc_23712:
 	jsr	(PlaySound_ChkPCM).l
 
 loc_2371C:
-	movem.l	a0,-(sp)
+	move.l	a0,-(sp)
 	movea.l	aField2E(a0),a1
 	movea.l	a1,a0
 	jsr	(loc_984A).l
-	movem.l	(sp)+,a0
+	move.l	(sp)+,a0
 	jsr	(ActorBookmark).l
 	jsr	(ActorAnimate).l
-	bcs.w	loc_23742
+	bcs.s	loc_23742
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -42350,11 +37610,15 @@ loc_23742:
 ; End of function ActGarbageGlow
 
 ; ---------------------------------------------------------------------------
-GarbageSounds:	dc.b SFX_GARBAGE_1
+GarbageSounds:
+	dc.b SFX_GARBAGE_1
 	dc.b SFX_GARBAGE_2
 	dc.b SFX_GARBAGE_3
 	dc.b SFX_GARBAGE_4
-byte_2374C:	dc.b 0
+; TODO: Document Animation Code
+
+byte_2374C:
+	dc.b 0
 	dc.b 7
 	dc.b 0
 	dc.b 8
@@ -42369,7 +37633,9 @@ byte_2374C:	dc.b 0
 	dc.b $FF
 	dc.b 0
 	dc.l byte_2374C
-byte_2375E:	dc.b 2
+
+byte_2375E:
+	dc.b 2
 	dc.b 7
 	dc.b 1
 	dc.b 8
@@ -42397,7 +37663,9 @@ byte_2375E:	dc.b 2
 	dc.b $10
 	dc.b $FE
 	dc.b 0
-byte_2377A:	dc.b 0
+
+byte_2377A:
+	dc.b 0
 	dc.b $11
 	dc.b 0
 	dc.b $12
@@ -42412,7 +37680,9 @@ byte_2377A:	dc.b 0
 	dc.b $FF
 	dc.b 0
 	dc.l byte_2377A
-byte_2378C:	dc.b 2
+
+byte_2378C:
+	dc.b 2
 	dc.b $11
 	dc.b 1
 	dc.b $12
@@ -42457,7 +37727,6 @@ byte_2378C:	dc.b 2
 
 ; =============== S U B	R O U T	I N E =======================================
 
-
 ProcEniTilemapQueue:
 	move.l	#$800000,d4
 	move.b	(vdp_reg_10).l,d0
@@ -42498,9 +37767,7 @@ ProcEniTilemapQueue:
 	rts
 ; End of function ProcEniTilemapQueue
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ClearPlaneA_DMA:
 	lea	VDP_CTRL,a0
@@ -42521,9 +37788,7 @@ ClearPlaneA_DMA:
 	rts
 ; End of function ClearPlaneA_DMA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ClearPlaneA:
 	DISABLE_INTS
@@ -42537,9 +37802,7 @@ ClearPlaneA:
 	rts
 ; End of function ClearPlaneA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ClearPlaneB:
 	DISABLE_INTS
@@ -42553,9 +37816,7 @@ ClearPlaneB:
 	rts
 ; End of function ClearPlaneB
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 ClearPlaneB_DMA:
 	lea	VDP_CTRL,a0
@@ -42576,9 +37837,7 @@ ClearPlaneB_DMA:
 	rts
 ; End of function ClearPlaneB_DMA
 
-
 ; =============== S U B	R O U T	I N E =======================================
-
 
 MassFill:
 	move.l	d0,(a1)
@@ -42590,7 +37849,7 @@ MassFill:
 ; End of function MassFill
 
 ; ---------------------------------------------------------------------------
-	ALIGN	$10000, $FF
+;	ALIGN	$10000, $FF
 ArtUnc_Robotnik_0:
 	incbin	"resource/artunc/Robotnik/Robotnik 0.unc"
 	even
@@ -43305,10 +38564,6 @@ ArtNem_SkweelIntro:
 ArtNem_ScratchIntro:
 	incbin	"resource/artnem/Intro/Scratch Intro.nem"
 	even
-	
-; ---------------------------------------------------------------------------	
-
-	ALIGN	$5FC00, $FF
 
 ; ---------------------------------------------------------------------------
 	
@@ -43681,7 +38936,7 @@ word_6F85E:
 	dc.w 0,	0, $842, $822, $862, $642, $640, $420, $A66, $422, $862, $A84, $200, $622, $844, $EEE
 	dc.w 0,	0, $422, $844, $866, $A08, $222, $CCC, $200, $400, $200, $620, $200, $200, $200, $CAA
 	
-	ALIGN	$10000, $FF
+;	ALIGN	$10000, $FF
 	
 ; --------------------------------------------------------------
 	
@@ -43799,14 +39054,14 @@ ArtPuyo_OldGameOver:
 	
 ; --------------------------------------------------------------
 
-	ALIGN	$10000, $FF
+;	ALIGN	$10000, $FF
 
 ; --------------------------------------------------------------	
 	
 ArtNem_TitleLogo:
 	incbin	"resource/artnem/Title/Title Logo.nem"
 	even
-	
+
 MapEni_TitleLogo:
 	incbin	"resource/mapeni/Title/Logo.eni"
 	even
@@ -43847,83 +39102,6 @@ ArtNem_HasBeanShadow:
 	incbin	"resource/artnem/Ending/Has Bean's Shadow.nem"
 	even
 
-; --------------------------------------------------------------	
-
-	if BattleBoards=1
-LoadUnderTilesScenario:
-	clr.w	d0
-		
-	move.b	(level).l, d0	
-	subi.b	#3, d0
-	lsl.w	#2, d0
-	movea.l UnderTilesIDs(pc,d0.w), a1
-	jmp	(a1)
-	even
-
-UnderTilesIDs:
-	dc.l UnderTiles2 ; Stage 1
-	dc.l UnderTiles1 ; Stage 2
-	dc.l UnderTiles1 ; Stage 3
-	dc.l UnderTiles1 ; Stage 4
-	dc.l UnderTiles1 ; Stage 5
-	dc.l UnderTiles1 ; Stage 6
-	dc.l UnderTiles1 ; Stage 7
-	dc.l UnderTiles1 ; Stage 8
-	dc.l UnderTiles1 ; Stage 9
-	dc.l UnderTiles1 ; Stage 10
-	dc.l UnderTiles1 ; Stage 11
-	dc.l UnderTiles1 ; Stage 12
-	dc.l UnderTiles1 ; Stage 13
-	even
-
-UnderTiles1:
-	lea	(UnderGrassTiles).l,a4
-	rts
-	even
-
-UnderTiles2:
-	lea	(UnderStoneTiles).l,a4
-	rts
-	even
-
-UnderGrassTiles:
-	dc.b $11
-	dc.b $12
-	dc.b $13
-	dc.b $14
-	dc.b $15
-	dc.b $16
-	dc.b $17
-	dc.b $18
-	dc.b $22
-	dc.b $23
-	dc.b $24
-	dc.b $25
-	dc.b $26
-	dc.b $27
-	dc.b $28
-	dc.b $29
-	even
-
-UnderStoneTiles:
-	dc.b $4F
-	dc.b $4E
-	dc.b $4F
-	dc.b $4E
-	dc.b $4F
-	dc.b $4E
-	dc.b $4F
-	dc.b $4E
-	dc.b $53
-	dc.b $52
-	dc.b $53
-	dc.b $52
-	dc.b $53
-	dc.b $52
-	dc.b $53
-	dc.b $52
-	even	
-
 ; --------------------------------------------------------------
 
 ArtNem_GrassBoard:
@@ -43933,38 +39111,6 @@ ArtNem_GrassBoard:
 ArtNem_StoneBoard:
 	incbin	"resource/artnem/Boards/Stone.nem"
 	even
-
-CrumbleStone:
-	incbin	"resource/mapunc/crumble/Stone/StoneA.bin"
-	even
-	endc
-
-; --------------------------------------------------------------
-
-	if DemoOpponenet=1
-SetDemoOpponenet:
-	move.b 	#13, level ; Enter Stage #
-	subi.b	#1, level
-	addi.b	#3, level
-	
-	jsr (SetOpponent).l
-	rts	
-	endc
-
-; --------------------------------------------------------------
-
-	if DemoOpponenet=2
-SetDemoOpponenet:
-	jsr	(Random).l				; Generate random byte
-	andi.b	#15,d0				; Set left bit to 0
-	cmpi.b	#2,d0				; Is 2 or less (these are Lessons)?
-	bls.s 	SetDemoOpponenet	; If so, generate another #
-
-	move.b 	d0, level			; Load level # into RAM
-
-	jsr (SetOpponent).l			; Set opponent.
-	rts	
-	endc
 
 ; --------------------------------------------------------------
 
@@ -43986,9 +39132,9 @@ SetDemoOpponenet:
 
 SHC:	
 	include "src/subroutines/splash screen/sonic hacking contest.asm"
-
-	ALIGN	$200000, $FF ; Set ROM Size to 2MB
 	endc
+
+;	ALIGN	$100000, $FF ; Set ROM Size to 1MB
 
 ; ==============================================================
 ; --------------------------------------------------------------

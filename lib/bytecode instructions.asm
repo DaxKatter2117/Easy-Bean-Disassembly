@@ -378,7 +378,7 @@ Bytecode_FadePal:
 ; --------------------------------------------------------------
 
 Bytecode_FadePal_Intro:
-	tst.b	use_lair_background
+	tst.b	use_lair_assets
 	bne.s	.RobotniksLair
 
 	move.b	d0,d1
